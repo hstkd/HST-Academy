@@ -1,12 +1,11 @@
+cat > /mnt/user-data/outputs/taekwondo-academy.jsx << 'ENDOFFILE'
 import { useState, useEffect } from "react";
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
 const SEED_STUDENTS = [
-  { id: "1", nombres: "Carlos", apellidos: "Mendoza", edad: 12, fecha_nacimiento: "2012-03-15", representante: "Ana Mendoza", telefono: "0991234567", correo: "carlos@mail.com", direccion: "Quito Norte", sede: "Quito", cinturon: "Amarillo", categoria: "Infantil", membresia: "estandar", estado: "activo", fecha_inscripcion: "2023-01-10", observaciones: "Buen avance técnico" },
+  { id: "1", nombres: "Carlos", apellidos: "Mendoza", edad: 12, fecha_nacimiento: "2012-03-15", representante: "Ana Mendoza", telefono: "0991234567", correo: "carlos@mail.com", direccion: "Quito Norte", sede: "Quito", cinturon: "Amarillo", categoria: "Infantil", membresia: "estandar", estado: "activo", fecha_inscripcion: "2023-01-10", observaciones: "" },
   { id: "2", nombres: "Sofía", apellidos: "Torres", edad: 15, fecha_nacimiento: "2009-07-22", representante: "Luis Torres", telefono: "0987654321", correo: "sofia@mail.com", direccion: "Cumbayá", sede: "Cumbayá", cinturon: "Verde", categoria: "Juvenil", membresia: "premium", estado: "activo", fecha_inscripcion: "2022-06-05", observaciones: "" },
-  { id: "3", nombres: "Mateo", apellidos: "García", edad: 9, fecha_nacimiento: "2015-11-01", representante: "Rosa García", telefono: "0976543210", correo: "mateo@mail.com", direccion: "Quito Sur", sede: "Quito", cinturon: "Blanco", categoria: "Infantil", membresia: "basica", estado: "activo", fecha_inscripcion: "2024-01-20", observaciones: "Nuevo alumno" },
-  { id: "4", nombres: "Valentina", apellidos: "López", edad: 18, fecha_nacimiento: "2006-05-30", representante: "Jorge López", telefono: "0965432109", correo: "vale@mail.com", direccion: "Cumbayá", sede: "Cumbayá", cinturon: "Azul", categoria: "Adulto", membresia: "premium", estado: "activo", fecha_inscripcion: "2021-03-15", observaciones: "Aspirante a negro" },
-  { id: "5", nombres: "Diego", apellidos: "Ramírez", edad: 14, fecha_nacimiento: "2010-09-12", representante: "Carmen Ramírez", telefono: "0954321098", correo: "diego@mail.com", direccion: "Quito Centro", sede: "Quito", cinturon: "Rojo", categoria: "Juvenil", membresia: "estandar", estado: "inactivo", fecha_inscripcion: "2022-08-01", observaciones: "En pausa temporal" },
+  { id: "3", nombres: "Mateo", apellidos: "García", edad: 9, fecha_nacimiento: "2015-11-01", representante: "Rosa García", telefono: "0976543210", correo: "mateo@mail.com", direccion: "Quito Sur", sede: "Quito", cinturon: "Blanco", categoria: "Infantil", membresia: "basica", estado: "activo", fecha_inscripcion: "2024-01-20", observaciones: "" },
 ];
 
 const today = new Date();
@@ -14,10 +13,9 @@ const fmt = (d) => d.toISOString().slice(0, 10);
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 
 const SEED_PAGOS = [
-  { id: "p1", alumno_id: "1", alumno_nombre: "Carlos Mendoza", monto: 45, monto_pagado: 45, fecha_pago: fmt(today), fecha_vencimiento: fmt(addDays(today, 25)), tipo: "Estándar 12 sesiones", estado: "pagado", sede: "Quito", notas: "" },
-  { id: "p2", alumno_id: "2", alumno_nombre: "Sofía Torres", monto: 60, monto_pagado: 30, fecha_pago: fmt(addDays(today, -5)), fecha_vencimiento: fmt(addDays(today, 5)), tipo: "Premium Ilimitada", estado: "parcial", sede: "Cumbayá", notas: "Pago parcial" },
-  { id: "p3", alumno_id: "3", alumno_nombre: "Mateo García", monto: 35, monto_pagado: 0, fecha_pago: fmt(addDays(today, -10)), fecha_vencimiento: fmt(addDays(today, -2)), tipo: "Básica 8 sesiones", estado: "vencido", sede: "Quito", notas: "" },
-  { id: "p4", alumno_id: "4", alumno_nombre: "Valentina López", monto: 60, monto_pagado: 60, fecha_pago: fmt(today), fecha_vencimiento: fmt(addDays(today, 30)), tipo: "Premium Ilimitada", estado: "pagado", sede: "Cumbayá", notas: "" },
+  { id: "p1", alumno_id: "1", alumno_nombre: "Carlos Mendoza", monto: 45, monto_pagado: 45, fecha_pago: fmt(today), fecha_vencimiento: fmt(addDays(today, 25)), tipo: "Estándar", estado: "pagado", sede: "Quito", notas: "" },
+  { id: "p2", alumno_id: "2", alumno_nombre: "Sofía Torres", monto: 60, monto_pagado: 30, fecha_pago: fmt(addDays(today, -5)), fecha_vencimiento: fmt(addDays(today, 5)), tipo: "Completo", estado: "parcial", sede: "Cumbayá", notas: "" },
+  { id: "p3", alumno_id: "3", alumno_nombre: "Mateo García", monto: 35, monto_pagado: 0, fecha_pago: fmt(addDays(today, -10)), fecha_vencimiento: fmt(addDays(today, -2)), tipo: "Básico", estado: "vencido", sede: "Quito", notas: "" },
 ];
 
 const SEED_ASISTENCIA = [
@@ -29,7 +27,10 @@ const SEED_ASISTENCIA = [
 const SEED_EVENTOS = [
   { id: "e1", titulo: "Examen de Cinturón", fecha: fmt(addDays(today, 10)), tipo: "examen", sede: "Quito", descripcion: "Examen para cinturones amarillo-verde" },
   { id: "e2", titulo: "Torneo Regional", fecha: fmt(addDays(today, 20)), tipo: "torneo", sede: "Ambas", descripcion: "Torneo clasificatorio" },
-  { id: "e3", titulo: "Campamento de Verano", fecha: fmt(addDays(today, 45)), tipo: "campamento", sede: "Ambas", descripcion: "Campamento intensivo 3 días" },
+];
+
+const SEED_USERS = [
+  { id: "u1", email: "admin@hst.com", password: "admin123", nombre: "Henry Sigchos", role: "admin" },
 ];
 
 // ─── LOCAL STORAGE ────────────────────────────────────────────────────────────
@@ -44,8 +45,11 @@ const initStore = () => {
     ls.set("hst_pagos", SEED_PAGOS);
     ls.set("hst_asistencia", SEED_ASISTENCIA);
     ls.set("hst_eventos", SEED_EVENTOS);
+    ls.set("hst_users", SEED_USERS);
     ls.set("hst_init", true);
   }
+  // ensure users always exist
+  if (!ls.get("hst_users", null)) ls.set("hst_users", SEED_USERS);
 };
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -55,66 +59,68 @@ const MEMBRESIAS = [
   { id: "premium", nombre: "Completo", sesiones: 999, precio: 0, color: "#a855f7" },
 ];
 
-const CINTURONES = ["Blanco", "Blanco/Amarillo", "Amarillo", "Amarillo/Verde", "Verde", "Verde/Azul", "Azul", "Azul/Rojo", "Rojo", "Rojo/Negro", "Negro"];
+const CINTURONES = ["Blanco","Blanco/Amarillo","Amarillo","Amarillo/Verde","Verde","Verde/Azul","Azul","Azul/Rojo","Rojo","Rojo/Negro","Negro"];
 const CATEGORIAS = ["Infantil", "Juvenil", "Adulto", "Máster"];
 const SEDES = ["Quito", "Cumbayá"];
-const ROLES = ["admin", "profesor", "recepcion"];
 
 const cinturonColor = {
-  Blanco: "#ffffff",
-  "Blanco/Amarillo": "#fef08a",
-  Amarillo: "#fbbf24",
-  "Amarillo/Verde": "#a3e635",
-  Verde: "#22c55e",
-  "Verde/Azul": "#34d399",
-  Azul: "#3b82f6",
-  "Azul/Rojo": "#a78bfa",
-  Rojo: "#ef4444",
-  "Rojo/Negro": "#f97316",
-  Negro: "#1f2937",
+  Blanco: "#ffffff", "Blanco/Amarillo": "#fef08a", Amarillo: "#fbbf24",
+  "Amarillo/Verde": "#a3e635", Verde: "#22c55e", "Verde/Azul": "#34d399",
+  Azul: "#3b82f6", "Azul/Rojo": "#a78bfa", Rojo: "#ef4444",
+  "Rojo/Negro": "#f97316", Negro: "#374151",
 };
 
 const pagoEstadoConfig = {
-  pagado: { bg: "bg-emerald-500/20", text: "text-emerald-400", border: "border-emerald-500/30", label: "Al día" },
-  parcial: { bg: "bg-amber-500/20", text: "text-amber-400", border: "border-amber-500/30", label: "Parcial" },
-  vencido: { bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/30", label: "Vencido" },
-  pendiente: { bg: "bg-slate-500/20", text: "text-slate-400", border: "border-slate-500/30", label: "Pendiente" },
+  pagado:   { bg: "bg-emerald-500/20", text: "text-emerald-400", border: "border-emerald-500/30", label: "Al día" },
+  parcial:  { bg: "bg-amber-500/20",   text: "text-amber-400",   border: "border-amber-500/30",   label: "Parcial" },
+  vencido:  { bg: "bg-red-500/20",     text: "text-red-400",     border: "border-red-500/30",     label: "Vencido" },
+  pendiente:{ bg: "bg-slate-500/20",   text: "text-slate-400",   border: "border-slate-500/30",   label: "Pendiente" },
+};
+
+// ─── PERMISSIONS ──────────────────────────────────────────────────────────────
+const PERMISOS = {
+  admin:    ["dashboard","students","payments","attendance","belts","finance","events","users"],
+  profesor: ["attendance","students"],
+  alumno:   ["mi_asistencia","mis_pagos"],
 };
 
 // ─── ICONS ────────────────────────────────────────────────────────────────────
 const Icon = ({ name, className = "w-5 h-5" }) => {
   const icons = {
-    dashboard: <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
-    students: <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />,
-    payments: <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />,
-    attendance: <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />,
-    belt: <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />,
-    finance: <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
-    reception: <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />,
-    calendar: <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
-    plus: <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />,
-    edit: <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />,
-    trash: <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />,
-    search: <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
-    x: <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />,
-    check: <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />,
-    logout: <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />,
-    menu: <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />,
-    arrow_up: <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />,
-    arrow_down: <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />,
-    eye: <><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>,
-    download: <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />,
+    dashboard:   <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
+    students:    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />,
+    payments:    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />,
+    attendance:  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />,
+    belt:        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />,
+    finance:     <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
+    calendar:    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
+    users:       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />,
+    plus:        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />,
+    edit:        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />,
+    trash:       <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />,
+    search:      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
+    x:           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />,
+    check:       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />,
+    logout:      <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />,
+    menu:        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />,
+    arrow_up:    <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />,
+    arrow_down:  <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />,
+    eye:         <><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></>,
+    lock:        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />,
+    key:         <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />,
+    mi_asistencia: <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />,
+    mis_pagos:   <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />,
   };
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      {icons[name]}
+      {icons[name] || <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />}
     </svg>
   );
 };
 
 // ─── UI COMPONENTS ────────────────────────────────────────────────────────────
 const Modal = ({ title, onClose, children, wide = false }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}>
     <div className={`relative bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl w-full ${wide ? "max-w-3xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto`}>
       <div className="flex items-center justify-between p-6 border-b border-white/10">
         <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>{title}</h2>
@@ -138,7 +144,7 @@ const Input = (props) => (
 
 const Select = ({ options, ...props }) => (
   <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50 transition-all" {...props}>
-    {options.map((o) => <option key={o} value={o}>{o}</option>)}
+    {options.map((o) => typeof o === "string" ? <option key={o} value={o}>{o}</option> : <option key={o.value} value={o.value}>{o.label}</option>)}
   </select>
 );
 
@@ -158,8 +164,7 @@ const StatCard = ({ title, value, sub, icon, accent = "amber", trend }) => {
           {sub && <p className="text-sm text-slate-400 mt-1">{sub}</p>}
           {trend !== undefined && (
             <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${trend >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              <Icon name={trend >= 0 ? "arrow_up" : "arrow_down"} className="w-3 h-3" />
-              {Math.abs(trend)}% vs mes anterior
+              <Icon name={trend >= 0 ? "arrow_up" : "arrow_down"} className="w-3 h-3" />{Math.abs(trend)}% vs mes anterior
             </div>
           )}
         </div>
@@ -170,8 +175,8 @@ const StatCard = ({ title, value, sub, icon, accent = "amber", trend }) => {
 };
 
 const BeltBadge = ({ cinturon }) => (
-  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: `${cinturonColor[cinturon]}22`, color: cinturon === "Blanco" ? "#e2e8f0" : cinturonColor[cinturon], border: `1px solid ${cinturonColor[cinturon]}44` }}>
-    <span className="w-2 h-2 rounded-full" style={{ background: cinturonColor[cinturon] }} />{cinturon}
+  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: `${cinturonColor[cinturon] || "#fff"}22`, color: cinturon === "Blanco" ? "#e2e8f0" : (cinturonColor[cinturon] || "#fff"), border: `1px solid ${cinturonColor[cinturon] || "#fff"}44` }}>
+    <span className="w-2 h-2 rounded-full" style={{ background: cinturonColor[cinturon] || "#fff" }} />{cinturon}
   </span>
 );
 
@@ -185,7 +190,7 @@ const MembresiaTag = ({ membresiaId }) => {
   if (!m) return null;
   return (
     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: `${m.color}22`, color: m.color, border: `1px solid ${m.color}44` }}>
-      {m.sesiones === 999 ? "♾️" : `${m.sesiones}🎯`} {m.nombre.replace("Mensual ", "")}
+      {m.sesiones === 999 ? "♾️" : `${m.sesiones}🎯`} {m.nombre}
     </span>
   );
 };
@@ -196,7 +201,7 @@ const MiniBarChart = ({ data, color = "#f59e0b" }) => {
     <div className="flex items-end gap-1 h-16">
       {data.map((d, i) => (
         <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-          <div className="w-full rounded-t-sm" style={{ height: `${(d.value / max) * 56}px`, background: color, opacity: 0.7 + 0.3 * (i / data.length) }} />
+          <div className="w-full rounded-t-sm" style={{ height: `${(d.value / max) * 56}px`, background: color, opacity: 0.6 + 0.4 * (i / data.length) }} />
           <span className="text-[9px] text-slate-500">{d.label}</span>
         </div>
       ))}
@@ -204,22 +209,30 @@ const MiniBarChart = ({ data, color = "#f59e0b" }) => {
   );
 };
 
+const RoleBadge = ({ role }) => {
+  const cfg = { admin: { color: "#f59e0b", label: "Admin" }, profesor: { color: "#3b82f6", label: "Profesor" }, alumno: { color: "#22c55e", label: "Alumno" } };
+  const c = cfg[role] || cfg.alumno;
+  return <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: `${c.color}22`, color: c.color, border: `1px solid ${c.color}44` }}>{c.label}</span>;
+};
+
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
 const LoginScreen = ({ onLogin }) => {
-  const [email, setEmail] = useState("admin@hst.com");
-  const [password, setPassword] = useState("admin123");
-  const [role, setRole] = useState("admin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
-  const USERS = { "admin@hst.com": { pass: "admin123", role: "admin", name: "Henry Sigchos" }, "prof@hst.com": { pass: "prof123", role: "profesor", name: "Profesor Demo" }, "rec@hst.com": { pass: "rec123", role: "recepcion", name: "Recepción" } };
+
   const handleLogin = () => {
+    if (!email || !password) { setErr("Completa todos los campos"); return; }
     setLoading(true);
     setTimeout(() => {
-      const u = USERS[email];
-      if (u && u.pass === password) { onLogin({ email, role: u.role, name: u.name }); }
-      else { setErr("Credenciales incorrectas"); setLoading(false); }
-    }, 800);
+      const users = ls.get("hst_users", SEED_USERS);
+      const u = users.find((x) => x.email === email && x.password === password);
+      if (u) { onLogin(u); }
+      else { setErr("Correo o contraseña incorrectos"); setLoading(false); }
+    }, 600);
   };
+
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%)" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -239,16 +252,205 @@ const LoginScreen = ({ onLogin }) => {
           <h2 className="text-xl font-bold text-white mb-6">Iniciar Sesión</h2>
           {err && <div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">{err}</div>}
           <div className="space-y-4">
-            <Field label="Correo"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@academia.com" /></Field>
-            <Field label="Contraseña"><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" /></Field>
-            <Field label="Rol"><Select options={ROLES} value={role} onChange={(e) => setRole(e.target.value)} /></Field>
+            <Field label="Correo"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@academia.com" onKeyDown={(e) => e.key === "Enter" && handleLogin()} /></Field>
+            <Field label="Contraseña"><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={(e) => e.key === "Enter" && handleLogin()} /></Field>
           </div>
           <button onClick={handleLogin} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm tracking-wider text-[#020617] transition-all active:scale-95" style={{ background: loading ? "#6b7280" : "linear-gradient(135deg, #f59e0b, #d97706)" }}>
             {loading ? "VERIFICANDO..." : "INGRESAR AL SISTEMA"}
           </button>
-          <p className="text-center text-xs text-slate-500 mt-4">Demo: admin@hst.com / admin123</p>
+          <p className="text-center text-xs text-slate-500 mt-4">admin@hst.com / admin123</p>
         </div>
       </div>
+    </div>
+  );
+};
+
+// ─── USERS PAGE (solo admin) ──────────────────────────────────────────────────
+const UsersPage = ({ currentUser, setCurrentUser }) => {
+  const [users, setUsers] = useState(ls.get("hst_users", SEED_USERS));
+  const [showForm, setShowForm] = useState(false);
+  const [editUser, setEditUser] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
+
+  const saveUsers = (u) => { ls.set("hst_users", u); setUsers(u); };
+
+  const onDelete = (id) => {
+    if (id === currentUser.id) { alert("No puedes eliminar tu propio usuario"); return; }
+    if (!confirm("¿Eliminar usuario?")) return;
+    saveUsers(users.filter((u) => u.id !== id));
+  };
+
+  // Formulario nuevo/editar usuario
+  const UserForm = ({ user, onClose }) => {
+    const empty = { nombre: "", email: "", password: "", role: "profesor" };
+    const [form, setForm] = useState(user ? { ...user, password: "" } : empty);
+    const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+    const [err, setErr] = useState("");
+
+    const save = () => {
+      if (!form.nombre || !form.email) { setErr("Nombre y correo son obligatorios"); return; }
+      if (!user && !form.password) { setErr("La contraseña es obligatoria"); return; }
+      const exists = users.find((u) => u.email === form.email && u.id !== user?.id);
+      if (exists) { setErr("Ya existe un usuario con ese correo"); return; }
+      if (user) {
+        const updated = users.map((u) => u.id === user.id ? { ...u, nombre: form.nombre, email: form.email, role: form.role, ...(form.password ? { password: form.password } : {}) } : u);
+        saveUsers(updated);
+        if (currentUser.id === user.id) setCurrentUser({ ...currentUser, nombre: form.nombre, email: form.email, role: form.role });
+      } else {
+        saveUsers([...users, { ...form, id: Date.now().toString() }]);
+      }
+      onClose();
+    };
+
+    return (
+      <Modal title={user ? "Editar Usuario" : "Nuevo Usuario"} onClose={onClose}>
+        <div className="space-y-4">
+          {err && <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">{err}</div>}
+          <Field label="Nombre completo"><Input value={form.nombre} onChange={set("nombre")} placeholder="Nombre del usuario" /></Field>
+          <Field label="Correo"><Input type="email" value={form.email} onChange={set("email")} placeholder="correo@academia.com" /></Field>
+          <Field label={user ? "Nueva contraseña (dejar vacío para no cambiar)" : "Contraseña"}>
+            <Input type="password" value={form.password} onChange={set("password")} placeholder="••••••••" />
+          </Field>
+          <Field label="Rol">
+            <div className="grid grid-cols-3 gap-2 mt-1">
+              {[{ id: "admin", label: "Admin", desc: "Acceso total", color: "#f59e0b" }, { id: "profesor", label: "Profesor", desc: "Asistencia + Alumnos", color: "#3b82f6" }, { id: "alumno", label: "Alumno", desc: "Ver sus datos", color: "#22c55e" }].map((r) => (
+                <button key={r.id} type="button" onClick={() => setForm((f) => ({ ...f, role: r.id }))}
+                  className="p-3 rounded-xl border text-center transition-all"
+                  style={{ background: form.role === r.id ? `${r.color}25` : "rgba(255,255,255,0.03)", borderColor: form.role === r.id ? r.color : "rgba(255,255,255,0.1)" }}>
+                  <p className="text-xs font-bold" style={{ color: form.role === r.id ? r.color : "#94a3b8" }}>{r.label}</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: form.role === r.id ? r.color : "#475569" }}>{r.desc}</p>
+                </button>
+              ))}
+            </div>
+          </Field>
+          {form.role === "alumno" && (
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
+              ℹ️ El alumno solo puede ver su asistencia y pagos. No puede editar nada.
+            </div>
+          )}
+          {form.role === "profesor" && (
+            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">
+              ℹ️ El profesor puede marcar asistencia y crear alumnos. Sin acceso financiero.
+            </div>
+          )}
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+          <button onClick={save} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
+            {user ? "Guardar Cambios" : "Crear Usuario"}
+          </button>
+        </div>
+      </Modal>
+    );
+  };
+
+  // Cambiar mi contraseña
+  const ProfileModal = ({ onClose }) => {
+    const [form, setForm] = useState({ nombre: currentUser.nombre, email: currentUser.email, oldPass: "", newPass: "", confirm: "" });
+    const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+    const [err, setErr] = useState("");
+    const [ok, setOk] = useState("");
+
+    const save = () => {
+      setErr(""); setOk("");
+      if (form.newPass) {
+        const me = users.find((u) => u.id === currentUser.id);
+        if (me.password !== form.oldPass) { setErr("La contraseña actual es incorrecta"); return; }
+        if (form.newPass.length < 6) { setErr("La nueva contraseña debe tener al menos 6 caracteres"); return; }
+        if (form.newPass !== form.confirm) { setErr("Las contraseñas no coinciden"); return; }
+      }
+      const updated = users.map((u) => u.id === currentUser.id ? { ...u, nombre: form.nombre, email: form.email, ...(form.newPass ? { password: form.newPass } : {}) } : u);
+      saveUsers(updated);
+      setCurrentUser({ ...currentUser, nombre: form.nombre, email: form.email });
+      setOk("✅ Cambios guardados correctamente");
+    };
+
+    return (
+      <Modal title="Mi Perfil" onClose={onClose}>
+        <div className="space-y-4">
+          {err && <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">{err}</div>}
+          {ok && <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm">{ok}</div>}
+          <Field label="Nombre"><Input value={form.nombre} onChange={set("nombre")} /></Field>
+          <Field label="Correo"><Input type="email" value={form.email} onChange={set("email")} /></Field>
+          <div className="border-t border-white/10 pt-4 mt-2">
+            <p className="text-xs text-slate-500 mb-3 uppercase tracking-wider font-semibold">Cambiar contraseña (opcional)</p>
+            <div className="space-y-3">
+              <Field label="Contraseña actual"><Input type="password" value={form.oldPass} onChange={set("oldPass")} placeholder="••••••••" /></Field>
+              <Field label="Nueva contraseña"><Input type="password" value={form.newPass} onChange={set("newPass")} placeholder="••••••••" /></Field>
+              <Field label="Confirmar nueva contraseña"><Input type="password" value={form.confirm} onChange={set("confirm")} placeholder="••••••••" /></Field>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+          <button onClick={save} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>Guardar Cambios</button>
+        </div>
+      </Modal>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>USUARIOS</h1>
+          <p className="text-slate-400 text-sm">{users.length} usuarios registrados</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => setShowProfile(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-slate-300 text-sm font-semibold hover:bg-white/5 transition-colors">
+            <Icon name="key" className="w-4 h-4" /> Mi Perfil
+          </button>
+          <button onClick={() => { setEditUser(null); setShowForm(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
+            <Icon name="plus" className="w-4 h-4" /> Nuevo Usuario
+          </button>
+        </div>
+      </div>
+
+      {/* INFO ROLES */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[
+          { role: "admin", color: "#f59e0b", label: "Administrador", perms: ["Dashboard", "Alumnos", "Pagos", "Asistencia", "Cinturones", "Finanzas", "Eventos", "Usuarios"] },
+          { role: "profesor", color: "#3b82f6", label: "Profesor", perms: ["Asistencia", "Crear alumnos"] },
+          { role: "alumno", color: "#22c55e", label: "Alumno", perms: ["Ver su asistencia", "Ver sus pagos"] },
+        ].map((r) => (
+          <div key={r.role} className="rounded-2xl border p-4" style={{ background: `${r.color}10`, borderColor: `${r.color}30` }}>
+            <p className="font-bold text-sm mb-2" style={{ color: r.color }}>{r.label}</p>
+            <ul className="space-y-1">
+              {r.perms.map((p) => <li key={p} className="text-xs text-slate-400 flex items-center gap-1.5"><Icon name="check" className="w-3 h-3 text-emerald-400" />{p}</li>)}
+            </ul>
+            <p className="text-xs font-bold mt-3" style={{ color: r.color }}>{users.filter((u) => u.role === r.role).length} usuario(s)</p>
+          </div>
+        ))}
+      </div>
+
+      {/* USERS LIST */}
+      <div className="space-y-3">
+        {users.map((u) => (
+          <div key={u.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-2xl hover:border-white/15 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black text-[#020617]" style={{ background: u.id === currentUser.id ? "linear-gradient(135deg, #f59e0b, #d97706)" : "rgba(255,255,255,0.1)" }}>
+                <span className={u.id === currentUser.id ? "text-[#020617]" : "text-white"}>{u.nombre[0]}</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-white text-sm">{u.nombre}</p>
+                  {u.id === currentUser.id && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-bold">Tú</span>}
+                </div>
+                <p className="text-xs text-slate-500">{u.email}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <RoleBadge role={u.role} />
+              <button onClick={() => { setEditUser(u); setShowForm(true); }} className="p-2 rounded-lg bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors"><Icon name="edit" className="w-4 h-4" /></button>
+              {u.id !== currentUser.id && (
+                <button onClick={() => onDelete(u.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"><Icon name="trash" className="w-4 h-4" /></button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      {showForm && <UserForm user={editUser} onClose={() => { setShowForm(false); setEditUser(null); setUsers(ls.get("hst_users", [])); }} />}
+      {showProfile && <ProfileModal onClose={() => { setShowProfile(false); setUsers(ls.get("hst_users", [])); }} />}
     </div>
   );
 };
@@ -262,8 +464,7 @@ const StudentForm = ({ student, onSave, onClose }) => {
     if (!form.nombres || !form.apellidos) return;
     const data = student ? { ...form } : { ...form, id: Date.now().toString() };
     const students = ls.get("hst_students", []);
-    if (student) { ls.set("hst_students", students.map((s) => s.id === student.id ? data : s)); }
-    else { ls.set("hst_students", [...students, data]); }
+    ls.set("hst_students", student ? students.map((s) => s.id === student.id ? data : s) : [...students, data]);
     onSave(data);
   };
   return (
@@ -287,9 +488,8 @@ const StudentForm = ({ student, onSave, onClose }) => {
               <button key={m.id} type="button" onClick={() => setForm((f) => ({ ...f, membresia: m.id }))}
                 className="p-3 rounded-xl border text-center transition-all"
                 style={{ background: form.membresia === m.id ? `${m.color}30` : "rgba(255,255,255,0.03)", borderColor: form.membresia === m.id ? m.color : "rgba(255,255,255,0.1)", color: form.membresia === m.id ? m.color : "#94a3b8" }}>
-                <p className="text-xs font-bold">{m.nombre.replace("Mensual ", "")}</p>
-                <p className="text-lg font-black mt-0.5" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>${m.precio}</p>
-                <p className="text-[10px]">{m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} ses.`}</p>
+                <p className="text-xs font-bold">{m.nombre}</p>
+                <p className="text-[10px] mt-0.5">{m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} ses.`}</p>
               </button>
             ))}
           </div>
@@ -298,7 +498,7 @@ const StudentForm = ({ student, onSave, onClose }) => {
         <Field label="Observaciones" className="col-span-2"><Textarea value={form.observaciones} onChange={set("observaciones")} placeholder="Notas adicionales..." /></Field>
       </div>
       <div className="flex gap-3 mt-6">
-        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm font-semibold hover:bg-white/5">Cancelar</button>
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
         <button onClick={handleSubmit} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
           {student ? "Guardar Cambios" : "Crear Alumno"}
         </button>
@@ -309,38 +509,25 @@ const StudentForm = ({ student, onSave, onClose }) => {
 
 // ─── PAYMENT FORM ─────────────────────────────────────────────────────────────
 const PagoForm = ({ students, onSave, onClose }) => {
-  const activeStudents = students.filter((s) => s.estado === "activo");
-  const [alumnoId, setAlumnoId] = useState(activeStudents[0]?.id || "");
+  const active = students.filter((s) => s.estado === "activo");
+  const [alumnoId, setAlumnoId] = useState(active[0]?.id || "");
   const [tipoPago, setTipoPago] = useState("estandar");
   const [montoPagado, setMontoPagado] = useState("");
+  const [montoTotal, setMontoTotal] = useState("");
   const [fechaPago, setFechaPago] = useState(fmt(today));
   const [fechaVenc, setFechaVenc] = useState(fmt(addDays(today, 30)));
   const [notas, setNotas] = useState("");
-
-  const alumno = activeStudents.find((s) => s.id === alumnoId);
-  const membresiaSeleccionada = MEMBRESIAS.find((m) => m.id === tipoPago) || MEMBRESIAS[0];
-  const montoTotal = membresiaSeleccionada.precio;
+  const alumno = active.find((s) => s.id === alumnoId);
+  const total = parseFloat(montoTotal) || 0;
   const pagado = parseFloat(montoPagado) || 0;
-  const deuda = Math.max(0, montoTotal - pagado);
+  const deuda = Math.max(0, total - pagado);
 
   const handleSubmit = () => {
-    if (!alumnoId) return;
-    const estado = pagado >= montoTotal ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
-    const data = {
-      id: Date.now().toString(),
-      alumno_id: alumnoId,
-      alumno_nombre: `${alumno?.nombres} ${alumno?.apellidos}`,
-      monto: montoTotal,
-      monto_pagado: pagado,
-      fecha_pago: fechaPago,
-      fecha_vencimiento: fechaVenc,
-      tipo: membresiaSeleccionada.nombre,
-      estado,
-      sede: alumno?.sede || "Quito",
-      notas,
-    };
-    const pagos = ls.get("hst_pagos", []);
-    ls.set("hst_pagos", [...pagos, data]);
+    if (!alumnoId || !montoTotal) return;
+    const estado = pagado >= total ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
+    const memb = MEMBRESIAS.find((m) => m.id === tipoPago);
+    const data = { id: Date.now().toString(), alumno_id: alumnoId, alumno_nombre: `${alumno?.nombres} ${alumno?.apellidos}`, monto: total, monto_pagado: pagado, fecha_pago: fechaPago, fecha_vencimiento: fechaVenc, tipo: memb?.nombre || tipoPago, estado, sede: alumno?.sede || "Quito", notas };
+    ls.set("hst_pagos", [...ls.get("hst_pagos", []), data]);
     onSave(data);
   };
 
@@ -349,7 +536,7 @@ const PagoForm = ({ students, onSave, onClose }) => {
       <div className="space-y-5">
         <Field label="Alumno">
           <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={alumnoId} onChange={(e) => setAlumnoId(e.target.value)}>
-            {activeStudents.map((s) => <option key={s.id} value={s.id}>{s.nombres} {s.apellidos}</option>)}
+            {active.map((s) => <option key={s.id} value={s.id}>{s.nombres} {s.apellidos}</option>)}
           </select>
         </Field>
         <Field label="Tipo de Membresía">
@@ -358,31 +545,27 @@ const PagoForm = ({ students, onSave, onClose }) => {
               <button key={m.id} type="button" onClick={() => setTipoPago(m.id)}
                 className="p-4 rounded-2xl border text-center transition-all"
                 style={{ background: tipoPago === m.id ? `${m.color}25` : "rgba(255,255,255,0.03)", borderColor: tipoPago === m.id ? m.color : "rgba(255,255,255,0.1)" }}>
-                <p className="text-xs font-bold" style={{ color: tipoPago === m.id ? m.color : "#94a3b8" }}>{m.nombre.replace("Mensual ", "")}</p>
-                <p className="text-2xl font-black mt-1" style={{ fontFamily: "'Bebas Neue', sans-serif", color: tipoPago === m.id ? m.color : "white" }}>${m.precio}</p>
-                <p className="text-[11px] mt-0.5" style={{ color: tipoPago === m.id ? m.color : "#64748b" }}>
-                  {m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} sesiones`}
-                </p>
+                <p className="text-xs font-bold" style={{ color: tipoPago === m.id ? m.color : "#94a3b8" }}>{m.nombre}</p>
+                <p className="text-[11px] mt-0.5" style={{ color: tipoPago === m.id ? m.color : "#64748b" }}>{m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} sesiones`}</p>
               </button>
             ))}
           </div>
         </Field>
         <div className="grid grid-cols-2 gap-4">
-          <Field label={`Monto Pagado (Total: $${montoTotal})`}>
-            <Input type="number" value={montoPagado} onChange={(e) => setMontoPagado(e.target.value)} placeholder={`$${montoTotal}`} />
-          </Field>
-          <Field label="Deuda Restante">
-            <div className={`w-full rounded-xl px-4 py-2.5 text-sm font-bold border ${deuda > 0 ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"}`}>
-              ${deuda.toFixed(2)} {deuda === 0 ? "✓ Pagado completo" : "pendiente"}
-            </div>
-          </Field>
+          <Field label="Monto Total ($)"><Input type="number" value={montoTotal} onChange={(e) => setMontoTotal(e.target.value)} placeholder="0.00" /></Field>
+          <Field label="Monto Pagado ($)"><Input type="number" value={montoPagado} onChange={(e) => setMontoPagado(e.target.value)} placeholder="0.00" /></Field>
           <Field label="Fecha Pago"><Input type="date" value={fechaPago} onChange={(e) => setFechaPago(e.target.value)} /></Field>
           <Field label="Fecha Vencimiento"><Input type="date" value={fechaVenc} onChange={(e) => setFechaVenc(e.target.value)} /></Field>
         </div>
-        <Field label="Notas"><Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Observaciones del pago..." /></Field>
+        {montoTotal && (
+          <div className={`p-3 rounded-xl text-sm font-bold border ${deuda > 0 ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"}`}>
+            Deuda restante: ${deuda.toFixed(2)} {deuda === 0 && "✓ Pagado completo"}
+          </div>
+        )}
+        <Field label="Notas"><Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Observaciones..." /></Field>
       </div>
       <div className="flex gap-3 mt-6">
-        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm font-semibold hover:bg-white/5">Cancelar</button>
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
         <button onClick={handleSubmit} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>Registrar Pago</button>
       </div>
     </Modal>
@@ -395,64 +578,55 @@ const DashboardPage = ({ students, pagos, asistencia }) => {
   const vencidos = pagos.filter((p) => p.estado === "vencido").length;
   const ingresosMes = pagos.filter((p) => p.fecha_pago?.slice(0, 7) === fmt(today).slice(0, 7)).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0);
   const hoyPresentes = asistencia.filter((a) => a.fecha === fmt(today) && a.presente).length;
-  const nuevos = students.filter((s) => s.fecha_inscripcion?.slice(0, 7) === fmt(today).slice(0, 7)).length;
-  const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-  const chartData = meses.slice(0, today.getMonth() + 1).map((label, i) => ({
-    label, value: pagos.filter((p) => parseInt(p.fecha_pago?.slice(5, 7)) === i + 1).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0),
-  }));
+  const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const chartData = meses.slice(0, today.getMonth() + 1).map((label, i) => ({ label, value: pagos.filter((p) => parseInt(p.fecha_pago?.slice(5, 7)) === i + 1).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0) }));
+  const memCounts = MEMBRESIAS.map((m) => ({ ...m, count: students.filter((s) => s.membresia === m.id && s.estado === "activo").length }));
   const alertas = [
     ...pagos.filter((p) => p.estado === "vencido").map((p) => ({ tipo: "error", msg: `⚠️ Pago vencido: ${p.alumno_nombre}` })),
     ...students.filter((s) => { const b = new Date(s.fecha_nacimiento); return b.getDate() === today.getDate() && b.getMonth() === today.getMonth(); }).map((s) => ({ tipo: "info", msg: `🎂 Cumpleaños: ${s.nombres} ${s.apellidos}` })),
   ];
-
-  const membresiasCount = MEMBRESIAS.map((m) => ({ ...m, count: students.filter((s) => s.membresia === m.id && s.estado === "activo").length }));
-
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>DASHBOARD</h1>
         <p className="text-slate-400 text-sm mt-1">{new Date().toLocaleDateString("es-EC", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Alumnos" value={students.length} sub={`${activos} activos`} icon="students" accent="blue" />
         <StatCard title="Asistencia Hoy" value={hoyPresentes} sub="presentes" icon="attendance" accent="emerald" />
         <StatCard title="Pagos Vencidos" value={vencidos} sub="requieren atención" icon="payments" accent="red" />
-        <StatCard title="Ingresos Mes" value={`$${ingresosMes.toFixed(0)}`} sub="este mes" icon="finance" accent="amber" trend={12} />
-        <StatCard title="Nuevos Alumnos" value={nuevos} sub="este mes" icon="students" accent="blue" />
+        <StatCard title="Ingresos Mes" value={`$${ingresosMes.toFixed(0)}`} sub="este mes" icon="finance" accent="amber" />
       </div>
-
-      {/* MEMBRESÍAS STATS */}
       <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
         <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>MEMBRESÍAS ACTIVAS</h3>
         <div className="grid grid-cols-3 gap-4">
-          {membresiasCount.map((m) => (
+          {memCounts.map((m) => (
             <div key={m.id} className="rounded-2xl p-4 text-center border" style={{ background: `${m.color}12`, borderColor: `${m.color}30` }}>
-              <p className="text-xs font-bold text-slate-400">{m.nombre.replace("Mensual ", "")}</p>
+              <p className="text-xs font-bold text-slate-400">{m.nombre}</p>
               <p className="text-4xl font-black mt-1" style={{ fontFamily: "'Bebas Neue', sans-serif", color: m.color }}>{m.count}</p>
-              <p className="text-xs mt-1" style={{ color: m.color }}>{m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} ses.`} · ${m.precio}</p>
+              <p className="text-xs mt-1" style={{ color: m.color }}>{m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} ses.`}</p>
             </div>
           ))}
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>INGRESOS {today.getFullYear()}</h3>
           <MiniBarChart data={chartData} color="#f59e0b" />
         </div>
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>DISTRIBUCIÓN CINTURONES</h3>
+          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>CINTURONES</h3>
           <div className="space-y-2">
             {CINTURONES.map((c) => {
               const count = students.filter((s) => s.cinturon === c).length;
               const pct = students.length ? (count / students.length) * 100 : 0;
               return (
                 <div key={c} className="flex items-center gap-3">
-                  <span className="text-xs text-slate-400 w-16">{c}</span>
+                  <span className="text-xs text-slate-400 w-24 truncate">{c}</span>
                   <div className="flex-1 bg-white/5 rounded-full h-2">
                     <div className="h-2 rounded-full" style={{ width: `${pct}%`, background: cinturonColor[c] === "#ffffff" ? "#e2e8f0" : cinturonColor[c] }} />
                   </div>
-                  <span className="text-xs font-bold text-slate-300 w-6">{count}</span>
+                  <span className="text-xs font-bold text-slate-300 w-4">{count}</span>
                 </div>
               );
             })}
@@ -461,11 +635,9 @@ const DashboardPage = ({ students, pagos, asistencia }) => {
       </div>
       {alertas.length > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-amber-400 mb-3" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>⚡ ALERTAS IMPORTANTES</h3>
+          <h3 className="text-lg font-bold text-amber-400 mb-3" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>⚡ ALERTAS</h3>
           <div className="space-y-2">
-            {alertas.map((a, i) => (
-              <div key={i} className={`flex items-center gap-3 p-3 rounded-xl text-sm ${a.tipo === "error" ? "bg-red-500/10 text-red-400" : "bg-blue-500/10 text-blue-400"}`}>{a.msg}</div>
-            ))}
+            {alertas.map((a, i) => <div key={i} className={`p-3 rounded-xl text-sm ${a.tipo === "error" ? "bg-red-500/10 text-red-400" : "bg-blue-500/10 text-blue-400"}`}>{a.msg}</div>)}
           </div>
         </div>
       )}
@@ -474,38 +646,29 @@ const DashboardPage = ({ students, pagos, asistencia }) => {
 };
 
 // ─── STUDENTS PAGE ────────────────────────────────────────────────────────────
-const StudentsPage = ({ students, setStudents }) => {
+const StudentsPage = ({ students, setStudents, canEdit }) => {
   const [search, setSearch] = useState("");
   const [filterSede, setFilterSede] = useState("Todas");
   const [filterEstado, setFilterEstado] = useState("Todos");
-  const [filterMembresia, setFilterMembresia] = useState("Todas");
   const [showForm, setShowForm] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
   const [viewStudent, setViewStudent] = useState(null);
-
   const filtered = students.filter((s) => {
     const q = search.toLowerCase();
-    const match = `${s.nombres} ${s.apellidos} ${s.correo} ${s.telefono}`.toLowerCase().includes(q);
-    const sede = filterSede === "Todas" || s.sede === filterSede;
-    const estado = filterEstado === "Todos" || s.estado === filterEstado;
-    const mem = filterMembresia === "Todas" || s.membresia === filterMembresia;
-    return match && sede && estado && mem;
+    return `${s.nombres} ${s.apellidos} ${s.telefono}`.toLowerCase().includes(q) && (filterSede === "Todas" || s.sede === filterSede) && (filterEstado === "Todos" || s.estado === filterEstado);
   });
-
   const onSave = () => { setStudents(ls.get("hst_students", [])); setShowForm(false); setEditStudent(null); };
   const onDelete = (id) => {
     if (!confirm("¿Eliminar alumno?")) return;
-    const updated = students.filter((s) => s.id !== id);
-    ls.set("hst_students", updated);
-    setStudents(updated);
+    const u = students.filter((s) => s.id !== id);
+    ls.set("hst_students", u); setStudents(u);
   };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>ALUMNOS</h1>
-          <p className="text-slate-400 text-sm">{filtered.length} de {students.length} alumnos</p>
+          <p className="text-slate-400 text-sm">{filtered.length} de {students.length}</p>
         </div>
         <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
           <Icon name="plus" className="w-4 h-4" /> Nuevo Alumno
@@ -518,16 +681,13 @@ const StudentsPage = ({ students, setStudents }) => {
         </div>
         <Select options={["Todas", ...SEDES]} value={filterSede} onChange={(e) => setFilterSede(e.target.value)} />
         <Select options={["Todos", "activo", "inactivo"]} value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)} />
-        <Select options={["Todas", ...MEMBRESIAS.map((m) => m.id)]} value={filterMembresia} onChange={(e) => setFilterMembresia(e.target.value)} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((s) => (
           <div key={s.id} className="group bg-white/3 border border-white/8 rounded-2xl p-5 hover:border-amber-400/30 hover:bg-white/5 transition-all">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black text-[#020617]" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
-                  {s.nombres[0]}{s.apellidos[0]}
-                </div>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-[#020617]" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
                 <div>
                   <p className="font-bold text-white text-sm">{s.nombres} {s.apellidos}</p>
                   <p className="text-xs text-slate-500">{s.edad} años · {s.sede}</p>
@@ -535,23 +695,17 @@ const StudentsPage = ({ students, setStudents }) => {
               </div>
               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.estado === "activo" ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-500/20 text-slate-400"}`}>{s.estado}</span>
             </div>
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <BeltBadge cinturon={s.cinturon} />
-              <MembresiaTag membresiaId={s.membresia} />
-            </div>
-            <div className="text-xs text-slate-500 space-y-1">
-              <p>📱 {s.telefono}</p>
-              <p>👤 {s.representante}</p>
-            </div>
+            <div className="flex items-center gap-2 mb-2 flex-wrap"><BeltBadge cinturon={s.cinturon} /><MembresiaTag membresiaId={s.membresia} /></div>
+            <div className="text-xs text-slate-500 space-y-1"><p>📱 {s.telefono}</p><p>👤 {s.representante}</p></div>
             <div className="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
               <button onClick={() => setViewStudent(s)} className="flex-1 py-2 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30 flex items-center justify-center gap-1"><Icon name="eye" className="w-3 h-3" /> Ver</button>
-              <button onClick={() => { setEditStudent(s); setShowForm(true); }} className="flex-1 py-2 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-semibold hover:bg-amber-500/30 flex items-center justify-center gap-1"><Icon name="edit" className="w-3 h-3" /> Editar</button>
-              <button onClick={() => onDelete(s.id)} className="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30 flex items-center justify-center gap-1"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>
+              {canEdit && <button onClick={() => { setEditStudent(s); setShowForm(true); }} className="flex-1 py-2 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-semibold hover:bg-amber-500/30 flex items-center justify-center gap-1"><Icon name="edit" className="w-3 h-3" /> Editar</button>}
+              {canEdit && <button onClick={() => onDelete(s.id)} className="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30 flex items-center justify-center gap-1"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>}
             </div>
           </div>
         ))}
       </div>
-      {(showForm || editStudent) && <StudentForm student={editStudent} onSave={onSave} onClose={() => { setShowForm(false); setEditStudent(null); }} />}
+      {showForm && <StudentForm student={editStudent} onSave={onSave} onClose={() => { setShowForm(false); setEditStudent(null); }} />}
       {viewStudent && (
         <Modal title="Perfil del Alumno" onClose={() => setViewStudent(null)} wide>
           <div className="space-y-4">
@@ -559,18 +713,12 @@ const StudentsPage = ({ students, setStudents }) => {
               <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-[#020617]" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{viewStudent.nombres[0]}{viewStudent.apellidos[0]}</div>
               <div>
                 <h2 className="text-2xl font-black text-white">{viewStudent.nombres} {viewStudent.apellidos}</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <BeltBadge cinturon={viewStudent.cinturon} />
-                  <MembresiaTag membresiaId={viewStudent.membresia} />
-                </div>
+                <div className="flex gap-2 mt-1 flex-wrap"><BeltBadge cinturon={viewStudent.cinturon} /><MembresiaTag membresiaId={viewStudent.membresia} /></div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {[["Sede", viewStudent.sede], ["Estado", viewStudent.estado], ["Edad", `${viewStudent.edad} años`], ["Nacimiento", viewStudent.fecha_nacimiento], ["Representante", viewStudent.representante], ["Teléfono", viewStudent.telefono], ["Correo", viewStudent.correo], ["Dirección", viewStudent.direccion], ["Inscripción", viewStudent.fecha_inscripcion]].map(([k, v]) => (
-                <div key={k} className="bg-white/5 rounded-xl p-3">
-                  <p className="text-xs text-slate-500 mb-0.5">{k}</p>
-                  <p className="text-sm font-semibold text-white">{v || "—"}</p>
-                </div>
+              {[["Sede", viewStudent.sede],["Estado", viewStudent.estado],["Edad", `${viewStudent.edad} años`],["Nacimiento", viewStudent.fecha_nacimiento],["Representante", viewStudent.representante],["Teléfono", viewStudent.telefono],["Correo", viewStudent.correo],["Dirección", viewStudent.direccion],["Inscripción", viewStudent.fecha_inscripcion]].map(([k, v]) => (
+                <div key={k} className="bg-white/5 rounded-xl p-3"><p className="text-xs text-slate-500 mb-0.5">{k}</p><p className="text-sm font-semibold text-white">{v || "—"}</p></div>
               ))}
             </div>
             {viewStudent.observaciones && <div className="bg-white/5 rounded-xl p-3"><p className="text-xs text-slate-500 mb-1">Observaciones</p><p className="text-sm text-slate-300">{viewStudent.observaciones}</p></div>}
@@ -585,71 +733,51 @@ const StudentsPage = ({ students, setStudents }) => {
 const PaymentsPage = ({ students, pagos, setPagos }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
-
   const filtered = filter === "Todos" ? pagos : pagos.filter((p) => p.estado === filter);
   const onSave = () => { setPagos(ls.get("hst_pagos", [])); setShowForm(false); };
-
   const onDelete = (id) => {
     if (!confirm("¿Eliminar este pago?")) return;
-    const updated = pagos.filter((p) => p.id !== id);
-    ls.set("hst_pagos", updated);
-    setPagos(updated);
+    const u = pagos.filter((p) => p.id !== id);
+    ls.set("hst_pagos", u); setPagos(u);
   };
-
-  const getDaysLeft = (fecha) => Math.ceil((new Date(fecha) - today) / (1000 * 60 * 60 * 24));
-  const totalPendiente = pagos.filter((p) => p.estado !== "pagado").reduce((a, p) => a + (parseFloat(p.monto) - parseFloat(p.monto_pagado)), 0);
+  const getDays = (f) => Math.ceil((new Date(f) - today) / 86400000);
   const totalMes = pagos.filter((p) => p.fecha_pago?.slice(0, 7) === fmt(today).slice(0, 7)).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0);
-
+  const totalDeuda = pagos.reduce((a, p) => a + Math.max(0, parseFloat(p.monto) - parseFloat(p.monto_pagado)), 0);
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>PAGOS</h1>
-          <p className="text-slate-400 text-sm">{pagos.length} registros</p>
-        </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
-          <Icon name="plus" className="w-4 h-4" /> Registrar Pago
-        </button>
+        <div><h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>PAGOS</h1><p className="text-slate-400 text-sm">{pagos.length} registros</p></div>
+        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}><Icon name="plus" className="w-4 h-4" /> Registrar Pago</button>
       </div>
       <div className="grid grid-cols-3 gap-4">
         <StatCard title="Ingresos Mes" value={`$${totalMes.toFixed(0)}`} icon="finance" accent="emerald" />
-        <StatCard title="Deuda Total" value={`$${totalPendiente.toFixed(0)}`} icon="payments" accent="red" />
-        <StatCard title="Pagos Vencidos" value={pagos.filter((p) => p.estado === "vencido").length} icon="payments" accent="amber" />
+        <StatCard title="Deuda Total" value={`$${totalDeuda.toFixed(0)}`} icon="payments" accent="red" />
+        <StatCard title="Vencidos" value={pagos.filter((p) => p.estado === "vencido").length} icon="payments" accent="amber" />
       </div>
-
-      {/* MEMBRESÍAS PRECIOS */}
       <div className="grid grid-cols-3 gap-3">
         {MEMBRESIAS.map((m) => (
-          <div key={m.id} className="rounded-2xl p-4 border text-center" style={{ background: `${m.color}12`, borderColor: `${m.color}30` }}>
-            <p className="text-xs font-bold text-slate-400">{m.nombre.replace("Mensual ", "")}</p>
-            <p className="text-2xl font-black mt-1" style={{ fontFamily: "'Bebas Neue', sans-serif", color: m.color }}>${m.precio}</p>
+          <div key={m.id} className="rounded-2xl p-3 border text-center" style={{ background: `${m.color}12`, borderColor: `${m.color}30` }}>
+            <p className="text-xs font-bold" style={{ color: m.color }}>{m.nombre}</p>
             <p className="text-xs mt-0.5" style={{ color: m.color }}>{m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} sesiones`}</p>
           </div>
         ))}
       </div>
-
       <div className="flex gap-2 flex-wrap">
-        {["Todos", "pagado", "parcial", "vencido", "pendiente"].map((f) => (
+        {["Todos","pagado","parcial","vencido","pendiente"].map((f) => (
           <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter === f ? "text-[#020617]" : "bg-white/5 text-slate-400 hover:bg-white/10"}`} style={filter === f ? { background: "linear-gradient(135deg, #f59e0b, #d97706)" } : {}}>
             {f === "Todos" ? "Todos" : pagoEstadoConfig[f]?.label}
           </button>
         ))}
       </div>
-
       <div className="space-y-3">
         {filtered.map((p) => {
-          const dias = getDaysLeft(p.fecha_vencimiento);
+          const dias = getDays(p.fecha_vencimiento);
           return (
             <div key={p.id} className="bg-white/3 border border-white/8 rounded-2xl p-4 hover:border-white/15 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[#020617] font-black text-sm" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
-                    {p.alumno_nombre?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                  </div>
-                  <div>
-                    <p className="font-bold text-white text-sm">{p.alumno_nombre}</p>
-                    <p className="text-xs text-slate-500">{p.tipo} · {p.sede} · {p.fecha_pago}</p>
-                  </div>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[#020617] font-black text-sm" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{p.alumno_nombre?.split(" ").map((n) => n[0]).join("").slice(0, 2)}</div>
+                  <div><p className="font-bold text-white text-sm">{p.alumno_nombre}</p><p className="text-xs text-slate-500">{p.tipo} · {p.sede} · {p.fecha_pago}</p></div>
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-black text-white">${parseFloat(p.monto_pagado).toFixed(2)}<span className="text-sm text-slate-500">/${parseFloat(p.monto).toFixed(2)}</span></p>
@@ -658,19 +786,11 @@ const PaymentsPage = ({ students, pagos, setPagos }) => {
               </div>
               <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                 <span>Vence: {p.fecha_vencimiento}</span>
-                <span className={dias < 0 ? "text-red-400 font-bold" : dias < 7 ? "text-amber-400 font-bold" : "text-emerald-400"}>
-                  {dias < 0 ? `Vencido hace ${Math.abs(dias)} días` : `${dias} días restantes`}
-                </span>
+                <span className={dias < 0 ? "text-red-400 font-bold" : dias < 7 ? "text-amber-400 font-bold" : "text-emerald-400"}>{dias < 0 ? `Vencido hace ${Math.abs(dias)} días` : `${dias} días restantes`}</span>
               </div>
-              {p.estado !== "pagado" && (
-                <div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, (parseFloat(p.monto_pagado) / parseFloat(p.monto)) * 100)}%`, background: p.estado === "vencido" ? "#ef4444" : "#f59e0b" }} />
-                </div>
-              )}
+              {p.estado !== "pagado" && <div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background: p.estado === "vencido" ? "#ef4444" : "#f59e0b" }} /></div>}
               <div className="flex justify-end mt-3">
-                <button onClick={() => onDelete(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30 transition-colors">
-                  <Icon name="trash" className="w-3 h-3" /> Eliminar pago
-                </button>
+                <button onClick={() => onDelete(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>
               </div>
             </div>
           );
@@ -685,30 +805,21 @@ const PaymentsPage = ({ students, pagos, setPagos }) => {
 const AttendancePage = ({ students, asistencia, setAsistencia }) => {
   const [fecha, setFecha] = useState(fmt(today));
   const [sede, setSede] = useState("Todas");
-  const filteredStudents = students.filter((s) => s.estado === "activo" && (sede === "Todas" || s.sede === sede));
+  const fs = students.filter((s) => s.estado === "activo" && (sede === "Todas" || s.sede === sede));
   const getStatus = (id) => { const r = asistencia.find((a) => a.alumno_id === id && a.fecha === fecha); return r ? r.presente : null; };
   const toggle = (student, presente) => {
     const existing = asistencia.find((a) => a.alumno_id === student.id && a.fecha === fecha);
-    let updated;
-    if (existing) { updated = asistencia.map((a) => a.alumno_id === student.id && a.fecha === fecha ? { ...a, presente } : a); }
-    else { updated = [...asistencia, { id: Date.now().toString(), alumno_id: student.id, alumno_nombre: `${student.nombres} ${student.apellidos}`, fecha, presente, sede: student.sede }]; }
-    ls.set("hst_asistencia", updated);
-    setAsistencia(updated);
+    let u = existing ? asistencia.map((a) => a.alumno_id === student.id && a.fecha === fecha ? { ...a, presente } : a) : [...asistencia, { id: Date.now().toString(), alumno_id: student.id, alumno_nombre: `${student.nombres} ${student.apellidos}`, fecha, presente, sede: student.sede }];
+    ls.set("hst_asistencia", u); setAsistencia(u);
   };
   const marcarTodos = (presente) => {
-    let updated = [...asistencia];
-    filteredStudents.forEach((s) => {
-      const idx = updated.findIndex((a) => a.alumno_id === s.id && a.fecha === fecha);
-      if (idx >= 0) { updated[idx] = { ...updated[idx], presente }; }
-      else { updated.push({ id: Date.now().toString() + s.id, alumno_id: s.id, alumno_nombre: `${s.nombres} ${s.apellidos}`, fecha, presente, sede: s.sede }); }
-    });
-    ls.set("hst_asistencia", updated);
-    setAsistencia(updated);
+    let u = [...asistencia];
+    fs.forEach((s) => { const i = u.findIndex((a) => a.alumno_id === s.id && a.fecha === fecha); if (i >= 0) u[i] = { ...u[i], presente }; else u.push({ id: Date.now() + s.id, alumno_id: s.id, alumno_nombre: `${s.nombres} ${s.apellidos}`, fecha, presente, sede: s.sede }); });
+    ls.set("hst_asistencia", u); setAsistencia(u);
   };
-  const presentes = filteredStudents.filter((s) => getStatus(s.id) === true).length;
-  const ausentes = filteredStudents.filter((s) => getStatus(s.id) === false).length;
-  const pct = filteredStudents.length ? Math.round((presentes / filteredStudents.length) * 100) : 0;
-
+  const presentes = fs.filter((s) => getStatus(s.id) === true).length;
+  const ausentes = fs.filter((s) => getStatus(s.id) === false).length;
+  const pct = fs.length ? Math.round((presentes / fs.length) * 100) : 0;
   return (
     <div className="space-y-6">
       <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>ASISTENCIA</h1>
@@ -719,34 +830,28 @@ const AttendancePage = ({ students, asistencia, setAsistencia }) => {
         <button onClick={() => marcarTodos(false)} className="px-4 py-2.5 rounded-xl bg-red-500/20 text-red-400 text-sm font-semibold hover:bg-red-500/30">✗ Todos Ausentes</button>
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-center">
-          <p className="text-3xl font-black text-emerald-400" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{presentes}</p>
-          <p className="text-xs text-slate-400 mt-1">Presentes</p>
-        </div>
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center">
-          <p className="text-3xl font-black text-red-400" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{ausentes}</p>
-          <p className="text-xs text-slate-400 mt-1">Ausentes</p>
-        </div>
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-center">
-          <p className="text-3xl font-black text-amber-400" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{pct}%</p>
-          <p className="text-xs text-slate-400 mt-1">Asistencia</p>
-        </div>
+        {[["Presentes", presentes, "emerald"], ["Ausentes", ausentes, "red"], ["Asistencia", `${pct}%`, "amber"]].map(([l, v, c]) => (
+          <div key={l} className={`bg-${c}-500/10 border border-${c}-500/20 rounded-2xl p-4 text-center`}>
+            <p className={`text-3xl font-black text-${c}-400`} style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{v}</p>
+            <p className="text-xs text-slate-400 mt-1">{l}</p>
+          </div>
+        ))}
       </div>
       <div className="space-y-2">
-        {filteredStudents.map((s) => {
-          const status = getStatus(s.id);
+        {fs.map((s) => {
+          const st = getStatus(s.id);
           return (
-            <div key={s.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${status === true ? "bg-emerald-500/10 border-emerald-500/20" : status === false ? "bg-red-500/10 border-red-500/20" : "bg-white/3 border-white/8"}`}>
+            <div key={s.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${st === true ? "bg-emerald-500/10 border-emerald-500/20" : st === false ? "bg-red-500/10 border-red-500/20" : "bg-white/3 border-white/8"}`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
                 <div>
                   <p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p>
-                  <div className="flex items-center gap-2 mt-0.5"><BeltBadge cinturon={s.cinturon} /><MembresiaTag membresiaId={s.membresia} /></div>
+                  <div className="flex items-center gap-2 mt-0.5"><BeltBadge cinturon={s.cinturon} /></div>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => toggle(s, true)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${status === true ? "bg-emerald-500 text-white" : "bg-white/5 text-slate-500 hover:bg-emerald-500/30 hover:text-emerald-400"}`}><Icon name="check" className="w-5 h-5" /></button>
-                <button onClick={() => toggle(s, false)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${status === false ? "bg-red-500 text-white" : "bg-white/5 text-slate-500 hover:bg-red-500/30 hover:text-red-400"}`}><Icon name="x" className="w-5 h-5" /></button>
+                <button onClick={() => toggle(s, true)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${st === true ? "bg-emerald-500 text-white" : "bg-white/5 text-slate-500 hover:bg-emerald-500/30 hover:text-emerald-400"}`}><Icon name="check" className="w-5 h-5" /></button>
+                <button onClick={() => toggle(s, false)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${st === false ? "bg-red-500 text-white" : "bg-white/5 text-slate-500 hover:bg-red-500/30 hover:text-red-400"}`}><Icon name="x" className="w-5 h-5" /></button>
               </div>
             </div>
           );
@@ -759,24 +864,22 @@ const AttendancePage = ({ students, asistencia, setAsistencia }) => {
 // ─── BELTS PAGE ───────────────────────────────────────────────────────────────
 const BeltsPage = ({ students, setStudents }) => {
   const [selected, setSelected] = useState(null);
-  const [newBelt, setNewBelt] = useState("");
+  const [newBelt, setNewBelt] = useState(CINTURONES[0]);
   const upgrade = () => {
     if (!selected || !newBelt) return;
-    const updated = students.map((s) => s.id === selected.id ? { ...s, cinturon: newBelt } : s);
-    ls.set("hst_students", updated);
-    setStudents(updated);
-    setSelected(null); setNewBelt("");
+    const u = students.map((s) => s.id === selected.id ? { ...s, cinturon: newBelt } : s);
+    ls.set("hst_students", u); setStudents(u); setSelected(null);
   };
   return (
     <div className="space-y-6">
       <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>CINTURONES</h1>
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         {CINTURONES.map((c) => {
           const count = students.filter((s) => s.cinturon === c).length;
           return (
-            <div key={c} className="bg-white/3 border border-white/8 rounded-2xl p-4 text-center">
-              <div className="w-8 h-8 rounded-full mx-auto mb-2 border-2 border-white/20" style={{ background: cinturonColor[c] }} />
-              <p className="text-xs font-bold text-white">{c}</p>
+            <div key={c} className="bg-white/3 border border-white/8 rounded-2xl p-3 text-center">
+              <div className="w-7 h-7 rounded-full mx-auto mb-2 border-2 border-white/20" style={{ background: cinturonColor[c] }} />
+              <p className="text-[10px] font-bold text-white leading-tight">{c}</p>
               <p className="text-2xl font-black mt-1" style={{ fontFamily: "'Bebas Neue', sans-serif", color: cinturonColor[c] === "#ffffff" ? "#e2e8f0" : cinturonColor[c] }}>{count}</p>
             </div>
           );
@@ -791,19 +894,16 @@ const BeltsPage = ({ students, setStudents }) => {
               {students.filter((s) => s.estado === "activo").map((s) => <option key={s.id} value={s.id}>{s.nombres} {s.apellidos} — {s.cinturon}</option>)}
             </select>
           </Field>
-          <Field label="Nuevo Cinturón"><Select options={CINTURONES} value={newBelt || CINTURONES[0]} onChange={(e) => setNewBelt(e.target.value)} /></Field>
+          <Field label="Nuevo Cinturón"><Select options={CINTURONES} value={newBelt} onChange={(e) => setNewBelt(e.target.value)} /></Field>
           <Field label="Acción"><button onClick={upgrade} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>Registrar Ascenso</button></Field>
         </div>
       </div>
       <div className="space-y-2">
         {students.filter((s) => s.estado === "activo").map((s) => (
-          <div key={s.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-2xl hover:border-white/15">
+          <div key={s.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-2xl">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
-              <div>
-                <p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p>
-                <p className="text-xs text-slate-500">{s.categoria} · {s.sede}</p>
-              </div>
+              <div><p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p><p className="text-xs text-slate-500">{s.categoria} · {s.sede}</p></div>
             </div>
             <BeltBadge cinturon={s.cinturon} />
           </div>
@@ -813,93 +913,12 @@ const BeltsPage = ({ students, setStudents }) => {
   );
 };
 
-// ─── RECEPTION PAGE ───────────────────────────────────────────────────────────
-const ReceptionPage = ({ students, pagos, setPagos, asistencia, setAsistencia }) => {
-  const [search, setSearch] = useState("");
-  const [found, setFound] = useState(null);
-  const [msg, setMsg] = useState("");
-  const doSearch = () => {
-    const q = search.toLowerCase();
-    const s = students.find((s) => `${s.nombres} ${s.apellidos}`.toLowerCase().includes(q) || s.telefono?.includes(q));
-    setFound(s || null);
-    if (!s) setMsg("No encontrado");
-  };
-  const marcarAsistencia = (student) => {
-    const existing = asistencia.find((a) => a.alumno_id === student.id && a.fecha === fmt(today));
-    if (existing) { setMsg("Ya registrado hoy"); return; }
-    const updated = [...asistencia, { id: Date.now().toString(), alumno_id: student.id, alumno_nombre: `${student.nombres} ${student.apellidos}`, fecha: fmt(today), presente: true, sede: student.sede }];
-    ls.set("hst_asistencia", updated);
-    setAsistencia(updated);
-    setMsg(`✅ Asistencia registrada: ${student.nombres}`);
-    setTimeout(() => setMsg(""), 3000);
-  };
-  const pagoAlDia = found ? pagos.find((p) => p.alumno_id === found.id && p.estado === "pagado") : null;
-  const membresia = found ? MEMBRESIAS.find((m) => m.id === found.membresia) : null;
-
-  return (
-    <div className="space-y-6 max-w-lg mx-auto">
-      <div className="text-center">
-        <h1 className="text-5xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>RECEPCIÓN</h1>
-        <p className="text-amber-400 text-sm font-semibold tracking-widest mt-1">MODO RÁPIDO</p>
-      </div>
-      <div className="bg-white/3 border border-white/8 rounded-3xl p-6">
-        <p className="text-sm font-semibold text-slate-400 mb-3">BUSCAR ALUMNO</p>
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
-            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-            <input className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/50" placeholder="Nombre o teléfono..." value={search} onChange={(e) => { setSearch(e.target.value); if (e.target.value === "") setFound(null); }} onKeyDown={(e) => e.key === "Enter" && doSearch()} />
-          </div>
-          <button onClick={doSearch} className="px-5 py-3 rounded-xl text-[#020617] font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>Buscar</button>
-        </div>
-      </div>
-      {msg && <div className={`p-4 rounded-2xl text-center font-bold text-sm ${msg.startsWith("✅") ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"}`}>{msg}</div>}
-      {found && (
-        <div className="bg-white/3 border border-amber-400/20 rounded-3xl p-6 space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-[#020617]" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{found.nombres[0]}{found.apellidos[0]}</div>
-            <div>
-              <h2 className="text-xl font-black text-white">{found.nombres} {found.apellidos}</h2>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <BeltBadge cinturon={found.cinturon} />
-                {membresia && <MembresiaTag membresiaId={found.membresia} />}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
-            <span className="text-sm text-slate-400">Estado de pago:</span>
-            <StatusBadge estado={pagoAlDia ? "pagado" : "pendiente"} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => marcarAsistencia(found)} className="py-4 rounded-2xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 flex items-center justify-center gap-2">
-              <Icon name="check" className="w-5 h-5" /> Marcar Asistencia
-            </button>
-            <button onClick={() => { setSearch(""); setFound(null); }} className="py-4 rounded-2xl bg-white/10 text-white font-bold text-sm hover:bg-white/15 flex items-center justify-center gap-2">
-              <Icon name="x" className="w-5 h-5" /> Limpiar
-            </button>
-          </div>
-        </div>
-      )}
-      <div className="bg-white/3 border border-white/8 rounded-2xl p-4">
-        <p className="text-xs text-slate-500 mb-3 uppercase tracking-wider font-semibold">Asistencia Hoy — {fmt(today)}</p>
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {asistencia.filter((a) => a.fecha === fmt(today) && a.presente).map((a) => (
-            <div key={a.id} className="flex items-center gap-2 text-sm text-emerald-400"><Icon name="check" className="w-4 h-4" />{a.alumno_nombre}</div>
-          ))}
-          {asistencia.filter((a) => a.fecha === fmt(today) && a.presente).length === 0 && <p className="text-slate-500 text-sm">Sin registros aún</p>}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // ─── FINANCE PAGE ─────────────────────────────────────────────────────────────
 const FinancePage = ({ pagos }) => {
-  const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const byMonth = meses.map((label, i) => ({ label, value: pagos.filter((p) => parseInt(p.fecha_pago?.slice(5, 7)) === i + 1).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0) }));
-  const bySede = SEDES.map((sede) => ({ sede, total: pagos.filter((p) => p.sede === sede).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0) }));
   const totalAnual = byMonth.reduce((a, m) => a + m.value, 0);
-  const byMembresia = MEMBRESIAS.map((m) => ({ ...m, total: pagos.filter((p) => p.tipo === m.nombre).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0) }));
-
+  const bySede = SEDES.map((sede) => ({ sede, total: pagos.filter((p) => p.sede === sede).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0) }));
   return (
     <div className="space-y-6">
       <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>FINANZAS</h1>
@@ -915,13 +934,7 @@ const FinancePage = ({ pagos }) => {
           <MiniBarChart data={byMonth} color="#f59e0b" />
         </div>
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>POR MEMBRESÍA</h3>
-          {byMembresia.map(({ id, nombre, color, total }) => (
-            <div key={id} className="flex items-center justify-between p-3 rounded-xl mb-2 border" style={{ background: `${color}12`, borderColor: `${color}25` }}>
-              <span className="text-sm font-semibold" style={{ color }}>{nombre.replace("Mensual ", "")}</span>
-              <span className="font-bold text-white">${total.toFixed(2)}</span>
-            </div>
-          ))}
+          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>POR SEDE</h3>
           {bySede.map(({ sede, total }) => (
             <div key={sede} className="flex items-center justify-between p-3 bg-white/5 rounded-xl mb-2">
               <span className="text-sm text-slate-300">📍 {sede}</span>
@@ -931,14 +944,10 @@ const FinancePage = ({ pagos }) => {
         </div>
       </div>
       <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>HISTORIAL DE PAGOS</h3>
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>HISTORIAL</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/10">
-                {["Alumno", "Membresía", "Monto", "Pagado", "Fecha", "Estado"].map((h) => <th key={h} className="text-left py-3 px-2 text-xs text-slate-500 font-semibold uppercase">{h}</th>)}
-              </tr>
-            </thead>
+            <thead><tr className="border-b border-white/10">{["Alumno","Membresía","Monto","Pagado","Fecha","Estado"].map((h) => <th key={h} className="text-left py-3 px-2 text-xs text-slate-500 font-semibold uppercase">{h}</th>)}</tr></thead>
             <tbody>
               {pagos.slice().reverse().map((p) => (
                 <tr key={p.id} className="border-b border-white/5 hover:bg-white/3">
@@ -963,42 +972,27 @@ const EventsPage = ({ eventos, setEventos }) => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ titulo: "", fecha: fmt(addDays(today, 7)), tipo: "examen", sede: "Ambas", descripcion: "" });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const save = () => {
-    const data = { ...form, id: Date.now().toString() };
-    const updated = [...eventos, data];
-    ls.set("hst_eventos", updated);
-    setEventos(updated);
-    setShowForm(false);
-    setForm({ titulo: "", fecha: fmt(addDays(today, 7)), tipo: "examen", sede: "Ambas", descripcion: "" });
-  };
+  const save = () => { const u = [...eventos, { ...form, id: Date.now().toString() }]; ls.set("hst_eventos", u); setEventos(u); setShowForm(false); };
   const tipoIcons = { examen: "🥋", torneo: "🏆", campamento: "⛺", seminario: "📚" };
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>EVENTOS</h1>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
-          <Icon name="plus" className="w-4 h-4" /> Nuevo Evento
-        </button>
+        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Evento</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {eventos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).map((e) => {
-          const days = Math.ceil((new Date(e.fecha) - today) / (1000 * 60 * 60 * 24));
+          const days = Math.ceil((new Date(e.fecha) - today) / 86400000);
           return (
             <div key={e.id} className="bg-white/3 border border-white/8 rounded-2xl p-5 hover:border-amber-400/20">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">{tipoIcons[e.tipo] || "📅"}</span>
-                  <div>
-                    <h3 className="font-bold text-white">{e.titulo}</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">{e.fecha} · {e.sede}</p>
-                    {e.descripcion && <p className="text-xs text-slate-400 mt-2">{e.descripcion}</p>}
-                  </div>
+                  <div><h3 className="font-bold text-white">{e.titulo}</h3><p className="text-xs text-slate-500 mt-0.5">{e.fecha} · {e.sede}</p>{e.descripcion && <p className="text-xs text-slate-400 mt-2">{e.descripcion}</p>}</div>
                 </div>
                 <div className="text-right">
                   <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400">{e.tipo}</span>
-                  <p className={`text-xs mt-1 font-semibold ${days < 0 ? "text-red-400" : days < 7 ? "text-amber-400" : "text-emerald-400"}`}>
-                    {days < 0 ? "Pasado" : days === 0 ? "¡Hoy!" : `En ${days} días`}
-                  </p>
+                  <p className={`text-xs mt-1 font-semibold ${days < 0 ? "text-red-400" : days < 7 ? "text-amber-400" : "text-emerald-400"}`}>{days < 0 ? "Pasado" : days === 0 ? "¡Hoy!" : `En ${days} días`}</p>
                 </div>
               </div>
             </div>
@@ -1011,10 +1005,10 @@ const EventsPage = ({ eventos, setEventos }) => {
             <Field label="Título"><Input value={form.titulo} onChange={set("titulo")} placeholder="Nombre del evento" /></Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Fecha"><Input type="date" value={form.fecha} onChange={set("fecha")} /></Field>
-              <Field label="Tipo"><Select options={["examen", "torneo", "campamento", "seminario"]} value={form.tipo} onChange={set("tipo")} /></Field>
-              <Field label="Sede"><Select options={["Quito", "Cumbayá", "Ambas"]} value={form.sede} onChange={set("sede")} /></Field>
+              <Field label="Tipo"><Select options={["examen","torneo","campamento","seminario"]} value={form.tipo} onChange={set("tipo")} /></Field>
+              <Field label="Sede"><Select options={["Quito","Cumbayá","Ambas"]} value={form.sede} onChange={set("sede")} /></Field>
             </div>
-            <Field label="Descripción"><Textarea value={form.descripcion} onChange={set("descripcion")} placeholder="Detalles del evento..." /></Field>
+            <Field label="Descripción"><Textarea value={form.descripcion} onChange={set("descripcion")} placeholder="Detalles..." /></Field>
           </div>
           <div className="flex gap-3 mt-6">
             <button onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cancelar</button>
@@ -1026,10 +1020,80 @@ const EventsPage = ({ eventos, setEventos }) => {
   );
 };
 
+// ─── VISTA ALUMNO: MI ASISTENCIA ──────────────────────────────────────────────
+const MiAsistenciaPage = ({ currentUser, students, asistencia }) => {
+  const alumno = students.find((s) => s.correo === currentUser.email);
+  if (!alumno) return (
+    <div className="text-center py-20">
+      <p className="text-6xl mb-4">🥋</p>
+      <h2 className="text-2xl font-black text-white mb-2">Perfil no encontrado</h2>
+      <p className="text-slate-400 text-sm">Tu correo no está asociado a ningún alumno. Pide al administrador que lo vincule.</p>
+    </div>
+  );
+  const miAsistencia = asistencia.filter((a) => a.alumno_id === alumno.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const presentes = miAsistencia.filter((a) => a.presente).length;
+  const pct = miAsistencia.length ? Math.round((presentes / miAsistencia.length) * 100) : 0;
+  return (
+    <div className="space-y-6 max-w-lg mx-auto">
+      <div className="bg-white/3 border border-amber-400/20 rounded-3xl p-6 text-center">
+        <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-[#020617] mx-auto mb-3" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{alumno.nombres[0]}{alumno.apellidos[0]}</div>
+        <h2 className="text-2xl font-black text-white">{alumno.nombres} {alumno.apellidos}</h2>
+        <div className="flex items-center justify-center gap-2 mt-2"><BeltBadge cinturon={alumno.cinturon} /><MembresiaTag membresiaId={alumno.membresia} /></div>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-emerald-400" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{presentes}</p><p className="text-xs text-slate-400 mt-1">Presentes</p></div>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-red-400" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{miAsistencia.length - presentes}</p><p className="text-xs text-slate-400 mt-1">Ausentes</p></div>
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-amber-400" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{pct}%</p><p className="text-xs text-slate-400 mt-1">Asistencia</p></div>
+      </div>
+      <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>HISTORIAL</h3>
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {miAsistencia.length === 0 && <p className="text-slate-500 text-sm">Sin registros aún</p>}
+          {miAsistencia.map((a) => (
+            <div key={a.id} className={`flex items-center justify-between p-3 rounded-xl ${a.presente ? "bg-emerald-500/10" : "bg-red-500/10"}`}>
+              <span className="text-sm text-white">{a.fecha}</span>
+              <span className={`text-xs font-bold ${a.presente ? "text-emerald-400" : "text-red-400"}`}>{a.presente ? "✓ Presente" : "✗ Ausente"}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── VISTA ALUMNO: MIS PAGOS ──────────────────────────────────────────────────
+const MisPagosPage = ({ currentUser, students, pagos }) => {
+  const alumno = students.find((s) => s.correo === currentUser.email);
+  if (!alumno) return <div className="text-center py-20"><p className="text-slate-400">Perfil no encontrado. Contacta al administrador.</p></div>;
+  const misPagos = pagos.filter((p) => p.alumno_id === alumno.id).sort((a, b) => b.fecha_pago?.localeCompare(a.fecha_pago));
+  const getDays = (f) => Math.ceil((new Date(f) - today) / 86400000);
+  return (
+    <div className="space-y-6 max-w-lg mx-auto">
+      <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>MIS PAGOS</h1>
+      {misPagos.length === 0 && <div className="bg-white/3 border border-white/8 rounded-2xl p-8 text-center"><p className="text-slate-400">Sin registros de pago</p></div>}
+      <div className="space-y-3">
+        {misPagos.map((p) => {
+          const dias = getDays(p.fecha_vencimiento);
+          return (
+            <div key={p.id} className="bg-white/3 border border-white/8 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div><p className="font-bold text-white">{p.tipo}</p><p className="text-xs text-slate-500">{p.fecha_pago} · {p.sede}</p></div>
+                <div className="text-right"><p className="text-lg font-black text-white">${parseFloat(p.monto_pagado).toFixed(2)}<span className="text-sm text-slate-500">/${parseFloat(p.monto).toFixed(2)}</span></p><StatusBadge estado={p.estado} /></div>
+              </div>
+              <p className={`text-xs font-semibold ${dias < 0 ? "text-red-400" : dias < 7 ? "text-amber-400" : "text-emerald-400"}`}>{dias < 0 ? `Vencido hace ${Math.abs(dias)} días` : `Vence en ${dias} días (${p.fecha_vencimiento})`}</p>
+              {p.estado !== "pagado" && <div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background: p.estado === "vencido" ? "#ef4444" : "#f59e0b" }} /></div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
-  const [page, setPage] = useState("dashboard");
+  const [page, setPage] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [students, setStudents] = useState([]);
   const [pagos, setPagos] = useState([]);
@@ -1044,31 +1108,49 @@ export default function App() {
     setEventos(ls.get("hst_eventos", []));
   }, []);
 
-  if (!user) return <LoginScreen onLogin={setUser} />;
-
-  const navItems = [
-    { id: "dashboard", label: "Dashboard", icon: "dashboard" },
-    { id: "students", label: "Alumnos", icon: "students" },
-    { id: "payments", label: "Pagos", icon: "payments" },
-    { id: "attendance", label: "Asistencia", icon: "attendance" },
-    { id: "belts", label: "Cinturones", icon: "belt" },
-    { id: "finance", label: "Finanzas", icon: "finance" },
-    { id: "events", label: "Eventos", icon: "calendar" },
-    { id: "reception", label: "Recepción", icon: "reception" },
-  ];
-
-  const pages = {
-    dashboard: <DashboardPage students={students} pagos={pagos} asistencia={asistencia} />,
-    students: <StudentsPage students={students} setStudents={setStudents} />,
-    payments: <PaymentsPage students={students} pagos={pagos} setPagos={setPagos} />,
-    attendance: <AttendancePage students={students} asistencia={asistencia} setAsistencia={setAsistencia} />,
-    belts: <BeltsPage students={students} setStudents={setStudents} />,
-    finance: <FinancePage pagos={pagos} />,
-    events: <EventsPage eventos={eventos} setEventos={setEventos} />,
-    reception: <ReceptionPage students={students} pagos={pagos} setPagos={setPagos} asistencia={asistencia} setAsistencia={setAsistencia} />,
+  const handleLogin = (u) => {
+    setUser(u);
+    const perms = PERMISOS[u.role] || [];
+    setPage(perms[0] || "dashboard");
   };
 
+  if (!user) return <LoginScreen onLogin={handleLogin} />;
+
+  const perms = PERMISOS[user.role] || [];
+
+  const allNavItems = [
+    { id: "dashboard",     label: "Dashboard",     icon: "dashboard" },
+    { id: "students",      label: "Alumnos",        icon: "students" },
+    { id: "payments",      label: "Pagos",          icon: "payments" },
+    { id: "attendance",    label: "Asistencia",     icon: "attendance" },
+    { id: "belts",         label: "Cinturones",     icon: "belt" },
+    { id: "finance",       label: "Finanzas",       icon: "finance" },
+    { id: "events",        label: "Eventos",        icon: "calendar" },
+    { id: "users",         label: "Usuarios",       icon: "users" },
+    { id: "mi_asistencia", label: "Mi Asistencia",  icon: "mi_asistencia" },
+    { id: "mis_pagos",     label: "Mis Pagos",      icon: "mis_pagos" },
+  ];
+
+  const navItems = allNavItems.filter((n) => perms.includes(n.id));
   const alerts = pagos.filter((p) => p.estado === "vencido").length;
+
+  const renderPage = () => {
+    switch (page) {
+      case "dashboard":     return <DashboardPage students={students} pagos={pagos} asistencia={asistencia} />;
+      case "students":      return <StudentsPage students={students} setStudents={setStudents} canEdit={user.role === "admin"} />;
+      case "payments":      return <PaymentsPage students={students} pagos={pagos} setPagos={setPagos} />;
+      case "attendance":    return <AttendancePage students={students} asistencia={asistencia} setAsistencia={setAsistencia} />;
+      case "belts":         return <BeltsPage students={students} setStudents={setStudents} />;
+      case "finance":       return <FinancePage pagos={pagos} />;
+      case "events":        return <EventsPage eventos={eventos} setEventos={setEventos} />;
+      case "users":         return <UsersPage currentUser={user} setCurrentUser={setUser} />;
+      case "mi_asistencia": return <MiAsistenciaPage currentUser={user} students={students} asistencia={asistencia} />;
+      case "mis_pagos":     return <MisPagosPage currentUser={user} students={students} pagos={pagos} />;
+      default:              return <DashboardPage students={students} pagos={pagos} asistencia={asistencia} />;
+    }
+  };
+
+  const roleColors = { admin: "#f59e0b", profesor: "#3b82f6", alumno: "#22c55e" };
 
   return (
     <div className="min-h-screen flex" style={{ background: "#020617", fontFamily: "'DM Sans', sans-serif" }}>
@@ -1096,12 +1178,12 @@ export default function App() {
         </nav>
         <div className="p-4 border-t border-white/8">
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 text-xs font-bold">{user.name[0]}</div>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{ background: `${roleColors[user.role]}30`, color: roleColors[user.role] }}>{user.nombre?.[0] || "U"}</div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-white truncate">{user.name}</p>
-              <p className="text-[10px] text-slate-500 capitalize">{user.role}</p>
+              <p className="text-xs font-bold text-white truncate">{user.nombre}</p>
+              <RoleBadge role={user.role} />
             </div>
-            <button onClick={() => setUser(null)} className="text-slate-500 hover:text-red-400"><Icon name="logout" className="w-4 h-4" /></button>
+            <button onClick={() => setUser(null)} className="text-slate-500 hover:text-red-400 transition-colors"><Icon name="logout" className="w-4 h-4" /></button>
           </div>
         </div>
       </aside>
@@ -1112,8 +1194,9 @@ export default function App() {
           <p className="font-black text-white text-sm" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>HST ACADEMY</p>
           <div className="w-8" />
         </header>
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8">{pages[page]}</main>
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8">{renderPage()}</main>
       </div>
     </div>
   );
 }
+ENDOFFILE
