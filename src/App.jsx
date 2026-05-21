@@ -1,51 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect } from "react";
 
-// ─── SUPABASE CLIENT (replace with your credentials) ─────────────────────────
-const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-const SUPABASE_KEY = "YOUR_ANON_KEY";
-
-// Minimal Supabase REST client (no SDK needed in artifact)
-const supabase = {
-  from: (table) => ({
-    select: async (cols = "*") => {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${cols}`, {
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-      });
-      return r.json().then((data) => ({ data, error: null })).catch((e) => ({ data: null, error: e }));
-    },
-    insert: async (rows) => {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-        method: "POST",
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
-        body: JSON.stringify(rows),
-      });
-      return r.json().then((data) => ({ data, error: null })).catch((e) => ({ data: null, error: e }));
-    },
-    update: async (row, matchCol, matchVal) => {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${matchCol}=eq.${matchVal}`, {
-        method: "PATCH",
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
-        body: JSON.stringify(row),
-      });
-      return r.json().then((data) => ({ data, error: null })).catch((e) => ({ data: null, error: e }));
-    },
-    delete: async (matchCol, matchVal) => {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${matchCol}=eq.${matchVal}`, {
-        method: "DELETE",
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-      });
-      return { error: r.ok ? null : new Error("Delete failed") };
-    },
-  }),
-};
-
-// ─── SEED DATA (persists in localStorage) ────────────────────────────────────
+// ─── SEED DATA ────────────────────────────────────────────────────────────────
 const SEED_STUDENTS = [
-  { id: "1", nombres: "Carlos", apellidos: "Mendoza", edad: 12, fecha_nacimiento: "2012-03-15", representante: "Ana Mendoza", telefono: "0991234567", correo: "carlos@mail.com", direccion: "Quito Norte", sede: "Quito", cinturon: "Amarillo", categoria: "Infantil", estado: "activo", fecha_inscripcion: "2023-01-10", observaciones: "Buen avance técnico" },
-  { id: "2", nombres: "Sofía", apellidos: "Torres", edad: 15, fecha_nacimiento: "2009-07-22", representante: "Luis Torres", telefono: "0987654321", correo: "sofia@mail.com", direccion: "Cumbayá", sede: "Cumbayá", cinturon: "Verde", categoria: "Juvenil", estado: "activo", fecha_inscripcion: "2022-06-05", observaciones: "" },
-  { id: "3", nombres: "Mateo", apellidos: "García", edad: 9, fecha_nacimiento: "2015-11-01", representante: "Rosa García", telefono: "0976543210", correo: "mateo@mail.com", direccion: "Quito Sur", sede: "Quito", cinturon: "Blanco", categoria: "Infantil", estado: "activo", fecha_inscripcion: "2024-01-20", observaciones: "Nuevo alumno" },
-  { id: "4", nombres: "Valentina", apellidos: "López", edad: 18, fecha_nacimiento: "2006-05-30", representante: "Jorge López", telefono: "0965432109", correo: "vale@mail.com", direccion: "Cumbayá", sede: "Cumbayá", cinturon: "Azul", categoria: "Adulto", estado: "activo", fecha_inscripcion: "2021-03-15", observaciones: "Aspirante a negro" },
-  { id: "5", nombres: "Diego", apellidos: "Ramírez", edad: 14, fecha_nacimiento: "2010-09-12", representante: "Carmen Ramírez", telefono: "0954321098", correo: "diego@mail.com", direccion: "Quito Centro", sede: "Quito", cinturon: "Rojo", categoria: "Juvenil", estado: "inactivo", fecha_inscripcion: "2022-08-01", observaciones: "En pausa temporal" },
+  { id: "1", nombres: "Carlos", apellidos: "Mendoza", edad: 12, fecha_nacimiento: "2012-03-15", representante: "Ana Mendoza", telefono: "0991234567", correo: "carlos@mail.com", direccion: "Quito Norte", sede: "Quito", cinturon: "Amarillo", categoria: "Infantil", membresia: "estandar", estado: "activo", fecha_inscripcion: "2023-01-10", observaciones: "Buen avance técnico" },
+  { id: "2", nombres: "Sofía", apellidos: "Torres", edad: 15, fecha_nacimiento: "2009-07-22", representante: "Luis Torres", telefono: "0987654321", correo: "sofia@mail.com", direccion: "Cumbayá", sede: "Cumbayá", cinturon: "Verde", categoria: "Juvenil", membresia: "premium", estado: "activo", fecha_inscripcion: "2022-06-05", observaciones: "" },
+  { id: "3", nombres: "Mateo", apellidos: "García", edad: 9, fecha_nacimiento: "2015-11-01", representante: "Rosa García", telefono: "0976543210", correo: "mateo@mail.com", direccion: "Quito Sur", sede: "Quito", cinturon: "Blanco", categoria: "Infantil", membresia: "basica", estado: "activo", fecha_inscripcion: "2024-01-20", observaciones: "Nuevo alumno" },
+  { id: "4", nombres: "Valentina", apellidos: "López", edad: 18, fecha_nacimiento: "2006-05-30", representante: "Jorge López", telefono: "0965432109", correo: "vale@mail.com", direccion: "Cumbayá", sede: "Cumbayá", cinturon: "Azul", categoria: "Adulto", membresia: "premium", estado: "activo", fecha_inscripcion: "2021-03-15", observaciones: "Aspirante a negro" },
+  { id: "5", nombres: "Diego", apellidos: "Ramírez", edad: 14, fecha_nacimiento: "2010-09-12", representante: "Carmen Ramírez", telefono: "0954321098", correo: "diego@mail.com", direccion: "Quito Centro", sede: "Quito", cinturon: "Rojo", categoria: "Juvenil", membresia: "estandar", estado: "inactivo", fecha_inscripcion: "2022-08-01", observaciones: "En pausa temporal" },
 ];
 
 const today = new Date();
@@ -53,10 +14,10 @@ const fmt = (d) => d.toISOString().slice(0, 10);
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 
 const SEED_PAGOS = [
-  { id: "p1", alumno_id: "1", alumno_nombre: "Carlos Mendoza", monto: 45, monto_pagado: 45, fecha_pago: fmt(today), fecha_vencimiento: fmt(addDays(today, 25)), tipo: "Mensualidad", estado: "pagado", sede: "Quito", notas: "" },
-  { id: "p2", alumno_id: "2", alumno_nombre: "Sofía Torres", monto: 45, monto_pagado: 20, fecha_pago: fmt(addDays(today, -5)), fecha_vencimiento: fmt(addDays(today, 5)), tipo: "Mensualidad", estado: "parcial", sede: "Cumbayá", notas: "Pago parcial" },
-  { id: "p3", alumno_id: "3", alumno_nombre: "Mateo García", monto: 45, monto_pagado: 0, fecha_pago: fmt(addDays(today, -10)), fecha_vencimiento: fmt(addDays(today, -2)), tipo: "Mensualidad", estado: "vencido", sede: "Quito", notas: "" },
-  { id: "p4", alumno_id: "4", alumno_nombre: "Valentina López", monto: 45, monto_pagado: 45, fecha_pago: fmt(today), fecha_vencimiento: fmt(addDays(today, 30)), tipo: "Mensualidad", estado: "pagado", sede: "Cumbayá", notas: "" },
+  { id: "p1", alumno_id: "1", alumno_nombre: "Carlos Mendoza", monto: 45, monto_pagado: 45, fecha_pago: fmt(today), fecha_vencimiento: fmt(addDays(today, 25)), tipo: "Estándar 12 sesiones", estado: "pagado", sede: "Quito", notas: "" },
+  { id: "p2", alumno_id: "2", alumno_nombre: "Sofía Torres", monto: 60, monto_pagado: 30, fecha_pago: fmt(addDays(today, -5)), fecha_vencimiento: fmt(addDays(today, 5)), tipo: "Premium Ilimitada", estado: "parcial", sede: "Cumbayá", notas: "Pago parcial" },
+  { id: "p3", alumno_id: "3", alumno_nombre: "Mateo García", monto: 35, monto_pagado: 0, fecha_pago: fmt(addDays(today, -10)), fecha_vencimiento: fmt(addDays(today, -2)), tipo: "Básica 8 sesiones", estado: "vencido", sede: "Quito", notas: "" },
+  { id: "p4", alumno_id: "4", alumno_nombre: "Valentina López", monto: 60, monto_pagado: 60, fecha_pago: fmt(today), fecha_vencimiento: fmt(addDays(today, 30)), tipo: "Premium Ilimitada", estado: "pagado", sede: "Cumbayá", notas: "" },
 ];
 
 const SEED_ASISTENCIA = [
@@ -71,7 +32,7 @@ const SEED_EVENTOS = [
   { id: "e3", titulo: "Campamento de Verano", fecha: fmt(addDays(today, 45)), tipo: "campamento", sede: "Ambas", descripcion: "Campamento intensivo 3 días" },
 ];
 
-// ─── LOCAL STORAGE HELPERS ────────────────────────────────────────────────────
+// ─── LOCAL STORAGE ────────────────────────────────────────────────────────────
 const ls = {
   get: (k, def) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } },
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
@@ -87,15 +48,30 @@ const initStore = () => {
   }
 };
 
-// ─── COLORS & CONSTANTS ───────────────────────────────────────────────────────
-const CINTURONES = ["Blanco", "Amarillo", "Naranja", "Verde", "Azul", "Rojo", "Negro"];
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const MEMBRESIAS = [
+  { id: "basica", nombre: "Básico", sesiones: 8, precio: 0, color: "#3b82f6" },
+  { id: "estandar", nombre: "Estándar", sesiones: 12, precio: 0, color: "#f59e0b" },
+  { id: "premium", nombre: "Completo", sesiones: 999, precio: 0, color: "#a855f7" },
+];
+
+const CINTURONES = ["Blanco", "Blanco/Amarillo", "Amarillo", "Amarillo/Verde", "Verde", "Verde/Azul", "Azul", "Azul/Rojo", "Rojo", "Rojo/Negro", "Negro"];
 const CATEGORIAS = ["Infantil", "Juvenil", "Adulto", "Máster"];
 const SEDES = ["Quito", "Cumbayá"];
 const ROLES = ["admin", "profesor", "recepcion"];
 
 const cinturonColor = {
-  Blanco: "#ffffff", Amarillo: "#fbbf24", Naranja: "#f97316",
-  Verde: "#22c55e", Azul: "#3b82f6", Rojo: "#ef4444", Negro: "#1f2937",
+  Blanco: "#ffffff",
+  "Blanco/Amarillo": "#fef08a",
+  Amarillo: "#fbbf24",
+  "Amarillo/Verde": "#a3e635",
+  Verde: "#22c55e",
+  "Verde/Azul": "#34d399",
+  Azul: "#3b82f6",
+  "Azul/Rojo": "#a78bfa",
+  Rojo: "#ef4444",
+  "Rojo/Negro": "#f97316",
+  Negro: "#1f2937",
 };
 
 const pagoEstadoConfig = {
@@ -105,7 +81,7 @@ const pagoEstadoConfig = {
   pendiente: { bg: "bg-slate-500/20", text: "text-slate-400", border: "border-slate-500/30", label: "Pendiente" },
 };
 
-// ─── ICONS (inline SVG) ───────────────────────────────────────────────────────
+// ─── ICONS ────────────────────────────────────────────────────────────────────
 const Icon = ({ name, className = "w-5 h-5" }) => {
   const icons = {
     dashboard: <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
@@ -116,7 +92,6 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
     finance: <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
     reception: <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />,
     calendar: <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
-    notification: <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />,
     plus: <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />,
     edit: <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />,
     trash: <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />,
@@ -129,7 +104,6 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
     arrow_down: <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />,
     eye: <><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>,
     download: <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />,
-    location: <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />,
   };
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -138,7 +112,7 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
   );
 };
 
-// ─── MODAL WRAPPER ────────────────────────────────────────────────────────────
+// ─── UI COMPONENTS ────────────────────────────────────────────────────────────
 const Modal = ({ title, onClose, children, wide = false }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
     <div className={`relative bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl w-full ${wide ? "max-w-3xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto`}>
@@ -151,7 +125,6 @@ const Modal = ({ title, onClose, children, wide = false }) => (
   </div>
 );
 
-// ─── FORM FIELD ───────────────────────────────────────────────────────────────
 const Field = ({ label, children, className = "" }) => (
   <div className={className}>
     <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">{label}</label>
@@ -159,8 +132,8 @@ const Field = ({ label, children, className = "" }) => (
   </div>
 );
 
-const Input = ({ ...props }) => (
-  <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-400/50 focus:bg-white/8 transition-all" {...props} />
+const Input = (props) => (
+  <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-400/50 transition-all" {...props} />
 );
 
 const Select = ({ options, ...props }) => (
@@ -169,14 +142,13 @@ const Select = ({ options, ...props }) => (
   </select>
 );
 
-const Textarea = ({ ...props }) => (
+const Textarea = (props) => (
   <textarea className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-400/50 transition-all resize-none" rows={3} {...props} />
 );
 
-// ─── STAT CARD ────────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, sub, icon, accent = "amber", trend }) => {
-  const accents = { amber: "from-amber-500/20 to-amber-600/5 border-amber-500/20", emerald: "from-emerald-500/20 to-emerald-600/5 border-emerald-500/20", red: "from-red-500/20 to-red-600/5 border-red-500/20", blue: "from-blue-500/20 to-blue-600/5 border-blue-500/20" };
-  const iconAccents = { amber: "text-amber-400", emerald: "text-emerald-400", red: "text-red-400", blue: "text-blue-400" };
+  const accents = { amber: "from-amber-500/20 to-amber-600/5 border-amber-500/20", emerald: "from-emerald-500/20 to-emerald-600/5 border-emerald-500/20", red: "from-red-500/20 to-red-600/5 border-red-500/20", blue: "from-blue-500/20 to-blue-600/5 border-blue-500/20", purple: "from-purple-500/20 to-purple-600/5 border-purple-500/20" };
+  const iconAccents = { amber: "text-amber-400", emerald: "text-emerald-400", red: "text-red-400", blue: "text-blue-400", purple: "text-purple-400" };
   return (
     <div className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-6 ${accents[accent]}`}>
       <div className="flex items-start justify-between">
@@ -197,28 +169,34 @@ const StatCard = ({ title, value, sub, icon, accent = "amber", trend }) => {
   );
 };
 
-// ─── BELT BADGE ───────────────────────────────────────────────────────────────
 const BeltBadge = ({ cinturon }) => (
   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: `${cinturonColor[cinturon]}22`, color: cinturon === "Blanco" ? "#e2e8f0" : cinturonColor[cinturon], border: `1px solid ${cinturonColor[cinturon]}44` }}>
-    <span className="w-2 h-2 rounded-full" style={{ background: cinturonColor[cinturon] }} />
-    {cinturon}
+    <span className="w-2 h-2 rounded-full" style={{ background: cinturonColor[cinturon] }} />{cinturon}
   </span>
 );
 
-// ─── STATUS BADGE ─────────────────────────────────────────────────────────────
 const StatusBadge = ({ estado }) => {
   const cfg = pagoEstadoConfig[estado] || pagoEstadoConfig.pendiente;
   return <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${cfg.bg} ${cfg.text} ${cfg.border}`}>{cfg.label}</span>;
 };
 
-// ─── MINI BAR CHART ───────────────────────────────────────────────────────────
+const MembresiaTag = ({ membresiaId }) => {
+  const m = MEMBRESIAS.find((x) => x.id === membresiaId);
+  if (!m) return null;
+  return (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: `${m.color}22`, color: m.color, border: `1px solid ${m.color}44` }}>
+      {m.sesiones === 999 ? "♾️" : `${m.sesiones}🎯`} {m.nombre.replace("Mensual ", "")}
+    </span>
+  );
+};
+
 const MiniBarChart = ({ data, color = "#f59e0b" }) => {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
     <div className="flex items-end gap-1 h-16">
       {data.map((d, i) => (
         <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-          <div className="w-full rounded-t-sm transition-all duration-700" style={{ height: `${(d.value / max) * 56}px`, background: color, opacity: 0.7 + 0.3 * (i / data.length) }} />
+          <div className="w-full rounded-t-sm" style={{ height: `${(d.value / max) * 56}px`, background: color, opacity: 0.7 + 0.3 * (i / data.length) }} />
           <span className="text-[9px] text-slate-500">{d.label}</span>
         </div>
       ))}
@@ -226,16 +204,14 @@ const MiniBarChart = ({ data, color = "#f59e0b" }) => {
   );
 };
 
-// ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
+// ─── LOGIN ────────────────────────────────────────────────────────────────────
 const LoginScreen = ({ onLogin }) => {
   const [email, setEmail] = useState("admin@hst.com");
   const [password, setPassword] = useState("admin123");
   const [role, setRole] = useState("admin");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
-
   const USERS = { "admin@hst.com": { pass: "admin123", role: "admin", name: "Henry Sigchos" }, "prof@hst.com": { pass: "prof123", role: "profesor", name: "Profesor Demo" }, "rec@hst.com": { pass: "rec123", role: "recepcion", name: "Recepción" } };
-
   const handleLogin = () => {
     setLoading(true);
     setTimeout(() => {
@@ -244,7 +220,6 @@ const LoginScreen = ({ onLogin }) => {
       else { setErr("Credenciales incorrectas"); setLoading(false); }
     }, 800);
   };
-
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%)" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -257,7 +232,7 @@ const LoginScreen = ({ onLogin }) => {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
             <span className="text-3xl">🥋</span>
           </div>
-          <h1 className="text-5xl font-black text-white tracking-tight" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>HENRY SIGCHOS</h1>
+          <h1 className="text-5xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>HENRY SIGCHOS</h1>
           <p className="text-amber-400 font-semibold tracking-widest text-sm mt-1">TAEKWONDO ACADEMY</p>
         </div>
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-3xl p-8 shadow-2xl">
@@ -266,11 +241,9 @@ const LoginScreen = ({ onLogin }) => {
           <div className="space-y-4">
             <Field label="Correo"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@academia.com" /></Field>
             <Field label="Contraseña"><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" /></Field>
-            <Field label="Rol">
-              <Select options={ROLES} value={role} onChange={(e) => setRole(e.target.value)} />
-            </Field>
+            <Field label="Rol"><Select options={ROLES} value={role} onChange={(e) => setRole(e.target.value)} /></Field>
           </div>
-          <button onClick={handleLogin} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm tracking-wider text-[#020617] transition-all duration-200 active:scale-95" style={{ background: loading ? "#6b7280" : "linear-gradient(135deg, #f59e0b, #d97706)" }}>
+          <button onClick={handleLogin} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm tracking-wider text-[#020617] transition-all active:scale-95" style={{ background: loading ? "#6b7280" : "linear-gradient(135deg, #f59e0b, #d97706)" }}>
             {loading ? "VERIFICANDO..." : "INGRESAR AL SISTEMA"}
           </button>
           <p className="text-center text-xs text-slate-500 mt-4">Demo: admin@hst.com / admin123</p>
@@ -282,10 +255,9 @@ const LoginScreen = ({ onLogin }) => {
 
 // ─── STUDENT FORM ─────────────────────────────────────────────────────────────
 const StudentForm = ({ student, onSave, onClose }) => {
-  const empty = { nombres: "", apellidos: "", edad: "", fecha_nacimiento: "", representante: "", telefono: "", correo: "", direccion: "", sede: "Quito", cinturon: "Blanco", categoria: "Infantil", estado: "activo", observaciones: "", fecha_inscripcion: fmt(today) };
+  const empty = { nombres: "", apellidos: "", edad: "", fecha_nacimiento: "", representante: "", telefono: "", correo: "", direccion: "", sede: "Quito", cinturon: "Blanco", categoria: "Infantil", membresia: "estandar", estado: "activo", observaciones: "", fecha_inscripcion: fmt(today) };
   const [form, setForm] = useState(student || empty);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
   const handleSubmit = () => {
     if (!form.nombres || !form.apellidos) return;
     const data = student ? { ...form } : { ...form, id: Date.now().toString() };
@@ -294,7 +266,6 @@ const StudentForm = ({ student, onSave, onClose }) => {
     else { ls.set("hst_students", [...students, data]); }
     onSave(data);
   };
-
   return (
     <Modal title={student ? "Editar Alumno" : "Nuevo Alumno"} onClose={onClose} wide>
       <div className="grid grid-cols-2 gap-4">
@@ -310,12 +281,25 @@ const StudentForm = ({ student, onSave, onClose }) => {
         <Field label="Estado"><Select options={["activo", "inactivo"]} value={form.estado} onChange={set("estado")} /></Field>
         <Field label="Cinturón"><Select options={CINTURONES} value={form.cinturon} onChange={set("cinturon")} /></Field>
         <Field label="Categoría"><Select options={CATEGORIAS} value={form.categoria} onChange={set("categoria")} /></Field>
+        <Field label="Membresía" className="col-span-2">
+          <div className="grid grid-cols-3 gap-2 mt-1">
+            {MEMBRESIAS.map((m) => (
+              <button key={m.id} type="button" onClick={() => setForm((f) => ({ ...f, membresia: m.id }))}
+                className="p-3 rounded-xl border text-center transition-all"
+                style={{ background: form.membresia === m.id ? `${m.color}30` : "rgba(255,255,255,0.03)", borderColor: form.membresia === m.id ? m.color : "rgba(255,255,255,0.1)", color: form.membresia === m.id ? m.color : "#94a3b8" }}>
+                <p className="text-xs font-bold">{m.nombre.replace("Mensual ", "")}</p>
+                <p className="text-lg font-black mt-0.5" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>${m.precio}</p>
+                <p className="text-[10px]">{m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} ses.`}</p>
+              </button>
+            ))}
+          </div>
+        </Field>
         <Field label="Fecha Inscripción"><Input type="date" value={form.fecha_inscripcion} onChange={set("fecha_inscripcion")} /></Field>
         <Field label="Observaciones" className="col-span-2"><Textarea value={form.observaciones} onChange={set("observaciones")} placeholder="Notas adicionales..." /></Field>
       </div>
       <div className="flex gap-3 mt-6">
-        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm font-semibold hover:bg-white/5 transition-colors">Cancelar</button>
-        <button onClick={handleSubmit} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold transition-all" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm font-semibold hover:bg-white/5">Cancelar</button>
+        <button onClick={handleSubmit} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
           {student ? "Guardar Cambios" : "Crear Alumno"}
         </button>
       </div>
@@ -325,42 +309,77 @@ const StudentForm = ({ student, onSave, onClose }) => {
 
 // ─── PAYMENT FORM ─────────────────────────────────────────────────────────────
 const PagoForm = ({ students, onSave, onClose }) => {
-  const [form, setForm] = useState({ alumno_id: students[0]?.id || "", monto: 45, monto_pagado: 45, tipo: "Mensualidad", fecha_pago: fmt(today), fecha_vencimiento: fmt(addDays(today, 30)), notas: "" });
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const alumno = students.find((s) => s.id === form.alumno_id);
+  const activeStudents = students.filter((s) => s.estado === "activo");
+  const [alumnoId, setAlumnoId] = useState(activeStudents[0]?.id || "");
+  const [tipoPago, setTipoPago] = useState("estandar");
+  const [montoPagado, setMontoPagado] = useState("");
+  const [fechaPago, setFechaPago] = useState(fmt(today));
+  const [fechaVenc, setFechaVenc] = useState(fmt(addDays(today, 30)));
+  const [notas, setNotas] = useState("");
+
+  const alumno = activeStudents.find((s) => s.id === alumnoId);
+  const membresiaSeleccionada = MEMBRESIAS.find((m) => m.id === tipoPago) || MEMBRESIAS[0];
+  const montoTotal = membresiaSeleccionada.precio;
+  const pagado = parseFloat(montoPagado) || 0;
+  const deuda = Math.max(0, montoTotal - pagado);
 
   const handleSubmit = () => {
-    const pagado = parseFloat(form.monto_pagado);
-    const total = parseFloat(form.monto);
-    const estado = pagado >= total ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
-    const data = { ...form, id: Date.now().toString(), alumno_nombre: `${alumno?.nombres} ${alumno?.apellidos}`, estado, sede: alumno?.sede || "Quito", monto: total, monto_pagado: pagado };
+    if (!alumnoId) return;
+    const estado = pagado >= montoTotal ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
+    const data = {
+      id: Date.now().toString(),
+      alumno_id: alumnoId,
+      alumno_nombre: `${alumno?.nombres} ${alumno?.apellidos}`,
+      monto: montoTotal,
+      monto_pagado: pagado,
+      fecha_pago: fechaPago,
+      fecha_vencimiento: fechaVenc,
+      tipo: membresiaSeleccionada.nombre,
+      estado,
+      sede: alumno?.sede || "Quito",
+      notas,
+    };
     const pagos = ls.get("hst_pagos", []);
     ls.set("hst_pagos", [...pagos, data]);
     onSave(data);
   };
 
   return (
-    <Modal title="Registrar Pago" onClose={onClose}>
-      <div className="space-y-4">
+    <Modal title="Registrar Pago" onClose={onClose} wide>
+      <div className="space-y-5">
         <Field label="Alumno">
-          <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={form.alumno_id} onChange={set("alumno_id")}>
-            {students.filter(s => s.estado === "activo").map((s) => <option key={s.id} value={s.id}>{s.nombres} {s.apellidos}</option>)}
+          <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={alumnoId} onChange={(e) => setAlumnoId(e.target.value)}>
+            {activeStudents.map((s) => <option key={s.id} value={s.id}>{s.nombres} {s.apellidos}</option>)}
           </select>
         </Field>
-        <Field label="Tipo de Pago"><Select options={["Mensualidad", "Inscripción", "Examen", "Uniforme", "Otro"]} value={form.tipo} onChange={set("tipo")} /></Field>
+        <Field label="Tipo de Membresía">
+          <div className="grid grid-cols-3 gap-3 mt-1">
+            {MEMBRESIAS.map((m) => (
+              <button key={m.id} type="button" onClick={() => setTipoPago(m.id)}
+                className="p-4 rounded-2xl border text-center transition-all"
+                style={{ background: tipoPago === m.id ? `${m.color}25` : "rgba(255,255,255,0.03)", borderColor: tipoPago === m.id ? m.color : "rgba(255,255,255,0.1)" }}>
+                <p className="text-xs font-bold" style={{ color: tipoPago === m.id ? m.color : "#94a3b8" }}>{m.nombre.replace("Mensual ", "")}</p>
+                <p className="text-2xl font-black mt-1" style={{ fontFamily: "'Bebas Neue', sans-serif", color: tipoPago === m.id ? m.color : "white" }}>${m.precio}</p>
+                <p className="text-[11px] mt-0.5" style={{ color: tipoPago === m.id ? m.color : "#64748b" }}>
+                  {m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} sesiones`}
+                </p>
+              </button>
+            ))}
+          </div>
+        </Field>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Monto Total ($)"><Input type="number" value={form.monto} onChange={set("monto")} /></Field>
-          <Field label="Monto Pagado ($)"><Input type="number" value={form.monto_pagado} onChange={set("monto_pagado")} /></Field>
-          <Field label="Fecha Pago"><Input type="date" value={form.fecha_pago} onChange={set("fecha_pago")} /></Field>
-          <Field label="Fecha Vencimiento"><Input type="date" value={form.fecha_vencimiento} onChange={set("fecha_vencimiento")} /></Field>
+          <Field label={`Monto Pagado (Total: $${montoTotal})`}>
+            <Input type="number" value={montoPagado} onChange={(e) => setMontoPagado(e.target.value)} placeholder={`$${montoTotal}`} />
+          </Field>
+          <Field label="Deuda Restante">
+            <div className={`w-full rounded-xl px-4 py-2.5 text-sm font-bold border ${deuda > 0 ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"}`}>
+              ${deuda.toFixed(2)} {deuda === 0 ? "✓ Pagado completo" : "pendiente"}
+            </div>
+          </Field>
+          <Field label="Fecha Pago"><Input type="date" value={fechaPago} onChange={(e) => setFechaPago(e.target.value)} /></Field>
+          <Field label="Fecha Vencimiento"><Input type="date" value={fechaVenc} onChange={(e) => setFechaVenc(e.target.value)} /></Field>
         </div>
-        <Field label="Notas"><Textarea value={form.notas} onChange={set("notas")} placeholder="Observaciones del pago..." /></Field>
-        <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-sm">
-          <span className="text-slate-400">Deuda restante: </span>
-          <span className={`font-bold ${parseFloat(form.monto_pagado) >= parseFloat(form.monto) ? "text-emerald-400" : "text-amber-400"}`}>
-            ${Math.max(0, parseFloat(form.monto || 0) - parseFloat(form.monto_pagado || 0)).toFixed(2)}
-          </span>
-        </div>
+        <Field label="Notas"><Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Observaciones del pago..." /></Field>
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm font-semibold hover:bg-white/5">Cancelar</button>
@@ -370,25 +389,23 @@ const PagoForm = ({ students, onSave, onClose }) => {
   );
 };
 
-// ─── PAGES ────────────────────────────────────────────────────────────────────
-
-// DASHBOARD
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
 const DashboardPage = ({ students, pagos, asistencia }) => {
   const activos = students.filter((s) => s.estado === "activo").length;
   const vencidos = pagos.filter((p) => p.estado === "vencido").length;
   const ingresosMes = pagos.filter((p) => p.fecha_pago?.slice(0, 7) === fmt(today).slice(0, 7)).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0);
   const hoyPresentes = asistencia.filter((a) => a.fecha === fmt(today) && a.presente).length;
   const nuevos = students.filter((s) => s.fecha_inscripcion?.slice(0, 7) === fmt(today).slice(0, 7)).length;
-
   const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const chartData = meses.slice(0, today.getMonth() + 1).map((label, i) => ({
     label, value: pagos.filter((p) => parseInt(p.fecha_pago?.slice(5, 7)) === i + 1).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0),
   }));
-
   const alertas = [
     ...pagos.filter((p) => p.estado === "vencido").map((p) => ({ tipo: "error", msg: `⚠️ Pago vencido: ${p.alumno_nombre}` })),
     ...students.filter((s) => { const b = new Date(s.fecha_nacimiento); return b.getDate() === today.getDate() && b.getMonth() === today.getMonth(); }).map((s) => ({ tipo: "info", msg: `🎂 Cumpleaños: ${s.nombres} ${s.apellidos}` })),
   ];
+
+  const membresiasCount = MEMBRESIAS.map((m) => ({ ...m, count: students.filter((s) => s.membresia === m.id && s.estado === "activo").length }));
 
   return (
     <div className="space-y-8">
@@ -403,6 +420,21 @@ const DashboardPage = ({ students, pagos, asistencia }) => {
         <StatCard title="Ingresos Mes" value={`$${ingresosMes.toFixed(0)}`} sub="este mes" icon="finance" accent="amber" trend={12} />
         <StatCard title="Nuevos Alumnos" value={nuevos} sub="este mes" icon="students" accent="blue" />
       </div>
+
+      {/* MEMBRESÍAS STATS */}
+      <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>MEMBRESÍAS ACTIVAS</h3>
+        <div className="grid grid-cols-3 gap-4">
+          {membresiasCount.map((m) => (
+            <div key={m.id} className="rounded-2xl p-4 text-center border" style={{ background: `${m.color}12`, borderColor: `${m.color}30` }}>
+              <p className="text-xs font-bold text-slate-400">{m.nombre.replace("Mensual ", "")}</p>
+              <p className="text-4xl font-black mt-1" style={{ fontFamily: "'Bebas Neue', sans-serif", color: m.color }}>{m.count}</p>
+              <p className="text-xs mt-1" style={{ color: m.color }}>{m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} ses.`} · ${m.precio}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>INGRESOS {today.getFullYear()}</h3>
@@ -418,7 +450,7 @@ const DashboardPage = ({ students, pagos, asistencia }) => {
                 <div key={c} className="flex items-center gap-3">
                   <span className="text-xs text-slate-400 w-16">{c}</span>
                   <div className="flex-1 bg-white/5 rounded-full h-2">
-                    <div className="h-2 rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: cinturonColor[c] === "#ffffff" ? "#e2e8f0" : cinturonColor[c] }} />
+                    <div className="h-2 rounded-full" style={{ width: `${pct}%`, background: cinturonColor[c] === "#ffffff" ? "#e2e8f0" : cinturonColor[c] }} />
                   </div>
                   <span className="text-xs font-bold text-slate-300 w-6">{count}</span>
                 </div>
@@ -441,11 +473,12 @@ const DashboardPage = ({ students, pagos, asistencia }) => {
   );
 };
 
-// STUDENTS PAGE
+// ─── STUDENTS PAGE ────────────────────────────────────────────────────────────
 const StudentsPage = ({ students, setStudents }) => {
   const [search, setSearch] = useState("");
   const [filterSede, setFilterSede] = useState("Todas");
   const [filterEstado, setFilterEstado] = useState("Todos");
+  const [filterMembresia, setFilterMembresia] = useState("Todas");
   const [showForm, setShowForm] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
   const [viewStudent, setViewStudent] = useState(null);
@@ -455,16 +488,11 @@ const StudentsPage = ({ students, setStudents }) => {
     const match = `${s.nombres} ${s.apellidos} ${s.correo} ${s.telefono}`.toLowerCase().includes(q);
     const sede = filterSede === "Todas" || s.sede === filterSede;
     const estado = filterEstado === "Todos" || s.estado === filterEstado;
-    return match && sede && estado;
+    const mem = filterMembresia === "Todas" || s.membresia === filterMembresia;
+    return match && sede && estado && mem;
   });
 
-  const onSave = (data) => {
-    const updated = ls.get("hst_students", []);
-    setStudents(updated);
-    setShowForm(false);
-    setEditStudent(null);
-  };
-
+  const onSave = () => { setStudents(ls.get("hst_students", [])); setShowForm(false); setEditStudent(null); };
   const onDelete = (id) => {
     if (!confirm("¿Eliminar alumno?")) return;
     const updated = students.filter((s) => s.id !== id);
@@ -490,10 +518,11 @@ const StudentsPage = ({ students, setStudents }) => {
         </div>
         <Select options={["Todas", ...SEDES]} value={filterSede} onChange={(e) => setFilterSede(e.target.value)} />
         <Select options={["Todos", "activo", "inactivo"]} value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)} />
+        <Select options={["Todas", ...MEMBRESIAS.map((m) => m.id)]} value={filterMembresia} onChange={(e) => setFilterMembresia(e.target.value)} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((s) => (
-          <div key={s.id} className="group bg-white/3 border border-white/8 rounded-2xl p-5 hover:border-amber-400/30 hover:bg-white/5 transition-all duration-200">
+          <div key={s.id} className="group bg-white/3 border border-white/8 rounded-2xl p-5 hover:border-amber-400/30 hover:bg-white/5 transition-all">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black text-[#020617]" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
@@ -506,18 +535,18 @@ const StudentsPage = ({ students, setStudents }) => {
               </div>
               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.estado === "activo" ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-500/20 text-slate-400"}`}>{s.estado}</span>
             </div>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <BeltBadge cinturon={s.cinturon} />
-              <span className="px-2 py-0.5 rounded-full text-xs bg-blue-500/20 text-blue-400">{s.categoria}</span>
+              <MembresiaTag membresiaId={s.membresia} />
             </div>
             <div className="text-xs text-slate-500 space-y-1">
               <p>📱 {s.telefono}</p>
               <p>👤 {s.representante}</p>
             </div>
             <div className="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => setViewStudent(s)} className="flex-1 py-2 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30 transition-colors flex items-center justify-center gap-1"><Icon name="eye" className="w-3 h-3" /> Ver</button>
-              <button onClick={() => { setEditStudent(s); setShowForm(true); }} className="flex-1 py-2 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-semibold hover:bg-amber-500/30 transition-colors flex items-center justify-center gap-1"><Icon name="edit" className="w-3 h-3" /> Editar</button>
-              <button onClick={() => onDelete(s.id)} className="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30 transition-colors flex items-center justify-center gap-1"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>
+              <button onClick={() => setViewStudent(s)} className="flex-1 py-2 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30 flex items-center justify-center gap-1"><Icon name="eye" className="w-3 h-3" /> Ver</button>
+              <button onClick={() => { setEditStudent(s); setShowForm(true); }} className="flex-1 py-2 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-semibold hover:bg-amber-500/30 flex items-center justify-center gap-1"><Icon name="edit" className="w-3 h-3" /> Editar</button>
+              <button onClick={() => onDelete(s.id)} className="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30 flex items-center justify-center gap-1"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>
             </div>
           </div>
         ))}
@@ -530,7 +559,10 @@ const StudentsPage = ({ students, setStudents }) => {
               <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-[#020617]" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{viewStudent.nombres[0]}{viewStudent.apellidos[0]}</div>
               <div>
                 <h2 className="text-2xl font-black text-white">{viewStudent.nombres} {viewStudent.apellidos}</h2>
-                <div className="flex items-center gap-2 mt-1"><BeltBadge cinturon={viewStudent.cinturon} /><span className="text-sm text-slate-400">{viewStudent.categoria}</span></div>
+                <div className="flex items-center gap-2 mt-1">
+                  <BeltBadge cinturon={viewStudent.cinturon} />
+                  <MembresiaTag membresiaId={viewStudent.membresia} />
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -549,20 +581,22 @@ const StudentsPage = ({ students, setStudents }) => {
   );
 };
 
-// PAYMENTS PAGE
+// ─── PAYMENTS PAGE ────────────────────────────────────────────────────────────
 const PaymentsPage = ({ students, pagos, setPagos }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
 
   const filtered = filter === "Todos" ? pagos : pagos.filter((p) => p.estado === filter);
-
   const onSave = () => { setPagos(ls.get("hst_pagos", [])); setShowForm(false); };
 
-  const getDaysLeft = (fecha) => {
-    const diff = new Date(fecha) - today;
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  const onDelete = (id) => {
+    if (!confirm("¿Eliminar este pago?")) return;
+    const updated = pagos.filter((p) => p.id !== id);
+    ls.set("hst_pagos", updated);
+    setPagos(updated);
   };
 
+  const getDaysLeft = (fecha) => Math.ceil((new Date(fecha) - today) / (1000 * 60 * 60 * 24));
   const totalPendiente = pagos.filter((p) => p.estado !== "pagado").reduce((a, p) => a + (parseFloat(p.monto) - parseFloat(p.monto_pagado)), 0);
   const totalMes = pagos.filter((p) => p.fecha_pago?.slice(0, 7) === fmt(today).slice(0, 7)).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0);
 
@@ -582,13 +616,26 @@ const PaymentsPage = ({ students, pagos, setPagos }) => {
         <StatCard title="Deuda Total" value={`$${totalPendiente.toFixed(0)}`} icon="payments" accent="red" />
         <StatCard title="Pagos Vencidos" value={pagos.filter((p) => p.estado === "vencido").length} icon="payments" accent="amber" />
       </div>
-      <div className="flex gap-2">
+
+      {/* MEMBRESÍAS PRECIOS */}
+      <div className="grid grid-cols-3 gap-3">
+        {MEMBRESIAS.map((m) => (
+          <div key={m.id} className="rounded-2xl p-4 border text-center" style={{ background: `${m.color}12`, borderColor: `${m.color}30` }}>
+            <p className="text-xs font-bold text-slate-400">{m.nombre.replace("Mensual ", "")}</p>
+            <p className="text-2xl font-black mt-1" style={{ fontFamily: "'Bebas Neue', sans-serif", color: m.color }}>${m.precio}</p>
+            <p className="text-xs mt-0.5" style={{ color: m.color }}>{m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} sesiones`}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
         {["Todos", "pagado", "parcial", "vencido", "pendiente"].map((f) => (
           <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter === f ? "text-[#020617]" : "bg-white/5 text-slate-400 hover:bg-white/10"}`} style={filter === f ? { background: "linear-gradient(135deg, #f59e0b, #d97706)" } : {}}>
             {f === "Todos" ? "Todos" : pagoEstadoConfig[f]?.label}
           </button>
         ))}
       </div>
+
       <div className="space-y-3">
         {filtered.map((p) => {
           const dias = getDaysLeft(p.fecha_vencimiento);
@@ -596,14 +643,16 @@ const PaymentsPage = ({ students, pagos, setPagos }) => {
             <div key={p.id} className="bg-white/3 border border-white/8 rounded-2xl p-4 hover:border-white/15 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[#020617] font-black text-sm" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{p.alumno_nombre?.split(" ").map((n) => n[0]).join("").slice(0, 2)}</div>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[#020617] font-black text-sm" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
+                    {p.alumno_nombre?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                  </div>
                   <div>
                     <p className="font-bold text-white text-sm">{p.alumno_nombre}</p>
                     <p className="text-xs text-slate-500">{p.tipo} · {p.sede} · {p.fecha_pago}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-black text-white">${parseFloat(p.monto_pagado).toFixed(2)}<span className="text-sm text-slate-500">/{parseFloat(p.monto).toFixed(2)}</span></p>
+                  <p className="text-lg font-black text-white">${parseFloat(p.monto_pagado).toFixed(2)}<span className="text-sm text-slate-500">/${parseFloat(p.monto).toFixed(2)}</span></p>
                   <StatusBadge estado={p.estado} />
                 </div>
               </div>
@@ -615,9 +664,14 @@ const PaymentsPage = ({ students, pagos, setPagos }) => {
               </div>
               {p.estado !== "pagado" && (
                 <div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, (parseFloat(p.monto_pagado) / parseFloat(p.monto)) * 100)}%`, background: p.estado === "vencido" ? "#ef4444" : "#f59e0b" }} />
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, (parseFloat(p.monto_pagado) / parseFloat(p.monto)) * 100)}%`, background: p.estado === "vencido" ? "#ef4444" : "#f59e0b" }} />
                 </div>
               )}
+              <div className="flex justify-end mt-3">
+                <button onClick={() => onDelete(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30 transition-colors">
+                  <Icon name="trash" className="w-3 h-3" /> Eliminar pago
+                </button>
+              </div>
             </div>
           );
         })}
@@ -627,30 +681,20 @@ const PaymentsPage = ({ students, pagos, setPagos }) => {
   );
 };
 
-// ATTENDANCE PAGE
+// ─── ATTENDANCE PAGE ──────────────────────────────────────────────────────────
 const AttendancePage = ({ students, asistencia, setAsistencia }) => {
   const [fecha, setFecha] = useState(fmt(today));
   const [sede, setSede] = useState("Todas");
-
   const filteredStudents = students.filter((s) => s.estado === "activo" && (sede === "Todas" || s.sede === sede));
-
-  const getStatus = (studentId) => {
-    const reg = asistencia.find((a) => a.alumno_id === studentId && a.fecha === fecha);
-    return reg ? reg.presente : null;
-  };
-
+  const getStatus = (id) => { const r = asistencia.find((a) => a.alumno_id === id && a.fecha === fecha); return r ? r.presente : null; };
   const toggle = (student, presente) => {
     const existing = asistencia.find((a) => a.alumno_id === student.id && a.fecha === fecha);
     let updated;
-    if (existing) {
-      updated = asistencia.map((a) => a.alumno_id === student.id && a.fecha === fecha ? { ...a, presente } : a);
-    } else {
-      updated = [...asistencia, { id: Date.now().toString(), alumno_id: student.id, alumno_nombre: `${student.nombres} ${student.apellidos}`, fecha, presente, sede: student.sede }];
-    }
+    if (existing) { updated = asistencia.map((a) => a.alumno_id === student.id && a.fecha === fecha ? { ...a, presente } : a); }
+    else { updated = [...asistencia, { id: Date.now().toString(), alumno_id: student.id, alumno_nombre: `${student.nombres} ${student.apellidos}`, fecha, presente, sede: student.sede }]; }
     ls.set("hst_asistencia", updated);
     setAsistencia(updated);
   };
-
   const marcarTodos = (presente) => {
     let updated = [...asistencia];
     filteredStudents.forEach((s) => {
@@ -661,29 +705,26 @@ const AttendancePage = ({ students, asistencia, setAsistencia }) => {
     ls.set("hst_asistencia", updated);
     setAsistencia(updated);
   };
-
-  const presentesHoy = filteredStudents.filter((s) => getStatus(s.id) === true).length;
-  const ausentesHoy = filteredStudents.filter((s) => getStatus(s.id) === false).length;
-  const pct = filteredStudents.length ? Math.round((presentesHoy / filteredStudents.length) * 100) : 0;
+  const presentes = filteredStudents.filter((s) => getStatus(s.id) === true).length;
+  const ausentes = filteredStudents.filter((s) => getStatus(s.id) === false).length;
+  const pct = filteredStudents.length ? Math.round((presentes / filteredStudents.length) * 100) : 0;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>ASISTENCIA</h1>
-      </div>
+      <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>ASISTENCIA</h1>
       <div className="flex gap-3 flex-wrap">
-        <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-auto" />
+        <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ width: "auto" }} />
         <Select options={["Todas", ...SEDES]} value={sede} onChange={(e) => setSede(e.target.value)} />
-        <button onClick={() => marcarTodos(true)} className="px-4 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/30 transition-colors">✓ Todos Presentes</button>
-        <button onClick={() => marcarTodos(false)} className="px-4 py-2.5 rounded-xl bg-red-500/20 text-red-400 text-sm font-semibold hover:bg-red-500/30 transition-colors">✗ Todos Ausentes</button>
+        <button onClick={() => marcarTodos(true)} className="px-4 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/30">✓ Todos Presentes</button>
+        <button onClick={() => marcarTodos(false)} className="px-4 py-2.5 rounded-xl bg-red-500/20 text-red-400 text-sm font-semibold hover:bg-red-500/30">✗ Todos Ausentes</button>
       </div>
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-center">
-          <p className="text-3xl font-black text-emerald-400" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{presentesHoy}</p>
+          <p className="text-3xl font-black text-emerald-400" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{presentes}</p>
           <p className="text-xs text-slate-400 mt-1">Presentes</p>
         </div>
         <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center">
-          <p className="text-3xl font-black text-red-400" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{ausentesHoy}</p>
+          <p className="text-3xl font-black text-red-400" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>{ausentes}</p>
           <p className="text-xs text-slate-400 mt-1">Ausentes</p>
         </div>
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-center">
@@ -700,7 +741,7 @@ const AttendancePage = ({ students, asistencia, setAsistencia }) => {
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
                 <div>
                   <p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p>
-                  <div className="flex items-center gap-2 mt-0.5"><BeltBadge cinturon={s.cinturon} /><span className="text-xs text-slate-500">{s.sede}</span></div>
+                  <div className="flex items-center gap-2 mt-0.5"><BeltBadge cinturon={s.cinturon} /><MembresiaTag membresiaId={s.membresia} /></div>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -715,20 +756,17 @@ const AttendancePage = ({ students, asistencia, setAsistencia }) => {
   );
 };
 
-// BELTS PAGE
+// ─── BELTS PAGE ───────────────────────────────────────────────────────────────
 const BeltsPage = ({ students, setStudents }) => {
   const [selected, setSelected] = useState(null);
   const [newBelt, setNewBelt] = useState("");
-
   const upgrade = () => {
     if (!selected || !newBelt) return;
     const updated = students.map((s) => s.id === selected.id ? { ...s, cinturon: newBelt } : s);
     ls.set("hst_students", updated);
     setStudents(updated);
-    setSelected(null);
-    setNewBelt("");
+    setSelected(null); setNewBelt("");
   };
-
   return (
     <div className="space-y-6">
       <h1 className="text-4xl font-black text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>CINTURONES</h1>
@@ -750,18 +788,16 @@ const BeltsPage = ({ students, setStudents }) => {
           <Field label="Seleccionar Alumno">
             <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={selected?.id || ""} onChange={(e) => setSelected(students.find((s) => s.id === e.target.value) || null)}>
               <option value="">Seleccionar alumno...</option>
-              {students.filter(s => s.estado === "activo").map((s) => <option key={s.id} value={s.id}>{s.nombres} {s.apellidos} — {s.cinturon}</option>)}
+              {students.filter((s) => s.estado === "activo").map((s) => <option key={s.id} value={s.id}>{s.nombres} {s.apellidos} — {s.cinturon}</option>)}
             </select>
           </Field>
           <Field label="Nuevo Cinturón"><Select options={CINTURONES} value={newBelt || CINTURONES[0]} onChange={(e) => setNewBelt(e.target.value)} /></Field>
-          <Field label="Acción">
-            <button onClick={upgrade} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold mt-0" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>Registrar Ascenso</button>
-          </Field>
+          <Field label="Acción"><button onClick={upgrade} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>Registrar Ascenso</button></Field>
         </div>
       </div>
       <div className="space-y-2">
-        {students.filter(s => s.estado === "activo").map((s) => (
-          <div key={s.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-2xl hover:border-white/15 transition-colors">
+        {students.filter((s) => s.estado === "activo").map((s) => (
+          <div key={s.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-2xl hover:border-white/15">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
               <div>
@@ -777,19 +813,17 @@ const BeltsPage = ({ students, setStudents }) => {
   );
 };
 
-// RECEPTION PAGE
-const ReceptionPage = ({ students, setPagos, setAsistencia, asistencia, pagos }) => {
+// ─── RECEPTION PAGE ───────────────────────────────────────────────────────────
+const ReceptionPage = ({ students, pagos, setPagos, asistencia, setAsistencia }) => {
   const [search, setSearch] = useState("");
   const [found, setFound] = useState(null);
   const [msg, setMsg] = useState("");
-
   const doSearch = () => {
     const q = search.toLowerCase();
     const s = students.find((s) => `${s.nombres} ${s.apellidos}`.toLowerCase().includes(q) || s.telefono?.includes(q));
     setFound(s || null);
     if (!s) setMsg("No encontrado");
   };
-
   const marcarAsistencia = (student) => {
     const existing = asistencia.find((a) => a.alumno_id === student.id && a.fecha === fmt(today));
     if (existing) { setMsg("Ya registrado hoy"); return; }
@@ -799,8 +833,8 @@ const ReceptionPage = ({ students, setPagos, setAsistencia, asistencia, pagos })
     setMsg(`✅ Asistencia registrada: ${student.nombres}`);
     setTimeout(() => setMsg(""), 3000);
   };
-
   const pagoAlDia = found ? pagos.find((p) => p.alumno_id === found.id && p.estado === "pagado") : null;
+  const membresia = found ? MEMBRESIAS.find((m) => m.id === found.membresia) : null;
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
@@ -813,8 +847,7 @@ const ReceptionPage = ({ students, setPagos, setAsistencia, asistencia, pagos })
         <div className="flex gap-3">
           <div className="flex-1 relative">
             <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-            <input className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/50" placeholder="Nombre o teléfono..." value={search} onChange={(e) => { setSearch(e.target.value); if (e.target.value === "") setFound(null); }}
-              onKeyDown={(e) => e.key === "Enter" && doSearch()} />
+            <input className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/50" placeholder="Nombre o teléfono..." value={search} onChange={(e) => { setSearch(e.target.value); if (e.target.value === "") setFound(null); }} onKeyDown={(e) => e.key === "Enter" && doSearch()} />
           </div>
           <button onClick={doSearch} className="px-5 py-3 rounded-xl text-[#020617] font-bold" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>Buscar</button>
         </div>
@@ -826,7 +859,10 @@ const ReceptionPage = ({ students, setPagos, setAsistencia, asistencia, pagos })
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-[#020617]" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>{found.nombres[0]}{found.apellidos[0]}</div>
             <div>
               <h2 className="text-xl font-black text-white">{found.nombres} {found.apellidos}</h2>
-              <div className="flex items-center gap-2 mt-1"><BeltBadge cinturon={found.cinturon} /><span className="text-sm text-slate-400">{found.sede}</span></div>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <BeltBadge cinturon={found.cinturon} />
+                {membresia && <MembresiaTag membresiaId={found.membresia} />}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
@@ -834,10 +870,10 @@ const ReceptionPage = ({ students, setPagos, setAsistencia, asistencia, pagos })
             <StatusBadge estado={pagoAlDia ? "pagado" : "pendiente"} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => marcarAsistencia(found)} className="py-4 rounded-2xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2">
+            <button onClick={() => marcarAsistencia(found)} className="py-4 rounded-2xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 flex items-center justify-center gap-2">
               <Icon name="check" className="w-5 h-5" /> Marcar Asistencia
             </button>
-            <button onClick={() => { setSearch(""); setFound(null); }} className="py-4 rounded-2xl bg-white/10 text-white font-bold text-sm hover:bg-white/15 transition-colors flex items-center justify-center gap-2">
+            <button onClick={() => { setSearch(""); setFound(null); }} className="py-4 rounded-2xl bg-white/10 text-white font-bold text-sm hover:bg-white/15 flex items-center justify-center gap-2">
               <Icon name="x" className="w-5 h-5" /> Limpiar
             </button>
           </div>
@@ -847,9 +883,7 @@ const ReceptionPage = ({ students, setPagos, setAsistencia, asistencia, pagos })
         <p className="text-xs text-slate-500 mb-3 uppercase tracking-wider font-semibold">Asistencia Hoy — {fmt(today)}</p>
         <div className="space-y-2 max-h-60 overflow-y-auto">
           {asistencia.filter((a) => a.fecha === fmt(today) && a.presente).map((a) => (
-            <div key={a.id} className="flex items-center gap-2 text-sm text-emerald-400">
-              <Icon name="check" className="w-4 h-4" />{a.alumno_nombre}
-            </div>
+            <div key={a.id} className="flex items-center gap-2 text-sm text-emerald-400"><Icon name="check" className="w-4 h-4" />{a.alumno_nombre}</div>
           ))}
           {asistencia.filter((a) => a.fecha === fmt(today) && a.presente).length === 0 && <p className="text-slate-500 text-sm">Sin registros aún</p>}
         </div>
@@ -858,12 +892,13 @@ const ReceptionPage = ({ students, setPagos, setAsistencia, asistencia, pagos })
   );
 };
 
-// FINANCE PAGE
+// ─── FINANCE PAGE ─────────────────────────────────────────────────────────────
 const FinancePage = ({ pagos }) => {
   const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const byMonth = meses.map((label, i) => ({ label, value: pagos.filter((p) => parseInt(p.fecha_pago?.slice(5, 7)) === i + 1).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0) }));
   const bySede = SEDES.map((sede) => ({ sede, total: pagos.filter((p) => p.sede === sede).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0) }));
   const totalAnual = byMonth.reduce((a, m) => a + m.value, 0);
+  const byMembresia = MEMBRESIAS.map((m) => ({ ...m, total: pagos.filter((p) => p.tipo === m.nombre).reduce((a, p) => a + parseFloat(p.monto_pagado || 0), 0) }));
 
   return (
     <div className="space-y-6">
@@ -880,34 +915,35 @@ const FinancePage = ({ pagos }) => {
           <MiniBarChart data={byMonth} color="#f59e0b" />
         </div>
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>POR SEDE</h3>
+          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>POR MEMBRESÍA</h3>
+          {byMembresia.map(({ id, nombre, color, total }) => (
+            <div key={id} className="flex items-center justify-between p-3 rounded-xl mb-2 border" style={{ background: `${color}12`, borderColor: `${color}25` }}>
+              <span className="text-sm font-semibold" style={{ color }}>{nombre.replace("Mensual ", "")}</span>
+              <span className="font-bold text-white">${total.toFixed(2)}</span>
+            </div>
+          ))}
           {bySede.map(({ sede, total }) => (
             <div key={sede} className="flex items-center justify-between p-3 bg-white/5 rounded-xl mb-2">
-              <span className="text-sm text-slate-300">{sede}</span>
+              <span className="text-sm text-slate-300">📍 {sede}</span>
               <span className="font-bold text-amber-400">${total.toFixed(2)}</span>
             </div>
           ))}
         </div>
       </div>
       <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>HISTORIAL DE PAGOS</h3>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30 transition-colors">
-            <Icon name="download" className="w-4 h-4" /> Exportar CSV
-          </button>
-        </div>
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>HISTORIAL DE PAGOS</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10">
-                {["Alumno", "Tipo", "Monto", "Pagado", "Fecha", "Estado"].map((h) => <th key={h} className="text-left py-3 px-2 text-xs text-slate-500 font-semibold uppercase">{h}</th>)}
+                {["Alumno", "Membresía", "Monto", "Pagado", "Fecha", "Estado"].map((h) => <th key={h} className="text-left py-3 px-2 text-xs text-slate-500 font-semibold uppercase">{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {pagos.slice().reverse().map((p) => (
-                <tr key={p.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                <tr key={p.id} className="border-b border-white/5 hover:bg-white/3">
                   <td className="py-3 px-2 text-white font-medium">{p.alumno_nombre}</td>
-                  <td className="py-3 px-2 text-slate-400">{p.tipo}</td>
+                  <td className="py-3 px-2 text-slate-400 text-xs">{p.tipo}</td>
                   <td className="py-3 px-2 text-slate-300">${parseFloat(p.monto).toFixed(2)}</td>
                   <td className="py-3 px-2 text-emerald-400 font-semibold">${parseFloat(p.monto_pagado).toFixed(2)}</td>
                   <td className="py-3 px-2 text-slate-400">{p.fecha_pago}</td>
@@ -922,12 +958,11 @@ const FinancePage = ({ pagos }) => {
   );
 };
 
-// EVENTS PAGE
+// ─── EVENTS PAGE ──────────────────────────────────────────────────────────────
 const EventsPage = ({ eventos, setEventos }) => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ titulo: "", fecha: fmt(addDays(today, 7)), tipo: "examen", sede: "Ambas", descripcion: "" });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
   const save = () => {
     const data = { ...form, id: Date.now().toString() };
     const updated = [...eventos, data];
@@ -936,10 +971,7 @@ const EventsPage = ({ eventos, setEventos }) => {
     setShowForm(false);
     setForm({ titulo: "", fecha: fmt(addDays(today, 7)), tipo: "examen", sede: "Ambas", descripcion: "" });
   };
-
-  const tipoColors = { examen: "amber", torneo: "blue", campamento: "emerald", seminario: "purple" };
   const tipoIcons = { examen: "🥋", torneo: "🏆", campamento: "⛺", seminario: "📚" };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -952,7 +984,7 @@ const EventsPage = ({ eventos, setEventos }) => {
         {eventos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).map((e) => {
           const days = Math.ceil((new Date(e.fecha) - today) / (1000 * 60 * 60 * 24));
           return (
-            <div key={e.id} className="bg-white/3 border border-white/8 rounded-2xl p-5 hover:border-amber-400/20 transition-colors">
+            <div key={e.id} className="bg-white/3 border border-white/8 rounded-2xl p-5 hover:border-amber-400/20">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">{tipoIcons[e.tipo] || "📅"}</span>
@@ -963,7 +995,7 @@ const EventsPage = ({ eventos, setEventos }) => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400`}>{e.tipo}</span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400">{e.tipo}</span>
                   <p className={`text-xs mt-1 font-semibold ${days < 0 ? "text-red-400" : days < 7 ? "text-amber-400" : "text-emerald-400"}`}>
                     {days < 0 ? "Pasado" : days === 0 ? "¡Hoy!" : `En ${days} días`}
                   </p>
@@ -1041,8 +1073,6 @@ export default function App() {
   return (
     <div className="min-h-screen flex" style={{ background: "#020617", fontFamily: "'DM Sans', sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
-      {/* SIDEBAR */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 flex flex-col border-r border-white/8 transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`} style={{ background: "#080f1f" }}>
         <div className="p-6 border-b border-white/8">
           <div className="flex items-center gap-3">
@@ -1055,7 +1085,8 @@ export default function App() {
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
-            <button key={item.id} onClick={() => { setPage(item.id); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-150 ${page === item.id ? "text-[#020617]" : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+            <button key={item.id} onClick={() => { setPage(item.id); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${page === item.id ? "text-[#020617]" : "text-slate-400 hover:text-white hover:bg-white/5"}`}
               style={page === item.id ? { background: "linear-gradient(135deg, #f59e0b, #d97706)" } : {}}>
               <Icon name={item.icon} className="w-5 h-5 flex-shrink-0" />
               {item.label}
@@ -1070,24 +1101,18 @@ export default function App() {
               <p className="text-xs font-bold text-white truncate">{user.name}</p>
               <p className="text-[10px] text-slate-500 capitalize">{user.role}</p>
             </div>
-            <button onClick={() => setUser(null)} className="text-slate-500 hover:text-red-400 transition-colors"><Icon name="logout" className="w-4 h-4" /></button>
+            <button onClick={() => setUser(null)} className="text-slate-500 hover:text-red-400"><Icon name="logout" className="w-4 h-4" /></button>
           </div>
         </div>
       </aside>
-
-      {/* OVERLAY */}
       {sidebarOpen && <div className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-
-      {/* MAIN */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="flex items-center justify-between px-6 py-4 border-b border-white/8 lg:hidden" style={{ background: "#080f1f" }}>
           <button onClick={() => setSidebarOpen(true)} className="text-slate-400 hover:text-white"><Icon name="menu" /></button>
           <p className="font-black text-white text-sm" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.05em" }}>HST ACADEMY</p>
           <div className="w-8" />
         </header>
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8">
-          {pages[page]}
-        </main>
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8">{pages[page]}</main>
       </div>
     </div>
   );
