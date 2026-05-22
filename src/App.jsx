@@ -118,7 +118,7 @@ const PERMISOS = {
   alumno:   ["mi_asistencia","mis_pagos"],
 };
 
-const REFRESH_INTERVAL = 30000;
+const REFRESH_INTERVAL = 300000;
 
 // ─── ICONS ────────────────────────────────────────────────────────────────────
 const Icon = ({ name, className = "w-5 h-5" }) => {
