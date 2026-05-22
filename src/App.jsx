@@ -1,4 +1,3 @@
-cat > /mnt/user-data/outputs/taekwondo-academy.jsx << 'ENDOFFILE'
 import { useState, useEffect } from "react";
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
@@ -1199,4 +1198,3 @@ export default function App() {
     </div>
   );
 }
-ENDOFFILE
