@@ -449,6 +449,103 @@ const DashboardPage = ({ students, pagos, asistencia, ventas }) => {
 };
 
 // ─── STUDENTS PAGE ────────────────────────────────────────────────────────────
+const StudentFormModal = ({ student, reload, onClose }) => {
+  const [nombres, setNombres] = useState(student?.nombres || "");
+  const [apellidos, setApellidos] = useState(student?.apellidos || "");
+  const [fechaNac, setFechaNac] = useState(student?.fecha_nacimiento || "");
+  const [representante, setRepresentante] = useState(student?.representante || "");
+  const [telefono, setTelefono] = useState(student?.telefono || "");
+  const [correo, setCorreo] = useState(student?.correo || "");
+  const [direccion, setDireccion] = useState(student?.direccion || "");
+  const [sede, setSede] = useState(student?.sede || "Quito");
+  const [cinturon, setCinturon] = useState(student?.cinturon || "Blanco");
+  const [membresia, setMembresia] = useState(student?.membresia || "estandar");
+  const [estado, setEstado] = useState(student?.estado || "activo");
+  const [observaciones, setObservaciones] = useState(student?.observaciones || "");
+  const [fechaIns, setFechaIns] = useState(student?.fecha_inscripcion || fmt(today));
+  const [userPass, setUserPass] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const edadInfo = calcEdad(fechaNac);
+  const categoria = getCategoria(fechaNac);
+
+  const save = async () => {
+    if (!nombres || !apellidos) return;
+    setSaving(true);
+    const data = { nombres, apellidos, edad: edadInfo.total, fecha_nacimiento: fechaNac, representante, telefono, correo, direccion, sede, cinturon, membresia, estado, categoria, observaciones, fecha_inscripcion: fechaIns };
+    if (student) {
+      await db.update("students", student.id, data);
+    } else {
+      await db.insert("students", data);
+      if (correo && userPass) {
+        await db.insert("users", { nombre: `${nombres} ${apellidos}`, email: correo, password: userPass, role: "alumno" });
+      }
+    }
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={student ? "Editar Alumno" : "Nuevo Alumno"} onClose={onClose} wide>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Nombres"><Input value={nombres} onChange={e => setNombres(e.target.value)} placeholder="Nombres" /></Field>
+        <Field label="Apellidos"><Input value={apellidos} onChange={e => setApellidos(e.target.value)} placeholder="Apellidos" /></Field>
+        <Field label="Fecha de Nacimiento"><Input type="date" value={fechaNac} onChange={e => setFechaNac(e.target.value)} /></Field>
+        <Field label="Edad y Categoría (auto)">
+          <div className="flex items-center gap-2 h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
+            {fechaNac ? <><span className="text-white text-sm font-bold">{edadInfo.total} años</span><span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400">{categoria}</span></> : <span className="text-slate-500 text-sm">Ingresa fecha de nacimiento</span>}
+          </div>
+        </Field>
+        <Field label="Representante"><Input value={representante} onChange={e => setRepresentante(e.target.value)} placeholder="Representante" /></Field>
+        <Field label="Teléfono"><Input value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="0991234567" /></Field>
+        <Field label="Correo" className="col-span-2"><Input value={correo} onChange={e => setCorreo(e.target.value)} placeholder="correo@mail.com" /></Field>
+        {!student && (
+          <Field label="Contraseña de acceso alumno/padre" className="col-span-2">
+            <Input type="password" value={userPass} onChange={e => setUserPass(e.target.value)} placeholder="Mínimo 6 caracteres (opcional)" />
+            <p className="text-xs text-slate-500 mt-1">Si ingresas correo y contraseña se crea usuario automáticamente.</p>
+          </Field>
+        )}
+        <Field label="Dirección" className="col-span-2"><Input value={direccion} onChange={e => setDireccion(e.target.value)} placeholder="Dirección" /></Field>
+        <Field label="Sede">
+          <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={sede} onChange={e => setSede(e.target.value)}>
+            {SEDES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </Field>
+        <Field label="Estado">
+          <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={estado} onChange={e => setEstado(e.target.value)}>
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+        </Field>
+        <Field label="Cinturón">
+          <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={cinturon} onChange={e => setCinturon(e.target.value)}>
+            {CINTURONES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
+        <Field label="Membresía">
+          <div className="grid grid-cols-3 gap-2 mt-1">
+            {MEMBRESIAS.map(m => (
+              <button key={m.id} type="button" onClick={() => setMembresia(m.id)}
+                className="p-3 rounded-xl border text-center transition-all"
+                style={{ background: membresia === m.id ? `${m.color}30` : "rgba(255,255,255,0.03)", borderColor: membresia === m.id ? m.color : "rgba(255,255,255,0.1)", color: membresia === m.id ? m.color : "#94a3b8" }}>
+                <p className="text-xs font-bold">{m.nombre}</p>
+                <p className="text-[10px] mt-0.5">{m.sesiones === 999 ? "Ilimitadas" : `${m.sesiones} ses.`}</p>
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Fecha Inscripción"><Input type="date" value={fechaIns} onChange={e => setFechaIns(e.target.value)} /></Field>
+        <Field label="Observaciones" className="col-span-2"><Textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} /></Field>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving ? "Guardando..." : student ? "Guardar Cambios" : "Crear Alumno"}</button>
+      </div>
+    </Modal>
+  );
+};
+
 const StudentsPage = ({ students, reload, canEdit }) => {
   const [search, setSearch] = useState("");
   const [filterSede, setFilterSede] = useState("Todas");
@@ -615,7 +712,7 @@ const StudentsPage = ({ students, reload, canEdit }) => {
           </div>
         ))}
       </div>
-      {showForm && <StudentForm student={editStudent} onClose={()=>{ setShowForm(false); setEditStudent(null); }} />}
+      {showForm && <StudentFormModal student={editStudent} reload={reload} onClose={()=>{ setShowForm(false); setEditStudent(null); }} />}
       {viewStudent && (
         <Modal title="Perfil del Alumno" onClose={()=>setViewStudent(null)} wide>
           <div className="space-y-4">
