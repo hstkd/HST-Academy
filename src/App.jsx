@@ -120,12 +120,11 @@ const PRODUCTOS = [
   { id:"cab_cm",    nombre:"Cabezal con mica",      precio:60.00, cat:"implementos" },
   { id:"dobok_tr",  nombre:"Dobok tradicional",     precio:55.00, cat:"uniformes"   },
   { id:"dobok_po",  nombre:"Dobok poomsae",         precio:65.00, cat:"uniformes"   },
-  { id:"gal",       nombre:"Emisión GAL",           precio:13.00, cat:"otros"       },
 ];
 
 const PERMISOS = {
-  admin:    ["dashboard","students","payments","ventas","attendance","belts","finance","events","users"],
-  profesor: ["attendance","students","payments","ventas"],
+  admin:    ["dashboard","students","payments","ventas","attendance","examenes","finance","events","users"],
+  profesor: ["attendance","students","payments","ventas","examenes"],
   alumno:   ["mi_asistencia","mis_pagos"],
 };
 
@@ -139,6 +138,7 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
     ventas:       <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />,
     attendance:   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />,
     belt:         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />,
+    examenes:     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />,
     finance:      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
     calendar:     <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
     users:        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />,
@@ -388,12 +388,13 @@ const ChangePasswordModal = ({ currentUser, onClose }) => {
   );
 };
 
-const DashboardPage = ({ students, pagos, asistencia, ventas, eventos }) => {
+const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes }) => {
   const activos = students.filter(s=>s.estado==="activo").length;
   const vencidos = pagos.filter(p=>p.estado==="vencido").length;
   const ingresosMes = pagos.filter(p=>p.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
   const ventasMes = (ventas||[]).filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.total||0),0);
   const eventosMes = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
+  const examenesTotal = (examenes||[]).filter(ex=>ex.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,ex)=>a+parseFloat(ex.monto||0),0);
   const hoyPresentes = asistencia.filter(a=>a.fecha===fmt(today)&&a.presente).length;
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const chartData = meses.slice(0,today.getMonth()+1).map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
@@ -412,7 +413,7 @@ const DashboardPage = ({ students, pagos, asistencia, ventas, eventos }) => {
         <StatCard title="Total Alumnos" value={students.length} sub={`${activos} activos`} icon="students" accent="blue" />
         <StatCard title="Asistencia Hoy" value={hoyPresentes} icon="attendance" accent="emerald" />
         <StatCard title="Pagos Vencidos" value={vencidos} icon="payments" accent="red" />
-        <StatCard title="Ingresos Mes" value={`$${(ingresosMes+ventasMes+eventosMes).toFixed(0)}`} sub="Pagos+Ventas+Eventos" icon="finance" accent="amber" />
+        <StatCard title="Ingresos Mes" value={`$${(ingresosMes+ventasMes+eventosMes+examenesTotal).toFixed(0)}`} sub="Pagos+Ventas+Eventos+Exámenes" icon="finance" accent="amber" />
       </div>
       <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
         <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>MEMBRESÍAS ACTIVAS</h3>
@@ -784,7 +785,7 @@ const VentasPage = ({ ventas, reload, isAdmin }) => {
       <Modal title="Nueva Venta" onClose={onClose} wide>
         <div className="space-y-4">
           <div className="flex gap-2 flex-wrap">
-            {[{id:"todos",label:"Todos"},{id:"bebidas",label:"🥤 Bebidas"},{id:"implementos",label:"🥋 Implementos"},{id:"uniformes",label:"👕 Uniformes"},{id:"otros",label:"📋 Otros"}].map(c=>(
+            {[{id:"todos",label:"Todos"},{id:"bebidas",label:"🥤 Bebidas"},{id:"implementos",label:"🥋 Implementos"},{id:"uniformes",label:"👕 Uniformes"}].map(c=>(
               <button key={c.id} onClick={()=>setCatFilter(c.id)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${catFilter===c.id?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={catFilter===c.id?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>
                 {c.label}
               </button>
@@ -930,10 +931,14 @@ const AttendancePage = ({ students, asistencia, reload }) => {
   );
 };
 
-const BeltsPage = ({ students, reload }) => {
+const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
   const [selectedId, setSelectedId] = useState("");
   const [newBelt, setNewBelt] = useState(CINTURONES[0]);
   const [saving, setSaving] = useState(false);
+  const [galAlumnoId, setGalAlumnoId] = useState("");
+  const [galQty, setGalQty] = useState(1);
+  const [savingGal, setSavingGal] = useState(false);
+  const [tab, setTab] = useState("ascenso");
 
   const selectedStudent = students.find(s => s.id === selectedId);
   const costoInfo = selectedStudent ? COSTOS_ASCENSO[selectedStudent.cinturon] : null;
@@ -947,61 +952,157 @@ const BeltsPage = ({ students, reload }) => {
   };
 
   const upgrade = async () => {
-    if (!selectedId||!newBelt) return;
+    if (!selectedId || !newBelt) return;
     setSaving(true);
+    const costo = costoInfo?.costo || 0;
+    const al = students.find(s => s.id === selectedId);
     await db.update("students", selectedId, { cinturon: newBelt });
+    // Registrar ingreso del examen
+    await db.insert("examenes", {
+      alumno_id: selectedId,
+      alumno_nombre: `${al?.nombres} ${al?.apellidos}`,
+      tipo: `Ascenso ${al?.cinturon} → ${newBelt}`,
+      monto: costo,
+      fecha: fmt(today),
+    });
     await reload();
+    await reloadExamenes();
     setSaving(false);
     setSelectedId("");
   };
+
+  const registrarGal = async () => {
+    if (!galAlumnoId) return;
+    setSavingGal(true);
+    const al = students.find(s => s.id === galAlumnoId);
+    const qty = parseInt(galQty) || 1;
+    await db.insert("examenes", {
+      alumno_id: galAlumnoId,
+      alumno_nombre: `${al?.nombres} ${al?.apellidos}`,
+      tipo: `GAL${qty > 1 ? ` x${qty}` : ""}`,
+      monto: 13 * qty,
+      fecha: fmt(today),
+    });
+    await reloadExamenes();
+    setSavingGal(false);
+    setGalAlumnoId("");
+    setGalQty(1);
+  };
+
+  const totalExamenes = examenes.reduce((a,e)=>a+parseFloat(e.monto||0),0);
+  const totalMes = examenes.filter(e=>e.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,e)=>a+parseFloat(e.monto||0),0);
+
   return (
     <div className="space-y-6">
-      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>CINTURONES</h1>
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-        {CINTURONES.map(c=>{ const count=students.filter(s=>s.cinturon===c).length; return (
-          <div key={c} className="bg-white/3 border border-white/8 rounded-2xl p-3 text-center">
-            <div className="w-7 h-7 rounded-full mx-auto mb-2 border-2 border-white/20" style={{ background:cinturonColor[c] }} />
-            <p className="text-[10px] font-bold text-white leading-tight">{c}</p>
-            <p className="text-2xl font-black mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif", color:cinturonColor[c]==="#ffffff"?"#e2e8f0":cinturonColor[c] }}>{count}</p>
-          </div>
-        ); })}
+      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>EXÁMENES Y GALs</h1>
+
+      <div className="grid grid-cols-2 gap-4">
+        <StatCard title="Total Mes" value={`$${totalMes.toFixed(0)}`} icon="examenes" accent="amber" />
+        <StatCard title="Total Año" value={`$${totalExamenes.toFixed(0)}`} icon="examenes" accent="emerald" />
       </div>
-      <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-        <h2 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>ASCENSO DE CINTURÓN</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Field label="Alumno">
-            <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={selectedId} onChange={e=>handleSelectStudent(e.target.value)}>
-              <option value="">Seleccionar...</option>
-              {students.filter(s=>s.estado==="activo").map(s=><option key={s.id} value={s.id}>{s.nombres} {s.apellidos} — {s.cinturon}</option>)}
-            </select>
-          </Field>
-          <Field label="Nuevo Cinturón">
-            <Select options={CINTURONES} value={newBelt} onChange={e=>setNewBelt(e.target.value)} />
-            {costoInfo && costoInfo.costo > 0 && (
-              <div className="mt-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 font-semibold">
-                💰 Costo del examen: ${costoInfo.costo}.00
-              </div>
-            )}
-          </Field>
-          <Field label="Acción"><button onClick={upgrade} disabled={saving||!selectedId} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar Ascenso"}</button></Field>
-        </div>
-      </div>
-      <div className="space-y-2">
-        {students.filter(s=>s.estado==="activo").map(s=>(
-          <div key={s.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-2xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
-              <div><p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p><div className="flex gap-1 mt-0.5"><CategoriaBadge categoria={s.categoria||getCategoria(s.fecha_nacimiento)} /><span className="text-xs text-slate-500">· {s.sede}</span></div></div>
-            </div>
-            <BeltBadge cinturon={s.cinturon} />
-          </div>
+
+      {/* TABS */}
+      <div className="flex gap-2">
+        {[{id:"ascenso",label:"🥋 Ascenso de Cinturón"},{id:"gal",label:"📋 Emisión GAL"},{id:"historial",label:"📊 Historial"}].map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab===t.id?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={tab===t.id?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>{t.label}</button>
         ))}
       </div>
+
+      {/* ASCENSO */}
+      {tab==="ascenso" && <>
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+          {CINTURONES.map(c=>{ const count=students.filter(s=>s.cinturon===c).length; return (
+            <div key={c} className="bg-white/3 border border-white/8 rounded-2xl p-3 text-center">
+              <div className="w-7 h-7 rounded-full mx-auto mb-2 border-2 border-white/20" style={{ background:cinturonColor[c] }} />
+              <p className="text-[10px] font-bold text-white leading-tight">{c}</p>
+              <p className="text-2xl font-black mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif", color:cinturonColor[c]==="#ffffff"?"#e2e8f0":cinturonColor[c] }}>{count}</p>
+            </div>
+          ); })}
+        </div>
+        <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
+          <h2 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>REGISTRAR ASCENSO</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Field label="Alumno">
+              <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={selectedId} onChange={e=>handleSelectStudent(e.target.value)}>
+                <option value="">Seleccionar...</option>
+                {students.filter(s=>s.estado==="activo").map(s=><option key={s.id} value={s.id}>{s.nombres} {s.apellidos} — {s.cinturon}</option>)}
+              </select>
+            </Field>
+            <Field label="Nuevo Cinturón">
+              <Select options={CINTURONES} value={newBelt} onChange={e=>setNewBelt(e.target.value)} />
+              {costoInfo && costoInfo.costo > 0 && (
+                <div className="mt-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 font-semibold">
+                  💰 Costo del examen: ${costoInfo.costo}.00
+                </div>
+              )}
+            </Field>
+            <Field label="Acción">
+              <button onClick={upgrade} disabled={saving||!selectedId} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar Ascenso"}</button>
+            </Field>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {students.filter(s=>s.estado==="activo").map(s=>(
+            <div key={s.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
+                <div><p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p><div className="flex gap-1 mt-0.5"><CategoriaBadge categoria={s.categoria||getCategoria(s.fecha_nacimiento)} /><span className="text-xs text-slate-500">· {s.sede}</span></div></div>
+              </div>
+              <BeltBadge cinturon={s.cinturon} />
+            </div>
+          ))}
+        </div>
+      </>}
+
+      {/* GAL */}
+      {tab==="gal" && (
+        <div className="bg-white/3 border border-white/8 rounded-2xl p-6 space-y-4">
+          <h2 className="text-lg font-bold text-white mb-2" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>EMISIÓN DE GAL</h2>
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm text-amber-400">
+            💰 Valor por GAL: <span className="font-black">$13.00</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Field label="Alumno">
+              <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={galAlumnoId} onChange={e=>setGalAlumnoId(e.target.value)}>
+                <option value="">Seleccionar alumno...</option>
+                {students.filter(s=>s.estado==="activo").map(s=><option key={s.id} value={s.id}>{s.nombres} {s.apellidos}</option>)}
+              </select>
+            </Field>
+            <Field label="Cantidad de GALs">
+              <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" min="1" value={galQty} onChange={e=>setGalQty(e.target.value)} />
+              {galQty>0 && <p className="text-xs text-emerald-400 mt-1 font-semibold">Total: ${(13*parseInt(galQty||1)).toFixed(2)}</p>}
+            </Field>
+            <Field label="Acción">
+              <button onClick={registrarGal} disabled={savingGal||!galAlumnoId} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{savingGal?"Registrando...":"Registrar GAL"}</button>
+            </Field>
+          </div>
+        </div>
+      )}
+
+      {/* HISTORIAL */}
+      {tab==="historial" && (
+        <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
+          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>HISTORIAL</h3>
+          <div className="space-y-2">
+            {examenes.length===0 && <p className="text-slate-500 text-sm text-center py-4">Sin registros aún</p>}
+            {examenes.map(ex=>(
+              <div key={ex.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+                <div>
+                  <p className="text-sm font-semibold text-white">{ex.alumno_nombre}</p>
+                  <p className="text-xs text-slate-500">{ex.tipo} · {ex.fecha}</p>
+                </div>
+                <span className="text-lg font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${parseFloat(ex.monto||0).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const FinancePage = ({ pagos, ventas, eventos }) => {
+
+const FinancePage = ({ pagos, ventas, eventos, examenes }) => {
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const byMonth = meses.map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
   const ventasByMonth = meses.map((label,i)=>({ label, value:(ventas||[]).filter(v=>parseInt(v.fecha?.slice(5,7))===i+1).reduce((a,v)=>a+parseFloat(v.total||0),0) }));
@@ -1009,6 +1110,8 @@ const FinancePage = ({ pagos, ventas, eventos }) => {
   const totalVentas = ventasByMonth.reduce((a,m)=>a+m.value,0);
   // Ingresos de eventos (participantes pagados)
   const totalEventos = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
+  // Ingresos de exámenes y GALs
+  const totalExamenes = (examenes||[]).reduce((a,ex)=>a+parseFloat(ex.monto||0),0);
   const bySede = SEDES.map(sede=>({ sede, total:pagos.filter(p=>p.sede===sede).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
   return (
     <div className="space-y-6">
@@ -1017,7 +1120,7 @@ const FinancePage = ({ pagos, ventas, eventos }) => {
         <StatCard title="Mensualidades" value={`$${totalAnual.toFixed(0)}`} icon="finance" accent="amber" />
         <StatCard title="Ventas" value={`$${totalVentas.toFixed(0)}`} icon="ventas" accent="purple" />
         <StatCard title="Eventos" value={`$${totalEventos.toFixed(0)}`} icon="calendar" accent="blue" />
-        <StatCard title="Total Año" value={`$${(totalAnual+totalVentas+totalEventos).toFixed(0)}`} icon="finance" accent="emerald" />
+        <StatCard title="Total Año" value={`$${(totalAnual+totalVentas+totalEventos+totalExamenes).toFixed(0)}`} icon="finance" accent="emerald" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
@@ -1378,20 +1481,27 @@ export default function App() {
   const [asistencia, setAsistencia] = useState([]);
   const [eventos, setEventos] = useState([]);
   const [ventas, setVentas] = useState([]);
+  const [examenes, setExamenes] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showChangePass, setShowChangePass] = useState(false);
   const refreshRef = useRef(null);
 
   const loadAll = useCallback(async () => {
-    const [s,p,a,e,v] = await Promise.all([
-      db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"),
+    const [s,p,a,e,v,ex] = await Promise.all([
+      db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"),
     ]);
     setStudents(Array.isArray(s)?s:[]);
     setPagos(Array.isArray(p)?p:[]);
     setAsistencia(Array.isArray(a)?a:[]);
     setEventos(Array.isArray(e)?e:[]);
     setVentas(Array.isArray(v)?v:[]);
+    setExamenes(Array.isArray(ex)?ex:[]);
+  }, []);
+
+  const reloadExamenes = useCallback(async () => {
+    const ex = await db.get("examenes");
+    setExamenes(Array.isArray(ex)?ex:[]);
   }, []);
 
   const reloadUsers = useCallback(async () => {
@@ -1437,7 +1547,7 @@ export default function App() {
     { id:"payments",      label:"Pagos",        icon:"payments"     },
     { id:"ventas",        label:"Ventas",       icon:"ventas"       },
     { id:"attendance",    label:"Asistencia",   icon:"attendance"   },
-    { id:"belts",         label:"Cinturones",   icon:"belt"         },
+    { id:"examenes",      label:"Exámenes",     icon:"examenes"     },
     { id:"finance",       label:"Finanzas",     icon:"finance"      },
     { id:"events",        label:"Eventos",      icon:"calendar"     },
     { id:"users",         label:"Usuarios",     icon:"users"        },
@@ -1452,13 +1562,13 @@ export default function App() {
   const renderPage = () => {
     if (loading) return <Spinner />;
     switch(page) {
-      case "dashboard":     return <DashboardPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} eventos={eventos} />;
+      case "dashboard":     return <DashboardPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} eventos={eventos} examenes={examenes} />;
       case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} />;
       case "payments":      return <PaymentsPage students={students} pagos={pagos} reload={loadAll} isAdmin={isAdmin} />;
       case "ventas":        return <VentasPage ventas={ventas} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
-      case "belts":         return <BeltsPage students={students} reload={loadAll} />;
-      case "finance":       return <FinancePage pagos={pagos} ventas={ventas} eventos={eventos} />;
+      case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} />;
+      case "finance":       return <FinancePage pagos={pagos} ventas={ventas} eventos={eventos} examenes={examenes} />;
       case "events":        return <EventsPage eventos={eventos} students={students} reload={loadAll} />;
       case "users":         return <UsersPage currentUser={user} setCurrentUser={setUser} allUsers={allUsers} reloadUsers={reloadUsers} />;
       case "mi_asistencia": return <MiAsistenciaPage currentUser={user} students={students} asistencia={asistencia} />;
