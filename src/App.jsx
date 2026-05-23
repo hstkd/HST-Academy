@@ -57,11 +57,14 @@ const calcEdad = (fechaNac) => {
 
 const getCategoria = (fechaNac) => {
   if (!fechaNac) return "Infantil";
-  const { years, months, days } = calcEdad(fechaNac);
-  if (years < 11 || (years === 11 && months === 0 && days === 0)) return "Infantil";
-  if (years < 14 || (years === 14 && months === 0 && days === 0)) return "Cadete";
-  if (years < 17 || (years === 17 && months === 0 && days === 0)) return "Junior";
-  return "Senior";
+  const currentYear = new Date().getFullYear();
+  const birthYear = new Date(fechaNac).getFullYear();
+  const ageThisYear = currentYear - birthYear;
+  if (ageThisYear <= 11) return "Infantil";
+  if (ageThisYear <= 14) return "Cadete";
+  if (ageThisYear <= 17) return "Junior";
+  if (ageThisYear <= 30) return "Senior";
+  return "Máster";
 };
 
 const MEMBRESIAS = [
@@ -72,6 +75,20 @@ const MEMBRESIAS = [
 
 const CINTURONES = ["Blanco","Blanco/Amarillo","Amarillo","Amarillo/Verde","Verde","Verde/Azul","Azul","Azul/Rojo","Rojo","Rojo/Negro","Negro"];
 const SEDES = ["Quito","Cumbayá"];
+
+const COSTOS_ASCENSO = {
+  "Blanco":          { siguiente:"Blanco/Amarillo", costo:45  },
+  "Blanco/Amarillo": { siguiente:"Amarillo",        costo:50  },
+  "Amarillo":        { siguiente:"Amarillo/Verde",  costo:55  },
+  "Amarillo/Verde":  { siguiente:"Verde",           costo:60  },
+  "Verde":           { siguiente:"Verde/Azul",      costo:65  },
+  "Verde/Azul":      { siguiente:"Azul",            costo:70  },
+  "Azul":            { siguiente:"Azul/Rojo",       costo:75  },
+  "Azul/Rojo":       { siguiente:"Rojo",            costo:80  },
+  "Rojo":            { siguiente:"Rojo/Negro",      costo:90  },
+  "Rojo/Negro":      { siguiente:"Negro",           costo:100 },
+  "Negro":           { siguiente:null,              costo:0   },
+};
 
 const cinturonColor = {
   Blanco:"#ffffff","Blanco/Amarillo":"#fef08a",Amarillo:"#fbbf24",
@@ -88,19 +105,22 @@ const pagoEstadoConfig = {
 };
 
 const PRODUCTOS = [
-  { id:"agua_p",    nombre:"Agua pequeña",      precio:0.50,  cat:"bebidas" },
-  { id:"agua_g",    nombre:"Agua grande",        precio:0.75,  cat:"bebidas" },
-  { id:"pow_p",     nombre:"Powerade pequeño",   precio:0.75,  cat:"bebidas" },
-  { id:"pow_g",     nombre:"Powerade grande",    precio:1.15,  cat:"bebidas" },
-  { id:"canilleras",nombre:"Canilleras",         precio:30.00, cat:"implementos" },
-  { id:"braceras",  nombre:"Braceras",           precio:30.00, cat:"implementos" },
-  { id:"guantes",   nombre:"Guantes",            precio:30.00, cat:"implementos" },
-  { id:"empeineras",nombre:"Empeineras",         precio:30.00, cat:"implementos" },
-  { id:"bucal",     nombre:"Bucal",              precio:5.00,  cat:"implementos" },
-  { id:"ing",       nombre:"Protector inguinal", precio:25.00, cat:"implementos" },
-  { id:"peto",      nombre:"Peto",               precio:45.00, cat:"implementos" },
-  { id:"cab_sm",    nombre:"Cabezal sin mica",   precio:45.00, cat:"implementos" },
-  { id:"cab_cm",    nombre:"Cabezal con mica",   precio:60.00, cat:"implementos" },
+  { id:"agua_p",    nombre:"Agua pequeña",         precio:0.50,  cat:"bebidas"     },
+  { id:"agua_g",    nombre:"Agua grande",           precio:0.75,  cat:"bebidas"     },
+  { id:"pow_p",     nombre:"Powerade pequeño",      precio:0.75,  cat:"bebidas"     },
+  { id:"pow_g",     nombre:"Powerade grande",       precio:1.15,  cat:"bebidas"     },
+  { id:"canilleras",nombre:"Canilleras",            precio:30.00, cat:"implementos" },
+  { id:"braceras",  nombre:"Braceras",              precio:30.00, cat:"implementos" },
+  { id:"guantes",   nombre:"Guantes",               precio:30.00, cat:"implementos" },
+  { id:"empeineras",nombre:"Empeineras",            precio:30.00, cat:"implementos" },
+  { id:"bucal",     nombre:"Bucal",                 precio:5.00,  cat:"implementos" },
+  { id:"ing",       nombre:"Protector inguinal",    precio:25.00, cat:"implementos" },
+  { id:"peto",      nombre:"Peto",                  precio:45.00, cat:"implementos" },
+  { id:"cab_sm",    nombre:"Cabezal sin mica",      precio:45.00, cat:"implementos" },
+  { id:"cab_cm",    nombre:"Cabezal con mica",      precio:60.00, cat:"implementos" },
+  { id:"dobok_tr",  nombre:"Dobok tradicional",     precio:55.00, cat:"uniformes"   },
+  { id:"dobok_po",  nombre:"Dobok poomsae",         precio:65.00, cat:"uniformes"   },
+  { id:"gal",       nombre:"Emisión GAL",           precio:13.00, cat:"otros"       },
 ];
 
 const PERMISOS = {
@@ -368,11 +388,12 @@ const ChangePasswordModal = ({ currentUser, onClose }) => {
   );
 };
 
-const DashboardPage = ({ students, pagos, asistencia, ventas }) => {
+const DashboardPage = ({ students, pagos, asistencia, ventas, eventos }) => {
   const activos = students.filter(s=>s.estado==="activo").length;
   const vencidos = pagos.filter(p=>p.estado==="vencido").length;
   const ingresosMes = pagos.filter(p=>p.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
   const ventasMes = (ventas||[]).filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.total||0),0);
+  const eventosMes = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
   const hoyPresentes = asistencia.filter(a=>a.fecha===fmt(today)&&a.presente).length;
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const chartData = meses.slice(0,today.getMonth()+1).map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
@@ -391,7 +412,7 @@ const DashboardPage = ({ students, pagos, asistencia, ventas }) => {
         <StatCard title="Total Alumnos" value={students.length} sub={`${activos} activos`} icon="students" accent="blue" />
         <StatCard title="Asistencia Hoy" value={hoyPresentes} icon="attendance" accent="emerald" />
         <StatCard title="Pagos Vencidos" value={vencidos} icon="payments" accent="red" />
-        <StatCard title="Ingresos Mes" value={`$${(ingresosMes+ventasMes).toFixed(0)}`} sub="Pagos+Ventas" icon="finance" accent="amber" />
+        <StatCard title="Ingresos Mes" value={`$${(ingresosMes+ventasMes+eventosMes).toFixed(0)}`} sub="Pagos+Ventas+Eventos" icon="finance" accent="amber" />
       </div>
       <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
         <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>MEMBRESÍAS ACTIVAS</h3>
@@ -762,10 +783,10 @@ const VentasPage = ({ ventas, reload, isAdmin }) => {
     return (
       <Modal title="Nueva Venta" onClose={onClose} wide>
         <div className="space-y-4">
-          <div className="flex gap-2">
-            {["todos","bebidas","implementos"].map(c=>(
-              <button key={c} onClick={()=>setCatFilter(c)} className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all ${catFilter===c?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={catFilter===c?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>
-                {c==="todos"?"Todos":c==="bebidas"?"🥤 Bebidas":"🥋 Implementos"}
+          <div className="flex gap-2 flex-wrap">
+            {[{id:"todos",label:"Todos"},{id:"bebidas",label:"🥤 Bebidas"},{id:"implementos",label:"🥋 Implementos"},{id:"uniformes",label:"👕 Uniformes"},{id:"otros",label:"📋 Otros"}].map(c=>(
+              <button key={c.id} onClick={()=>setCatFilter(c.id)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${catFilter===c.id?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={catFilter===c.id?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>
+                {c.label}
               </button>
             ))}
           </div>
@@ -913,10 +934,22 @@ const BeltsPage = ({ students, reload }) => {
   const [selectedId, setSelectedId] = useState("");
   const [newBelt, setNewBelt] = useState(CINTURONES[0]);
   const [saving, setSaving] = useState(false);
+
+  const selectedStudent = students.find(s => s.id === selectedId);
+  const costoInfo = selectedStudent ? COSTOS_ASCENSO[selectedStudent.cinturon] : null;
+
+  const handleSelectStudent = (id) => {
+    setSelectedId(id);
+    const st = students.find(s => s.id === id);
+    if (st && COSTOS_ASCENSO[st.cinturon]?.siguiente) {
+      setNewBelt(COSTOS_ASCENSO[st.cinturon].siguiente);
+    }
+  };
+
   const upgrade = async () => {
     if (!selectedId||!newBelt) return;
     setSaving(true);
-    await db.update("students",selectedId,{ cinturon:newBelt });
+    await db.update("students", selectedId, { cinturon: newBelt });
     await reload();
     setSaving(false);
     setSelectedId("");
@@ -937,13 +970,20 @@ const BeltsPage = ({ students, reload }) => {
         <h2 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>ASCENSO DE CINTURÓN</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Field label="Alumno">
-            <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={selectedId} onChange={e=>setSelectedId(e.target.value)}>
+            <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={selectedId} onChange={e=>handleSelectStudent(e.target.value)}>
               <option value="">Seleccionar...</option>
               {students.filter(s=>s.estado==="activo").map(s=><option key={s.id} value={s.id}>{s.nombres} {s.apellidos} — {s.cinturon}</option>)}
             </select>
           </Field>
-          <Field label="Nuevo Cinturón"><Select options={CINTURONES} value={newBelt} onChange={e=>setNewBelt(e.target.value)} /></Field>
-          <Field label="Acción"><button onClick={upgrade} disabled={saving} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar Ascenso"}</button></Field>
+          <Field label="Nuevo Cinturón">
+            <Select options={CINTURONES} value={newBelt} onChange={e=>setNewBelt(e.target.value)} />
+            {costoInfo && costoInfo.costo > 0 && (
+              <div className="mt-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 font-semibold">
+                💰 Costo del examen: ${costoInfo.costo}.00
+              </div>
+            )}
+          </Field>
+          <Field label="Acción"><button onClick={upgrade} disabled={saving||!selectedId} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar Ascenso"}</button></Field>
         </div>
       </div>
       <div className="space-y-2">
@@ -961,21 +1001,23 @@ const BeltsPage = ({ students, reload }) => {
   );
 };
 
-const FinancePage = ({ pagos, ventas }) => {
+const FinancePage = ({ pagos, ventas, eventos }) => {
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const byMonth = meses.map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
   const ventasByMonth = meses.map((label,i)=>({ label, value:(ventas||[]).filter(v=>parseInt(v.fecha?.slice(5,7))===i+1).reduce((a,v)=>a+parseFloat(v.total||0),0) }));
   const totalAnual = byMonth.reduce((a,m)=>a+m.value,0);
   const totalVentas = ventasByMonth.reduce((a,m)=>a+m.value,0);
+  // Ingresos de eventos (participantes pagados)
+  const totalEventos = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
   const bySede = SEDES.map(sede=>({ sede, total:pagos.filter(p=>p.sede===sede).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
   return (
     <div className="space-y-6">
       <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>FINANZAS</h1>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Mensualidades Año" value={`$${totalAnual.toFixed(0)}`} icon="finance" accent="amber" />
-        <StatCard title="Ventas Año" value={`$${totalVentas.toFixed(0)}`} icon="ventas" accent="purple" />
-        <StatCard title="Total Año" value={`$${(totalAnual+totalVentas).toFixed(0)}`} icon="finance" accent="emerald" />
-        <StatCard title="Registros" value={pagos.length} icon="payments" accent="blue" />
+        <StatCard title="Mensualidades" value={`$${totalAnual.toFixed(0)}`} icon="finance" accent="amber" />
+        <StatCard title="Ventas" value={`$${totalVentas.toFixed(0)}`} icon="ventas" accent="purple" />
+        <StatCard title="Eventos" value={`$${totalEventos.toFixed(0)}`} icon="calendar" accent="blue" />
+        <StatCard title="Total Año" value={`$${(totalAnual+totalVentas+totalEventos).toFixed(0)}`} icon="finance" accent="emerald" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
@@ -1361,7 +1403,21 @@ export default function App() {
     if (!user) return;
     setLoading(true);
     Promise.all([loadAll(), reloadUsers()]).finally(()=>setLoading(false));
-    refreshRef.current = setInterval(loadAll, REFRESH_INTERVAL);
+    refreshRef.current = setInterval(async () => {
+      await loadAll();
+      // Auto-inactivar alumnos sin asistencia en 30 días
+      const sts = await db.get("students", "&estado=eq.activo");
+      const asist = await db.get("asistencia");
+      if (Array.isArray(sts) && Array.isArray(asist)) {
+        const hace30 = new Date(); hace30.setDate(hace30.getDate()-30);
+        for (const st of sts) {
+          const ultima = asist.filter(a=>a.alumno_id===st.id&&a.presente).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+          if (!ultima || new Date(ultima.fecha) < hace30) {
+            await db.update("students", st.id, { estado:"inactivo" });
+          }
+        }
+      }
+    }, REFRESH_INTERVAL);
     return () => clearInterval(refreshRef.current);
   }, [user]);
 
@@ -1396,13 +1452,13 @@ export default function App() {
   const renderPage = () => {
     if (loading) return <Spinner />;
     switch(page) {
-      case "dashboard":     return <DashboardPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} />;
+      case "dashboard":     return <DashboardPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} eventos={eventos} />;
       case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} />;
       case "payments":      return <PaymentsPage students={students} pagos={pagos} reload={loadAll} isAdmin={isAdmin} />;
       case "ventas":        return <VentasPage ventas={ventas} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
       case "belts":         return <BeltsPage students={students} reload={loadAll} />;
-      case "finance":       return <FinancePage pagos={pagos} ventas={ventas} />;
+      case "finance":       return <FinancePage pagos={pagos} ventas={ventas} eventos={eventos} />;
       case "events":        return <EventsPage eventos={eventos} students={students} reload={loadAll} />;
       case "users":         return <UsersPage currentUser={user} setCurrentUser={setUser} allUsers={allUsers} reloadUsers={reloadUsers} />;
       case "mi_asistencia": return <MiAsistenciaPage currentUser={user} students={students} asistencia={asistencia} />;
