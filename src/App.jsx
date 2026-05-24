@@ -399,8 +399,18 @@ const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes 
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const chartData = meses.slice(0,today.getMonth()+1).map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
   const memCounts = MEMBRESIAS.map(m=>({ ...m, count:students.filter(s=>s.membresia===m.id&&s.estado==="activo").length }));
+  // Auto-actualizar estados vencidos
+  const pagosConEstadoReal = pagos.map(p => {
+    if (p.estado !== "pagado" && p.fecha_vencimiento) {
+      const dias = Math.ceil((new Date(p.fecha_vencimiento) - today) / 86400000);
+      if (dias < 0) return { ...p, estado: "vencido" };
+    }
+    return p;
+  });
+
   const alertas = [
-    ...pagos.filter(p=>p.estado==="vencido").map(p=>({ tipo:"error", msg:`⚠️ Pago vencido: ${p.alumno_nombre}` })),
+    ...pagosConEstadoReal.filter(p=>p.estado==="vencido").map(p=>({ tipo:"error", msg:`🔴 Pago VENCIDO: ${p.alumno_nombre} — debe $${(parseFloat(p.monto)-parseFloat(p.monto_pagado)).toFixed(2)}` })),
+    ...pagosConEstadoReal.filter(p=>p.estado!=="pagado"&&p.fecha_vencimiento&&Math.ceil((new Date(p.fecha_vencimiento)-today)/86400000)>=0&&Math.ceil((new Date(p.fecha_vencimiento)-today)/86400000)<=5).map(p=>{ const dias=Math.ceil((new Date(p.fecha_vencimiento)-today)/86400000); return { tipo:"warn", msg:`🟡 Vence en ${dias} día(s): ${p.alumno_nombre}` }; }),
     ...students.filter(s=>{ const b=new Date(s.fecha_nacimiento); return b.getDate()===today.getDate()&&b.getMonth()===today.getMonth(); }).map(s=>({ tipo:"info", msg:`🎂 Cumpleaños: ${s.nombres} ${s.apellidos}` })),
   ];
   return (
@@ -448,7 +458,7 @@ const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes 
       {alertas.length>0&&(
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-amber-400 mb-3" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>⚡ ALERTAS</h3>
-          <div className="space-y-2">{alertas.map((a,i)=><div key={i} className={`p-3 rounded-xl text-sm ${a.tipo==="error"?"bg-red-500/10 text-red-400":"bg-blue-500/10 text-blue-400"}`}>{a.msg}</div>)}</div>
+          <div className="space-y-2">{alertas.map((a,i)=><div key={i} className={`p-3 rounded-xl text-sm ${a.tipo==="error"?"bg-red-500/10 text-red-400":a.tipo==="warn"?"bg-amber-500/10 text-amber-400":"bg-blue-500/10 text-blue-400"}`}>{a.msg}</div>)}</div>
         </div>
       )}
     </div>
@@ -1492,6 +1502,18 @@ export default function App() {
       db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"),
     ]);
     setStudents(Array.isArray(s)?s:[]);
+    // Auto-marcar como vencido si pasó la fecha y no está pagado
+    if (Array.isArray(p)) {
+      const hoy = fmt(new Date());
+      for (const pago of p) {
+        if (pago.estado !== "pagado" && pago.fecha_vencimiento && pago.fecha_vencimiento < hoy) {
+          if (pago.estado !== "vencido") {
+            await db.update("pagos", pago.id, { estado: "vencido" });
+            pago.estado = "vencido";
+          }
+        }
+      }
+    }
     setPagos(Array.isArray(p)?p:[]);
     setAsistencia(Array.isArray(a)?a:[]);
     setEventos(Array.isArray(e)?e:[]);
@@ -1556,7 +1578,15 @@ export default function App() {
   ];
 
   const navItems = allNavItems.filter(n=>perms.includes(n.id));
-  const alerts = pagos.filter(p=>p.estado==="vencido").length;
+  const hoyStr = fmt(new Date());
+  const alerts = pagos.filter(p => {
+    if (p.estado === "vencido") return true;
+    if (p.estado !== "pagado" && p.fecha_vencimiento) {
+      const dias = Math.ceil((new Date(p.fecha_vencimiento) - new Date()) / 86400000);
+      return dias >= 0 && dias <= 5;
+    }
+    return false;
+  }).length;
   const roleColors = { admin:"#f59e0b", profesor:"#3b82f6", alumno:"#22c55e" };
 
   const renderPage = () => {
