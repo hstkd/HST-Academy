@@ -68,9 +68,12 @@ const getCategoria = (fechaNac) => {
 };
 
 const MEMBRESIAS = [
-  { id: "basica", nombre: "Básico", sesiones: 8, color: "#3b82f6" },
-  { id: "estandar", nombre: "Estándar", sesiones: 12, color: "#f59e0b" },
-  { id: "premium", nombre: "Completo", sesiones: 999, color: "#a855f7" },
+  { id: "basica",      nombre: "Básico",      sesiones: 8,   color: "#3b82f6" },
+  { id: "estandar",    nombre: "Estándar",    sesiones: 12,  color: "#f59e0b" },
+  { id: "premium",     nombre: "Completo",    sesiones: 999, color: "#a855f7" },
+  { id: "trimestral",  nombre: "Trimestral",  sesiones: 999, color: "#22c55e" },
+  { id: "semestral",   nombre: "Semestral",   sesiones: 999, color: "#06b6d4" },
+  { id: "anual",       nombre: "Anual",       sesiones: 999, color: "#f43f5e" },
 ];
 
 const CINTURONES = ["Blanco","Blanco/Amarillo","Amarillo","Amarillo/Verde","Verde","Verde/Azul","Azul","Azul/Rojo","Rojo","Rojo/Negro","Negro"];
@@ -125,7 +128,7 @@ const PRODUCTOS = [
 const PERMISOS = {
   admin:    ["dashboard","students","payments","ventas","attendance","examenes","finance","events","users"],
   profesor: ["attendance","students","payments","ventas","examenes"],
-  alumno:   ["mi_asistencia","mis_pagos"],
+  alumno:   ["mi_asistencia","mis_pagos","mi_historial"],
 };
 
 const REFRESH_INTERVAL = 300000;
@@ -156,6 +159,8 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
     key:          <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />,
     mi_asistencia:<path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />,
     mis_pagos:    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />,
+    mi_historial: <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />,
+    trophy:       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />,
   };
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -484,6 +489,11 @@ const StudentFormModal = ({ student, reload, onClose }) => {
   const edadInfo = calcEdad(fechaNac);
   const categoria = getCategoria(fechaNac);
 
+  const [registrarPago, setRegistrarPago] = useState(false);
+  const [montoInscripcion, setMontoInscripcion] = useState("");
+  const [montoPagadoIns, setMontoPagadoIns] = useState("");
+  const [fechaVencIns, setFechaVencIns] = useState(fmt(addDays(today, 30)));
+
   const save = async () => {
     if (!nombres || !apellidos) return;
     setSaving(true);
@@ -491,9 +501,28 @@ const StudentFormModal = ({ student, reload, onClose }) => {
     if (student) {
       await db.update("students", student.id, data);
     } else {
-      await db.insert("students", data);
+      const newStudent = await db.insert("students", data);
       if (correo && userPass) {
         await db.insert("users", { nombre: `${nombres} ${apellidos}`, email: correo, password: userPass, role: "alumno" });
+      }
+      // Registrar pago inicial si se indicó
+      if (registrarPago && montoInscripcion && newStudent?.id) {
+        const total = parseFloat(montoInscripcion) || 0;
+        const pagado = parseFloat(montoPagadoIns) || 0;
+        const estadoPago = pagado >= total ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
+        const memb = MEMBRESIAS.find(m => m.id === membresia);
+        await db.insert("pagos", {
+          alumno_id: newStudent.id,
+          alumno_nombre: `${nombres} ${apellidos}`,
+          monto: total,
+          monto_pagado: pagado,
+          fecha_pago: fmt(today),
+          fecha_vencimiento: fechaVencIns,
+          tipo: memb?.nombre || "Inscripción",
+          estado: estadoPago,
+          sede,
+          notas: "Pago registrado al momento de inscripción",
+        });
       }
     }
     await reload();
@@ -552,6 +581,24 @@ const StudentFormModal = ({ student, reload, onClose }) => {
         </Field>
         <Field label="Fecha Inscripción"><Input type="date" value={fechaIns} onChange={e => setFechaIns(e.target.value)} /></Field>
         <Field label="Observaciones" className="col-span-2"><Textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} /></Field>
+        {!student && (
+          <div className="col-span-2 border border-white/10 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={()=>setRegistrarPago(!registrarPago)}
+                className={`w-10 h-6 rounded-full transition-all ${registrarPago?"bg-amber-500":"bg-white/10"}`}>
+                <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${registrarPago?"translate-x-4":"translate-x-0.5"}`} />
+              </button>
+              <span className="text-sm font-semibold text-white">Registrar primer pago ahora</span>
+            </div>
+            {registrarPago && (
+              <div className="grid grid-cols-3 gap-3 mt-2">
+                <Field label="Monto Total ($)"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" value={montoInscripcion} onChange={e=>setMontoInscripcion(e.target.value)} placeholder="0.00" /></Field>
+                <Field label="Monto Pagado ($)"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" value={montoPagadoIns} onChange={e=>setMontoPagadoIns(e.target.value)} placeholder="0.00" /></Field>
+                <Field label="Fecha Vencimiento"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="date" value={fechaVencIns} onChange={e=>setFechaVencIns(e.target.value)} /></Field>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
@@ -561,7 +608,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
   );
 };
 
-const StudentsPage = ({ students, reload, canEdit }) => {
+const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos }) => {
   const [search, setSearch] = useState("");
   const [filterSede, setFilterSede] = useState("Todas");
   const [filterEstado, setFilterEstado] = useState("Todos");
@@ -628,6 +675,40 @@ const StudentsPage = ({ students, reload, canEdit }) => {
               ))}
             </div>
             {viewStudent.observaciones&&<div className="bg-white/5 rounded-xl p-3"><p className="text-xs text-slate-500 mb-1">Observaciones</p><p className="text-sm text-slate-300">{viewStudent.observaciones}</p></div>}
+            {/* Historial de asistencia */}
+            {asistencia && (() => {
+              const miAsist = asistencia.filter(a=>a.alumno_id===viewStudent.id).sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,10);
+              const presentes = miAsist.filter(a=>a.presente).length;
+              return miAsist.length>0 ? (
+                <div className="bg-white/5 rounded-xl p-3">
+                  <p className="text-xs text-slate-500 mb-2 font-semibold uppercase">Últimas asistencias ({presentes}/{miAsist.length} presentes)</p>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {miAsist.map(a=>(
+                      <div key={a.id} className={`flex justify-between p-2 rounded-lg text-xs ${a.presente?"bg-emerald-500/10 text-emerald-400":"bg-red-500/10 text-red-400"}`}>
+                        <span>{a.fecha}</span><span>{a.presente?"✓ Presente":"✗ Ausente"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
+            {/* Historial de ascensos */}
+            {examenes && (() => {
+              const misEx = examenes.filter(e=>e.alumno_id===viewStudent.id).sort((a,b)=>b.fecha?.localeCompare(a.fecha));
+              return misEx.length>0 ? (
+                <div className="bg-white/5 rounded-xl p-3">
+                  <p className="text-xs text-slate-500 mb-2 font-semibold uppercase">Historial de exámenes</p>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {misEx.map(ex=>(
+                      <div key={ex.id} className="flex justify-between p-2 rounded-lg bg-amber-500/10 text-xs">
+                        <span className="text-amber-400">{ex.tipo}</span>
+                        <span className="text-slate-400">{ex.fecha} · ${parseFloat(ex.monto||0).toFixed(0)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
         </Modal>
       )}
@@ -1101,7 +1182,10 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
                   <p className="text-sm font-semibold text-white">{ex.alumno_nombre}</p>
                   <p className="text-xs text-slate-500">{ex.tipo} · {ex.fecha}</p>
                 </div>
-                <span className="text-lg font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${parseFloat(ex.monto||0).toFixed(2)}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-lg font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${parseFloat(ex.monto||0).toFixed(2)}</span>
+                  <button onClick={async()=>{ if(!confirm("¿Eliminar?")) return; await db.delete("examenes",ex.id); await reloadExamenes(); }} className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /></button>
+                </div>
               </div>
             ))}
           </div>
@@ -1241,7 +1325,16 @@ const EventoDetail = ({ evento, students, reload, onClose }) => {
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{p.nombre.split(" ").map(n => n[0]).join("").slice(0, 2)}</div>
                 <div><p className="text-sm font-semibold text-white">{p.nombre}</p><p className="text-xs text-amber-400 font-bold">${parseFloat(p.valor || 0).toFixed(2)}</p></div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {evento.tipo==="torneo" && (
+                  <select className="bg-[#1e293b] border border-white/10 rounded-lg px-2 py-1 text-xs text-white" value={p.medalla||""} onChange={async e=>{ const nuevos=participantes.map(x=>x.id===p.id?{...x,medalla:e.target.value}:x); await db.update("eventos",evento.id,{participantes:JSON.stringify(nuevos)}); setParticipantes(nuevos); reload(); }}>
+                    <option value="">Sin medalla</option>
+                    <option value="🥇 Oro">🥇 Oro</option>
+                    <option value="🥈 Plata">🥈 Plata</option>
+                    <option value="🥉 Bronce">🥉 Bronce</option>
+                  </select>
+                )}
+                {p.medalla && <span className="text-sm font-bold">{p.medalla}</span>}
                 <button onClick={() => togglePagado(p.id)} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${p.pagado ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-500/20 text-slate-400 hover:bg-amber-500/20 hover:text-amber-400"}`}>{p.pagado ? "✓ Pagado" : "Pendiente"}</button>
                 <button onClick={() => removeParticipante(p.id)} className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /></button>
               </div>
@@ -1281,10 +1374,10 @@ const EventsPage = ({ eventos, students, reload }) => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {eventos.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(e=>{ const days=Math.ceil((new Date(e.fecha)-today)/86400000); const parts=(() => { try { return JSON.parse(e.participantes||"[]"); } catch { return []; } })(); return (
-          <div key={e.id} className="bg-white/3 border border-white/8 rounded-2xl p-5 hover:border-amber-400/20 cursor-pointer" onClick={()=>setViewEvento(e)}>
-            <div className="flex items-start justify-between">
+          <div key={e.id} className="bg-white/3 border border-white/8 rounded-2xl p-5 hover:border-amber-400/20">
+            <div className="flex items-start justify-between" onClick={()=>setViewEvento(e)} style={{cursor:"pointer"}}>
               <div className="flex items-start gap-3">
-                <span className="text-2xl">{tipoIcons[e.tipo]||"📅"}</span>
+                <span className="text-2xl">{e.tipo==="torneo"?"🏆":(tipoIcons[e.tipo]||"📅")}</span>
                 <div>
                   <h3 className="font-bold text-white">{e.titulo}</h3>
                   <p className="text-xs text-slate-500 mt-0.5">{e.fecha} · {e.sede}</p>
@@ -1296,6 +1389,9 @@ const EventsPage = ({ eventos, students, reload }) => {
                 <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400">{e.tipo}</span>
                 <p className={`text-xs mt-1 font-semibold ${days<0?"text-red-400":days<7?"text-amber-400":"text-emerald-400"}`}>{days<0?"Pasado":days===0?"¡Hoy!":`En ${days} días`}</p>
               </div>
+            </div>
+            <div className="flex justify-end mt-2">
+              <button onClick={async(ev)=>{ ev.stopPropagation(); if(!confirm("¿Eliminar evento?")) return; await db.delete("eventos",e.id); await reload(); }} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>
             </div>
           </div>
         ); })}
@@ -1458,6 +1554,72 @@ const MiAsistenciaPage = ({ currentUser, students, asistencia }) => {
   );
 };
 
+const MiHistorialPage = ({ currentUser, students, examenes, eventos }) => {
+  const alumno = students.find(s=>s.correo===currentUser.email);
+  if (!alumno) return <div className="text-center py-20"><p className="text-6xl mb-4">🥋</p><h2 className="text-xl font-black text-white mb-2">Perfil no encontrado</h2><p className="text-slate-400 text-sm">Pide al administrador que vincule tu correo.</p></div>;
+
+  const misExamenes = (examenes||[]).filter(e=>e.alumno_id===alumno.id).sort((a,b)=>b.fecha?.localeCompare(a.fecha));
+  const misEventos = (eventos||[]).filter(ev=>{ try { const p=JSON.parse(ev.participantes||"[]"); return p.find(p=>p.id===alumno.id); } catch { return false; } });
+
+  const getMedalla = (evento) => {
+    try { const p=JSON.parse(evento.participantes||"[]"); return p.find(x=>x.id===alumno.id)?.medalla||""; } catch { return ""; }
+  };
+
+  return (
+    <div className="space-y-6 max-w-lg mx-auto">
+      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>MI HISTORIAL</h1>
+
+      {/* Ascensos */}
+      <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>🥋 ASCENSOS DE CINTURÓN</h3>
+        {misExamenes.filter(e=>e.tipo?.includes("Ascenso")).length===0 && <p className="text-slate-500 text-sm">Sin ascensos registrados aún</p>}
+        <div className="space-y-2">
+          {misExamenes.filter(e=>e.tipo?.includes("Ascenso")).map(ex=>(
+            <div key={ex.id} className="flex justify-between p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+              <span className="text-sm font-semibold text-amber-400">{ex.tipo}</span>
+              <span className="text-xs text-slate-400">{ex.fecha}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* GALs */}
+      <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>📋 GALs EMITIDOS</h3>
+        {misExamenes.filter(e=>e.tipo?.includes("GAL")).length===0 && <p className="text-slate-500 text-sm">Sin GALs registrados</p>}
+        <div className="space-y-2">
+          {misExamenes.filter(e=>e.tipo?.includes("GAL")).map(ex=>(
+            <div key={ex.id} className="flex justify-between p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+              <span className="text-sm font-semibold text-blue-400">{ex.tipo}</span>
+              <span className="text-xs text-slate-400">{ex.fecha}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Eventos */}
+      <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>🏆 PARTICIPACIÓN EN EVENTOS</h3>
+        {misEventos.length===0 && <p className="text-slate-500 text-sm">Sin participaciones registradas</p>}
+        <div className="space-y-2">
+          {misEventos.map(ev=>{
+            const medalla = getMedalla(ev);
+            return (
+              <div key={ev.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                <div>
+                  <p className="text-sm font-semibold text-white">{ev.titulo}</p>
+                  <p className="text-xs text-slate-500">{ev.fecha} · {ev.tipo}</p>
+                </div>
+                <span className="text-lg">{medalla || "—"}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MisPagosPage = ({ currentUser, students, pagos }) => {
   const alumno = students.find(s=>s.correo===currentUser.email);
   if (!alumno) return <div className="text-center py-20"><p className="text-slate-400">Perfil no encontrado.</p></div>;
@@ -1575,6 +1737,7 @@ export default function App() {
     { id:"users",         label:"Usuarios",     icon:"users"        },
     { id:"mi_asistencia", label:"Mi Asistencia",icon:"mi_asistencia"},
     { id:"mis_pagos",     label:"Mis Pagos",    icon:"mis_pagos"    },
+    { id:"mi_historial",  label:"Mi Historial", icon:"mi_historial" },
   ];
 
   const navItems = allNavItems.filter(n=>perms.includes(n.id));
@@ -1593,7 +1756,7 @@ export default function App() {
     if (loading) return <Spinner />;
     switch(page) {
       case "dashboard":     return <DashboardPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} eventos={eventos} examenes={examenes} />;
-      case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} />;
+      case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} asistencia={asistencia} examenes={examenes} eventos={eventos} />;
       case "payments":      return <PaymentsPage students={students} pagos={pagos} reload={loadAll} isAdmin={isAdmin} />;
       case "ventas":        return <VentasPage ventas={ventas} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
@@ -1603,6 +1766,7 @@ export default function App() {
       case "users":         return <UsersPage currentUser={user} setCurrentUser={setUser} allUsers={allUsers} reloadUsers={reloadUsers} />;
       case "mi_asistencia": return <MiAsistenciaPage currentUser={user} students={students} asistencia={asistencia} />;
       case "mis_pagos":     return <MisPagosPage currentUser={user} students={students} pagos={pagos} />;
+      case "mi_historial":  return <MiHistorialPage currentUser={user} students={students} examenes={examenes} eventos={eventos} />;
       default:              return <Spinner />;
     }
   };
