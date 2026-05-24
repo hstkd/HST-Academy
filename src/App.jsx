@@ -395,7 +395,7 @@ const ChangePasswordModal = ({ currentUser, onClose }) => {
 
 const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes }) => {
   const activos = students.filter(s=>s.estado==="activo").length;
-  const vencidos = pagos.filter(p=>p.estado==="vencido").length;
+  const vencidos = pagos.filter(p => p.estado === "vencido" || (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < fmt(today))).length;
   const ingresosMes = pagos.filter(p=>p.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
   const ventasMes = (ventas||[]).filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.total||0),0);
   const eventosMes = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
@@ -404,19 +404,33 @@ const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes 
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const chartData = meses.slice(0,today.getMonth()+1).map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
   const memCounts = MEMBRESIAS.map(m=>({ ...m, count:students.filter(s=>s.membresia===m.id&&s.estado==="activo").length }));
-  // Auto-actualizar estados vencidos
+  const hoyStr = fmt(today);
+  // Calcular estado real en tiempo real
   const pagosConEstadoReal = pagos.map(p => {
-    if (p.estado !== "pagado" && p.fecha_vencimiento) {
-      const dias = Math.ceil((new Date(p.fecha_vencimiento) - today) / 86400000);
-      if (dias < 0) return { ...p, estado: "vencido" };
+    if (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoyStr) {
+      return { ...p, estado: "vencido" };
     }
     return p;
   });
 
   const alertas = [
-    ...pagosConEstadoReal.filter(p=>p.estado==="vencido").map(p=>({ tipo:"error", msg:`🔴 Pago VENCIDO: ${p.alumno_nombre} — debe $${(parseFloat(p.monto)-parseFloat(p.monto_pagado)).toFixed(2)}` })),
-    ...pagosConEstadoReal.filter(p=>p.estado!=="pagado"&&p.fecha_vencimiento&&Math.ceil((new Date(p.fecha_vencimiento)-today)/86400000)>=0&&Math.ceil((new Date(p.fecha_vencimiento)-today)/86400000)<=5).map(p=>{ const dias=Math.ceil((new Date(p.fecha_vencimiento)-today)/86400000); return { tipo:"warn", msg:`🟡 Vence en ${dias} día(s): ${p.alumno_nombre}` }; }),
-    ...students.filter(s=>{ const b=new Date(s.fecha_nacimiento); return b.getDate()===today.getDate()&&b.getMonth()===today.getMonth(); }).map(s=>({ tipo:"info", msg:`🎂 Cumpleaños: ${s.nombres} ${s.apellidos}` })),
+    ...pagosConEstadoReal.filter(p => p.estado === "vencido").map(p => ({
+      tipo: "error",
+      msg: `🔴 Pago VENCIDO: ${p.alumno_nombre} — debe $${Math.max(0, parseFloat(p.monto||0) - parseFloat(p.monto_pagado||0)).toFixed(2)}`
+    })),
+    ...pagosConEstadoReal.filter(p => {
+      if (p.estado === "pagado" || p.estado === "vencido") return false;
+      if (!p.fecha_vencimiento) return false;
+      const dias = Math.ceil((new Date(p.fecha_vencimiento) - today) / 86400000);
+      return dias >= 0 && dias <= 5;
+    }).map(p => {
+      const dias = Math.ceil((new Date(p.fecha_vencimiento) - today) / 86400000);
+      return { tipo: "warn", msg: `🟡 Vence en ${dias} día(s): ${p.alumno_nombre}` };
+    }),
+    ...students.filter(s => {
+      const b = new Date(s.fecha_nacimiento);
+      return b.getDate() === today.getDate() && b.getMonth() === today.getMonth();
+    }).map(s => ({ tipo: "info", msg: `🎂 Cumpleaños: ${s.nombres} ${s.apellidos}` })),
   ];
   return (
     <div className="space-y-8">
@@ -962,6 +976,8 @@ const AttendancePage = ({ students, asistencia, reload }) => {
   const [fecha, setFecha] = useState(fmt(today));
   const [sede, setSede] = useState("Todas");
   const [saving, setSaving] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+  const [expanded, setExpanded] = useState(null);
   const fs = students.filter(s=>s.estado==="activo"&&(sede==="Todas"||s.sede===sede));
   const getStatus = id=>{ const r=asistencia.find(a=>a.alumno_id===id&&a.fecha===fecha); return r?r.presente:null; };
   const getRecord = id=>asistencia.find(a=>a.alumno_id===id&&a.fecha===fecha);
@@ -1004,17 +1020,34 @@ const AttendancePage = ({ students, asistencia, reload }) => {
         <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-red-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{ausentes}</p><p className="text-xs text-slate-400 mt-1">Ausentes</p></div>
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{pct}%</p><p className="text-xs text-slate-400 mt-1">Asistencia</p></div>
       </div>
+      {/* Búsqueda rápida */}
+      <div className="relative">
+        <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+        <input className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-400/50" placeholder="Buscar alumno..." value={busqueda} onChange={e=>setBusqueda(e.target.value)} />
+      </div>
       <div className="space-y-2">
-        {fs.map(s=>{ const st=getStatus(s.id); return (
-          <div key={s.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${st===true?"bg-emerald-500/10 border-emerald-500/20":st===false?"bg-red-500/10 border-red-500/20":"bg-white/3 border-white/8"}`}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
-              <div><p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p><BeltBadge cinturon={s.cinturon} /></div>
+        {fs.filter(s=>`${s.nombres} ${s.apellidos}`.toLowerCase().includes(busqueda.toLowerCase())).map(s=>{ const st=getStatus(s.id); return (
+          <div key={s.id} className={`rounded-2xl border transition-all ${st===true?"bg-emerald-500/10 border-emerald-500/20":st===false?"bg-red-500/10 border-red-500/20":"bg-white/3 border-white/8"}`}>
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={()=>setExpanded(e=>e===s.id?null:s.id)}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
+                <div><p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p><BeltBadge cinturon={s.cinturon} /></div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={()=>toggle(s,true)} disabled={saving} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${st===true?"bg-emerald-500 text-white":"bg-white/5 text-slate-500 hover:bg-emerald-500/30 hover:text-emerald-400"}`}><Icon name="check" className="w-5 h-5" /></button>
+                <button onClick={()=>toggle(s,false)} disabled={saving} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${st===false?"bg-red-500 text-white":"bg-white/5 text-slate-500 hover:bg-red-500/30 hover:text-red-400"}`}><Icon name="x" className="w-5 h-5" /></button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button onClick={()=>toggle(s,true)} disabled={saving} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${st===true?"bg-emerald-500 text-white":"bg-white/5 text-slate-500 hover:bg-emerald-500/30 hover:text-emerald-400"}`}><Icon name="check" className="w-5 h-5" /></button>
-              <button onClick={()=>toggle(s,false)} disabled={saving} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${st===false?"bg-red-500 text-white":"bg-white/5 text-slate-500 hover:bg-red-500/30 hover:text-red-400"}`}><Icon name="x" className="w-5 h-5" /></button>
-            </div>
+            {expanded===s.id && (
+              <div className="px-4 pb-4 space-y-1">
+                <p className="text-xs text-slate-500 font-semibold uppercase mb-2">Últimas asistencias</p>
+                {asistencia.filter(a=>a.alumno_id===s.id).sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,7).map(a=>(
+                  <div key={a.id} className={`flex justify-between p-2 rounded-lg text-xs ${a.presente?"bg-emerald-500/10 text-emerald-400":"bg-red-500/10 text-red-400"}`}>
+                    <span>{a.fecha}</span><span>{a.presente?"✓ Presente":"✗ Ausente"}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ); })}
       </div>
@@ -1156,7 +1189,10 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
             <Field label="Alumno">
               <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={galAlumnoId} onChange={e=>setGalAlumnoId(e.target.value)}>
                 <option value="">Seleccionar alumno...</option>
-                {students.filter(s=>s.estado==="activo").map(s=><option key={s.id} value={s.id}>{s.nombres} {s.apellidos}</option>)}
+                {students.filter(s=>s.estado==="activo").map(s=>{
+                  const gals = examenes.filter(ex=>ex.alumno_id===s.id&&ex.tipo?.includes("GAL")).length;
+                  return <option key={s.id} value={s.id}>{s.nombres} {s.apellidos}{gals>0?` (${gals} GAL)`:""}</option>;
+                })}
               </select>
             </Field>
             <Field label="Cantidad de GALs">
@@ -1167,6 +1203,24 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
               <button onClick={registrarGal} disabled={savingGal||!galAlumnoId} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{savingGal?"Registrando...":"Registrar GAL"}</button>
             </Field>
           </div>
+          {/* Mostrar GALs del alumno seleccionado */}
+          {galAlumnoId && (() => {
+            const galsAlumno = examenes.filter(ex=>ex.alumno_id===galAlumnoId&&ex.tipo?.includes("GAL"));
+            if (galsAlumno.length===0) return <div className="p-3 rounded-xl bg-white/5 text-slate-400 text-sm">Este alumno no tiene GALs registrados aún.</div>;
+            return (
+              <div className="bg-white/5 rounded-xl p-4">
+                <p className="text-xs text-slate-400 font-semibold uppercase mb-2">GALs de este alumno</p>
+                <div className="space-y-1">
+                  {galsAlumno.map(ex=>(
+                    <div key={ex.id} className="flex justify-between p-2 rounded-lg bg-blue-500/10 text-xs">
+                      <span className="text-blue-400 font-semibold">{ex.tipo}</span>
+                      <span className="text-slate-400">{ex.fecha}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -1184,7 +1238,19 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-lg font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${parseFloat(ex.monto||0).toFixed(2)}</span>
-                  <button onClick={async()=>{ if(!confirm("¿Eliminar?")) return; await db.delete("examenes",ex.id); await reloadExamenes(); }} className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /></button>
+                  <button onClick={async()=>{
+                    if(!confirm("¿Eliminar este registro? Si es un ascenso, se revertirá el cinturón.")) return;
+                    // Si es ascenso, revertir cinturón
+                    if (ex.tipo?.includes("Ascenso") && ex.alumno_id) {
+                      const match = ex.tipo.match(/Ascenso (.+) → (.+)/);
+                      if (match) {
+                        await db.update("students", ex.alumno_id, { cinturon: match[1] });
+                      }
+                    }
+                    await db.delete("examenes", ex.id);
+                    await reloadExamenes();
+                    await reload();
+                  }} className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /></button>
                 </div>
               </div>
             ))}
@@ -1522,10 +1588,24 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
 
 const MiAsistenciaPage = ({ currentUser, students, asistencia }) => {
   const alumno = students.find(s=>s.correo===currentUser.email);
+  const [mesSeleccionado, setMesSeleccionado] = useState(fmt(today).slice(0,7));
+
   if (!alumno) return <div className="text-center py-20"><p className="text-6xl mb-4">🥋</p><h2 className="text-xl font-black text-white mb-2">Perfil no encontrado</h2><p className="text-slate-400 text-sm">Pide al administrador que vincule tu correo a tu ficha.</p></div>;
-  const miAsist = asistencia.filter(a=>a.alumno_id===alumno.id).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+
+  const miAsistTodo = asistencia.filter(a=>a.alumno_id===alumno.id).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+
+  // Obtener meses disponibles
+  const mesesDisp = [...new Set(miAsistTodo.map(a=>a.fecha?.slice(0,7)))].sort((a,b)=>b.localeCompare(a));
+
+  // Filtrar por mes seleccionado
+  const miAsist = miAsistTodo.filter(a=>a.fecha?.slice(0,7)===mesSeleccionado);
   const presentes = miAsist.filter(a=>a.presente).length;
+  const ausentes = miAsist.length - presentes;
   const pct = miAsist.length?Math.round((presentes/miAsist.length)*100):0;
+
+  const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const formatMes = (ym) => { const [y,m] = ym.split("-"); return `${meses[parseInt(m)-1]} ${y}`; };
+
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <div className="bg-white/3 border border-amber-400/20 rounded-3xl p-6 text-center">
@@ -1533,15 +1613,28 @@ const MiAsistenciaPage = ({ currentUser, students, asistencia }) => {
         <h2 className="text-2xl font-black text-white">{alumno.nombres} {alumno.apellidos}</h2>
         <div className="flex justify-center gap-2 mt-2 flex-wrap"><BeltBadge cinturon={alumno.cinturon} /><CategoriaBadge categoria={alumno.categoria||getCategoria(alumno.fecha_nacimiento)} /><MembresiaTag membresiaId={alumno.membresia} /></div>
       </div>
+
+      {/* Selector de mes */}
+      <div className="flex items-center gap-3">
+        <button onClick={()=>{ const idx=mesesDisp.indexOf(mesSeleccionado); if(idx<mesesDisp.length-1) setMesSeleccionado(mesesDisp[idx+1]); }} className="p-2 rounded-xl bg-white/5 text-slate-400 hover:bg-white/10">◀</button>
+        <select className="flex-1 bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm text-center" value={mesSeleccionado} onChange={e=>setMesSeleccionado(e.target.value)}>
+          {mesesDisp.map(m=><option key={m} value={m}>{formatMes(m)}</option>)}
+        </select>
+        <button onClick={()=>{ const idx=mesesDisp.indexOf(mesSeleccionado); if(idx>0) setMesSeleccionado(mesesDisp[idx-1]); }} className="p-2 rounded-xl bg-white/5 text-slate-400 hover:bg-white/10">▶</button>
+      </div>
+
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-emerald-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{presentes}</p><p className="text-xs text-slate-400 mt-1">Presentes</p></div>
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-red-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{miAsist.length-presentes}</p><p className="text-xs text-slate-400 mt-1">Ausentes</p></div>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-red-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{ausentes}</p><p className="text-xs text-slate-400 mt-1">Ausentes</p></div>
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{pct}%</p><p className="text-xs text-slate-400 mt-1">Asistencia</p></div>
       </div>
+
       <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
-        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>HISTORIAL</h3>
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>
+          {mesSeleccionado ? formatMes(mesSeleccionado) : "HISTORIAL"}
+        </h3>
         <div className="space-y-2 max-h-96 overflow-y-auto">
-          {miAsist.length===0&&<p className="text-slate-500 text-sm">Sin registros aún</p>}
+          {miAsist.length===0&&<p className="text-slate-500 text-sm">Sin registros en este mes</p>}
           {miAsist.map(a=>(
             <div key={a.id} className={`flex items-center justify-between p-3 rounded-xl ${a.presente?"bg-emerald-500/10":"bg-red-500/10"}`}>
               <span className="text-sm text-white">{a.fecha}</span>
@@ -1676,7 +1769,15 @@ export default function App() {
         }
       }
     }
-    setPagos(Array.isArray(p)?p:[]);
+    // Calcular estado real en memoria también (sin esperar BD)
+    const pagosConEstado = Array.isArray(p) ? p.map(pago => {
+      if (pago.estado !== "pagado" && pago.fecha_vencimiento) {
+        const hoy = fmt(new Date());
+        if (pago.fecha_vencimiento < hoy) return { ...pago, estado: "vencido" };
+      }
+      return pago;
+    }) : [];
+    setPagos(pagosConEstado);
     setAsistencia(Array.isArray(a)?a:[]);
     setEventos(Array.isArray(e)?e:[]);
     setVentas(Array.isArray(v)?v:[]);
@@ -1741,9 +1842,10 @@ export default function App() {
   ];
 
   const navItems = allNavItems.filter(n=>perms.includes(n.id));
-  const hoyStr = fmt(new Date());
   const alerts = pagos.filter(p => {
+    const hoy = fmt(new Date());
     if (p.estado === "vencido") return true;
+    if (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoy) return true;
     if (p.estado !== "pagado" && p.fecha_vencimiento) {
       const dias = Math.ceil((new Date(p.fecha_vencimiento) - new Date()) / 86400000);
       return dias >= 0 && dias <= 5;
