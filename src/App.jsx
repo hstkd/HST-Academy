@@ -785,6 +785,84 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
   );
 };
 
+const CompletarModal = ({ pago, historialPagos, reload, onClose }) => {
+  const [montaFaltante, setMontaFaltante] = useState("");
+  const [notas, setNotas] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const montoPendiente = Math.max(0, parseFloat(pago.monto||0) - parseFloat(pago.monto_pagado||0));
+  const montoCompletar = parseFloat(montaFaltante) || montoPendiente;
+  const nuevoMontoPagado = parseFloat(pago.monto_pagado||0) + montoCompletar;
+
+  const save = async () => {
+    if (montoCompletar <= 0) return;
+    setSaving(true);
+    // Actualizar monto_pagado en pago
+    await db.update("pagos", pago.id, {
+      monto_pagado: nuevoMontoPagado,
+    });
+    // Guardar en historial
+    await db.insert("historial_pagos", {
+      alumno_id: pago.alumno_id,
+      alumno_nombre: pago.alumno_nombre,
+      monto_pagado: montoCompletar,
+      fecha_pago: fmt(new Date()),
+      nueva_fecha_vencimiento: pago.fecha_vencimiento,
+      tipo: pago.tipo,
+      observaciones: notas || "Pago parcial completado",
+    });
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={`Completar pago — ${pago.alumno_nombre}`} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="grid grid-cols-3 gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+          <div className="text-center">
+            <p className="text-xs text-slate-400">Pagado</p>
+            <p className="text-sm font-bold text-white">${parseFloat(pago.monto_pagado||0).toFixed(2)}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-slate-400">Faltante</p>
+            <p className="text-sm font-bold text-amber-400">${montoPendiente.toFixed(2)}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-slate-400">Total</p>
+            <p className="text-sm font-bold text-white">${parseFloat(pago.monto||0).toFixed(2)}</p>
+          </div>
+        </div>
+
+        <Field label="Monto a completar ($)">
+          <Input 
+            type="number" 
+            value={montaFaltante} 
+            onChange={e=>setMontaFaltante(e.target.value)} 
+            placeholder={montoPendiente.toFixed(2)}
+            max={montoPendiente}
+          />
+          <p className="text-xs text-slate-400 mt-1">Máximo: ${montoPendiente.toFixed(2)}</p>
+        </Field>
+
+        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+          <p className="text-xs text-slate-400 mb-1">Nuevo total pagado</p>
+          <p className="text-lg font-black text-emerald-400">${nuevoMontoPagado.toFixed(2)} / ${parseFloat(pago.monto||0).toFixed(2)}</p>
+        </div>
+
+        <Field label="Notas (opcional)">
+          <Textarea value={notas} onChange={e=>setNotas(e.target.value)} placeholder="Ej: Abono de deuda anterior..." />
+        </Field>
+      </div>
+
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+        <button onClick={save} disabled={saving||montoCompletar<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Completar pago"}</button>
+      </div>
+    </Modal>
+  );
+};
+
 const RenovarModal = ({ pago, students, reload, onClose }) => {
   const [tipoPago, setTipoPago] = useState("estandar");
   const [montoTotal, setMontoTotal] = useState("");
@@ -866,6 +944,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
   const [renovarPago, setRenovarPago] = useState(null);
+  const [completarPago, setCompletarPago] = useState(null);
   // Estado determinado ÚNICAMENTE por fecha_vencimiento vs hoy
   const hoyPagos = fmt(new Date());
   const getEstadoReal = (p) => {
@@ -1077,13 +1156,18 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                 </span>
               </div>
               {p.estado!=="pagado"&&<div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background:p.estado==="vencido"?"#ef4444":"#f59e0b" }} /></div>}
-              <div className="flex justify-between items-center mt-3">
+              <div className="flex justify-between items-center mt-3 flex-wrap gap-2">
                 {p.estado === "vencido" && (
                   <button onClick={()=>setRenovarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/30">
-                    🔄 Renovar membresía
+                    🔄 Renovar
                   </button>
                 )}
-                {p.estado !== "vencido" && <div />}
+                {p.estado === "parcial" && (
+                  <button onClick={()=>setCompletarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30">
+                    ✓ Completar pago
+                  </button>
+                )}
+                {(p.estado !== "vencido" && p.estado !== "parcial") && <div />}
                 {isAdmin&&<button onClick={()=>onDelete(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>}
               </div>
               {/* Historial de pagos recientes */}
@@ -1110,6 +1194,9 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
       {showForm&&<PagoForm onClose={()=>setShowForm(false)} />}
       {renovarPago && (
         <RenovarModal pago={renovarPago} students={students} reload={reload} onClose={()=>setRenovarPago(null)} />
+      )}
+      {completarPago && (
+        <CompletarModal pago={completarPago} historialPagos={historialPagos} reload={reload} onClose={()=>setCompletarPago(null)} />
       )}
     </div>
   );
