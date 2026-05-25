@@ -509,7 +509,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
   const [membresia, setMembresia] = useState(student?.membresia || "estandar");
   const [estado, setEstado] = useState(student?.estado || "activo");
   const [observaciones, setObservaciones] = useState(student?.observaciones || "");
-  const [fechaIns, setFechaIns] = useState(student?.fecha_inscripcion || fmt(today));
+  const [fechaIns, setFechaIns] = useState(student?.fecha_inscripcion || "");
   const [userPass, setUserPass] = useState("");
   const [saving, setSaving] = useState(false);
   const edadInfo = calcEdad(fechaNac);
@@ -523,6 +523,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
 
   const save = async () => {
     if (!nombres || !apellidos) return;
+    if (registrarPago && !fechaIns) { alert("Debes ingresar la fecha de inscripción para registrar el pago."); return; }
     setSaving(true);
     const data = { nombres, apellidos, edad: edadInfo.total, fecha_nacimiento: fechaNac, representante, telefono, correo, direccion, sede, cinturon, membresia, estado, categoria, observaciones, fecha_inscripcion: fechaIns };
     if (student) {
@@ -608,8 +609,9 @@ const StudentFormModal = ({ student, reload, onClose }) => {
             ))}
           </div>
         </Field>
-        <Field label="Fecha Inscripción">
+        <Field label="Fecha Inscripción *">
           <Input type="date" value={fechaIns} onChange={e => setFechaIns(e.target.value)} />
+          {!fechaIns && <p className="text-xs text-amber-400 mt-1">⚠️ Requerida para calcular el vencimiento del pago</p>}
         </Field>
         <Field label="Observaciones" className="col-span-2"><Textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} /></Field>
         {!student && (
@@ -629,12 +631,18 @@ const StudentFormModal = ({ student, reload, onClose }) => {
                 <Field label="Monto Pagado ($)"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" value={montoPagadoIns} onChange={e=>setMontoPagadoIns(e.target.value)} placeholder="0.00" /></Field>
                 <Field label="Vence automáticamente">
                   <div className="flex items-center gap-2 h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
-                    <span className={`text-sm font-bold ${fechaVencIns < fmt(today) ? "text-red-400" : "text-emerald-400"}`}>
-                      {fechaVencIns}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${fechaVencIns < fmt(today) ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"}`}>
-                      {fechaVencIns < fmt(today) ? "Vencido" : `en ${Math.ceil((new Date(fechaVencIns + "T12:00:00") - today) / 86400000)} días`}
-                    </span>
+                    {!fechaIns ? (
+                      <span className="text-slate-500 text-sm">Ingresa primero la fecha de inscripción</span>
+                    ) : (
+                      <>
+                        <span className={`text-sm font-bold ${fechaVencIns < fmt(today) ? "text-red-400" : "text-emerald-400"}`}>
+                          {fechaVencIns}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${fechaVencIns < fmt(today) ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"}`}>
+                          {fechaVencIns < fmt(today) ? "Vencido" : `en ${Math.ceil((new Date(fechaVencIns + "T12:00:00") - today) / 86400000)} días`}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </Field>
               </div>
