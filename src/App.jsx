@@ -417,13 +417,14 @@ const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes 
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const chartData = meses.slice(0,today.getMonth()+1).map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
   const memCounts = MEMBRESIAS.map(m=>({ ...m, count:students.filter(s=>s.membresia===m.id&&s.estado==="activo").length }));
-  // Los pagos ya vienen con estado actualizado desde loadAll
-  // Pero calculamos en tiempo real también por si acaso
+  // Estado real basado SOLO en fecha_vencimiento
   const pagosConEstadoReal = pagos.map(p => {
-    if (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoyDash) {
-      return { ...p, estado: "vencido" };
-    }
-    return p;
+    const montoPagado = parseFloat(p.monto_pagado||0);
+    const montoTotal = parseFloat(p.monto||0);
+    if (montoPagado >= montoTotal && montoTotal > 0) return { ...p, estado: "pagado" };
+    if (p.fecha_vencimiento && p.fecha_vencimiento < hoyDash) return { ...p, estado: "vencido" };
+    if (montoPagado > 0) return { ...p, estado: "parcial" };
+    return { ...p, estado: "pendiente" };
   });
 
   const alertas = [
@@ -772,11 +773,18 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
 const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
-  // Calcular estado real en tiempo real
+  // Calcular estado real basado SOLO en fecha_vencimiento
   const hoyPagos = fmt(new Date());
   const pagosReal = pagos.map(p => {
-    if (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoyPagos) {
-      return { ...p, estado: "vencido" };
+    // Si está marcado como pagado completo, respetarlo
+    if (parseFloat(p.monto_pagado||0) >= parseFloat(p.monto||0)) {
+      return { ...p, estado: "pagado" };
+    }
+    // Si tiene fecha de vencimiento, determinar estado por fecha
+    if (p.fecha_vencimiento) {
+      if (p.fecha_vencimiento < hoyPagos) return { ...p, estado: "vencido" };
+      const dias = Math.ceil((new Date(p.fecha_vencimiento + "T12:00:00") - new Date()) / 86400000);
+      if (dias <= 30) return { ...p, estado: parseFloat(p.monto_pagado||0) > 0 ? "parcial" : "pendiente" };
     }
     return p;
   });
@@ -1829,19 +1837,32 @@ export default function App() {
       db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"),
     ]);
     setStudents(Array.isArray(s)?s:[]);
-    // Actualizar estados vencidos en BD y en memoria
+    // Actualizar estados en BD y memoria basados en fecha_vencimiento
     const hoy = fmt(new Date());
     const pagosActualizados = [];
     if (Array.isArray(p)) {
       for (const pago of p) {
-        if (pago.estado !== "pagado" && pago.fecha_vencimiento && pago.fecha_vencimiento < hoy) {
-          if (pago.estado !== "vencido") {
-            await db.update("pagos", pago.id, { estado: "vencido" });
-          }
-          pagosActualizados.push({ ...pago, estado: "vencido" });
-        } else {
-          pagosActualizados.push(pago);
+        const montoPagado = parseFloat(pago.monto_pagado||0);
+        const montoTotal = parseFloat(pago.monto||0);
+        let estadoReal = pago.estado;
+        // Si pagó completo → pagado
+        if (montoPagado >= montoTotal && montoTotal > 0) {
+          estadoReal = "pagado";
         }
+        // Si no pagó completo y venció → vencido
+        else if (pago.fecha_vencimiento && pago.fecha_vencimiento < hoy) {
+          estadoReal = "vencido";
+        }
+        // Si no pagó completo y no venció → parcial o pendiente
+        else if (montoPagado > 0) {
+          estadoReal = "parcial";
+        } else {
+          estadoReal = "pendiente";
+        }
+        if (estadoReal !== pago.estado) {
+          await db.update("pagos", pago.id, { estado: estadoReal });
+        }
+        pagosActualizados.push({ ...pago, estado: estadoReal });
       }
     }
     setPagos(pagosActualizados);
