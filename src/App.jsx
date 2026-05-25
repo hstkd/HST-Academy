@@ -43,6 +43,18 @@ const today = new Date();
 const fmt = (d) => d.toISOString().slice(0, 10);
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 
+// Calcula fecha de vencimiento según membresía y fecha base
+const calcVencimiento = (fechaBase, membresiaId) => {
+  if (!fechaBase) return fmt(addDays(today, 30));
+  const base = new Date(fechaBase + "T12:00:00");
+  const v = new Date(base);
+  if (membresiaId === "trimestral") v.setMonth(v.getMonth() + 3);
+  else if (membresiaId === "semestral") v.setMonth(v.getMonth() + 6);
+  else if (membresiaId === "anual") v.setFullYear(v.getFullYear() + 1);
+  else v.setMonth(v.getMonth() + 1); // mensual: básica, estándar, completo
+  return fmt(v);
+};
+
 const calcEdad = (fechaNac) => {
   if (!fechaNac) return { years: 0, months: 0, days: 0, total: 0 };
   const nac = new Date(fechaNac);
@@ -593,7 +605,12 @@ const StudentFormModal = ({ student, reload, onClose }) => {
             ))}
           </div>
         </Field>
-        <Field label="Fecha Inscripción"><Input type="date" value={fechaIns} onChange={e => setFechaIns(e.target.value)} /></Field>
+        <Field label="Fecha Inscripción">
+          <Input type="date" value={fechaIns} onChange={e => {
+            setFechaIns(e.target.value);
+            setFechaVencIns(calcVencimiento(e.target.value, membresia));
+          }} />
+        </Field>
         <Field label="Observaciones" className="col-span-2"><Textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} /></Field>
         {!student && (
           <div className="col-span-2 border border-white/10 rounded-2xl p-4 space-y-3">
@@ -608,14 +625,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
               <div className="grid grid-cols-3 gap-3 mt-2">
                 <Field label="Monto Total ($)"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" value={montoInscripcion} onChange={e=>{
                   setMontoInscripcion(e.target.value);
-                  // Auto-calcular vencimiento desde hoy según membresía
-                  const base = new Date();
-                  let venc = new Date(base);
-                  if (membresia==="trimestral") venc.setMonth(venc.getMonth()+3);
-                  else if (membresia==="semestral") venc.setMonth(venc.getMonth()+6);
-                  else if (membresia==="anual") venc.setFullYear(venc.getFullYear()+1);
-                  else venc.setMonth(venc.getMonth()+1);
-                  setFechaVencIns(fmt(venc));
+                  setFechaVencIns(calcVencimiento(fechaIns, membresia));
                 }} placeholder="0.00" /></Field>
                 <Field label="Monto Pagado ($)"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" value={montoPagadoIns} onChange={e=>setMontoPagadoIns(e.target.value)} placeholder="0.00" /></Field>
                 <Field label="Fecha Vencimiento (auto)">
@@ -793,16 +803,7 @@ const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
               {MEMBRESIAS.map(m=>(
                 <button key={m.id} type="button" onClick={()=>{
                   setTipoPago(m.id);
-                  // Recalcular vencimiento si ya hay fecha de pago
-                  if (fechaPago) {
-                    const base = new Date(fechaPago + "T12:00:00");
-                    let venc = new Date(base);
-                    if (m.id==="trimestral") venc.setMonth(venc.getMonth()+3);
-                    else if (m.id==="semestral") venc.setMonth(venc.getMonth()+6);
-                    else if (m.id==="anual") venc.setFullYear(venc.getFullYear()+1);
-                    else venc.setMonth(venc.getMonth()+1);
-                    setFechaVenc(fmt(venc));
-                  }
+                  if (fechaPago) setFechaVenc(calcVencimiento(fechaPago, m.id));
                 }}
                   className="p-4 rounded-2xl border text-center transition-all"
                   style={{ background:tipoPago===m.id?`${m.color}25`:"rgba(255,255,255,0.03)", borderColor:tipoPago===m.id?m.color:"rgba(255,255,255,0.1)" }}>
@@ -818,26 +819,19 @@ const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
             <Field label="Fecha de Pago">
               <Input type="date" value={fechaPago} onChange={e=>{
                 setFechaPago(e.target.value);
-                // Auto-calcular vencimiento según membresía
-                if (e.target.value) {
-                  const base = new Date(e.target.value + "T12:00:00");
-                  let venc = new Date(base);
-                  if (tipoPago==="trimestral") venc.setMonth(venc.getMonth()+3);
-                  else if (tipoPago==="semestral") venc.setMonth(venc.getMonth()+6);
-                  else if (tipoPago==="anual") venc.setFullYear(venc.getFullYear()+1);
-                  else venc.setMonth(venc.getMonth()+1); // mensual por defecto
-                  setFechaVenc(fmt(venc));
-                }
+                setFechaVenc(calcVencimiento(e.target.value, tipoPago));
               }} />
             </Field>
-            <Field label="Fecha Vencimiento (automático)">
+            <Field label="Vence automáticamente">
               <div className="flex items-center gap-2 h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
                 <span className={`text-sm font-bold ${fechaVenc && fechaVenc < fmt(today) ? "text-red-400" : "text-emerald-400"}`}>
                   {fechaVenc || "Selecciona fecha de pago"}
                 </span>
-                {fechaVenc && <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${fechaVenc < fmt(today) ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"}`}>
-                  {fechaVenc < fmt(today) ? "Vencido" : `${Math.ceil((new Date(fechaVenc)-today)/86400000)} días`}
-                </span>}
+                {fechaVenc && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${fechaVenc < fmt(today) ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"}`}>
+                    {fechaVenc < fmt(today) ? "Vencido" : `en ${Math.ceil((new Date(fechaVenc + "T12:00:00") - today) / 86400000)} días`}
+                  </span>
+                )}
               </div>
             </Field>
           </div>
@@ -1855,21 +1849,7 @@ export default function App() {
     if (!user) return;
     setLoading(true);
     Promise.all([loadAll(), reloadUsers()]).finally(()=>setLoading(false));
-    refreshRef.current = setInterval(async () => {
-      await loadAll();
-      // Auto-inactivar alumnos sin asistencia en 30 días
-      const sts = await db.get("students", "&estado=eq.activo");
-      const asist = await db.get("asistencia");
-      if (Array.isArray(sts) && Array.isArray(asist)) {
-        const hace30 = new Date(); hace30.setDate(hace30.getDate()-30);
-        for (const st of sts) {
-          const ultima = asist.filter(a=>a.alumno_id===st.id&&a.presente).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
-          if (!ultima || new Date(ultima.fecha) < hace30) {
-            await db.update("students", st.id, { estado:"inactivo" });
-          }
-        }
-      }
-    }, REFRESH_INTERVAL);
+    refreshRef.current = setInterval(loadAll, REFRESH_INTERVAL);
     return () => clearInterval(refreshRef.current);
   }, [user]);
 
