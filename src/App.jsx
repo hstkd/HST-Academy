@@ -518,7 +518,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
   const [registrarPago, setRegistrarPago] = useState(false);
   const [montoInscripcion, setMontoInscripcion] = useState("");
   const [montoPagadoIns, setMontoPagadoIns] = useState("");
-  const [fechaVencIns, setFechaVencIns] = useState(fmt(addDays(today, 30)));
+  const [fechaVencIns, setFechaVencIns] = useState(calcVencimiento(fmt(today), membresia));
 
   const save = async () => {
     if (!nombres || !apellidos) return;
@@ -537,15 +537,18 @@ const StudentFormModal = ({ student, reload, onClose }) => {
         const pagado = parseFloat(montoPagadoIns) || 0;
         const estadoPago = pagado >= total ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
         const memb = MEMBRESIAS.find(m => m.id === membresia);
+        const vencAuto = calcVencimiento(fechaIns, membresia);
+        const hoyStr = fmt(new Date());
+        const estadoFinal = estadoPago === "pagado" ? "pagado" : (vencAuto < hoyStr ? "vencido" : estadoPago);
         await db.insert("pagos", {
           alumno_id: newStudent.id,
           alumno_nombre: `${nombres} ${apellidos}`,
           monto: total,
           monto_pagado: pagado,
-          fecha_pago: fmt(today),
-          fecha_vencimiento: fechaVencIns,
-          tipo: memb?.nombre || "Inscripción",
-          estado: estadoPago,
+          fecha_pago: fechaIns,
+          fecha_vencimiento: vencAuto,
+          tipo: memb?.nombre || "Mensualidad",
+          estado: estadoFinal,
           sede,
           notas: "Pago registrado al momento de inscripción",
         });
