@@ -544,7 +544,6 @@ const StudentFormModal = ({ student, reload, onClose }) => {
         const estadoPago = pagado >= total ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
         const memb = MEMBRESIAS.find(m => m.id === membresia);
         const hoyStr = fmt(new Date());
-        const estadoFinal = estadoPago === "pagado" ? "pagado" : (fechaVencIns < hoyStr ? "vencido" : estadoPago);
         await db.insert("pagos", {
           alumno_id: newStudent.id,
           alumno_nombre: `${nombres} ${apellidos}`,
@@ -553,7 +552,6 @@ const StudentFormModal = ({ student, reload, onClose }) => {
           fecha_pago: fechaIns,
           fecha_vencimiento: fechaVencIns,
           tipo: memb?.nombre || "Mensualidad",
-          estado: estadoFinal,
           sede,
           notas: "Pago registrado al momento de inscripción",
         });
@@ -819,8 +817,7 @@ const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
     const save = async () => {
       if (!alumnoId||!montoTotal) return;
       setSaving(true);
-      const estado = pagado>=total?"pagado":pagado>0?"parcial":"pendiente";
-      await db.insert("pagos",{ alumno_id:alumnoId, alumno_nombre:`${alumno?.nombres} ${alumno?.apellidos}`, monto:total, monto_pagado:pagado, fecha_pago:fechaPago, fecha_vencimiento:fechaVenc, tipo:memb?.nombre||tipoPago, estado, sede:alumno?.sede||"Quito", notas });
+      await db.insert("pagos",{ alumno_id:alumnoId, alumno_nombre:`${alumno?.nombres} ${alumno?.apellidos}`, monto:total, monto_pagado:pagado, fecha_pago:fechaPago, fecha_vencimiento:fechaVenc, tipo:memb?.nombre||tipoPago, sede:alumno?.sede||"Quito", notas });
       await reload();
       setSaving(false);
       onClose();
@@ -1805,8 +1802,20 @@ const MiHistorialPage = ({ currentUser, students, examenes, eventos }) => {
 const MisPagosPage = ({ currentUser, students, pagos }) => {
   const alumno = students.find(s=>s.correo===currentUser.email);
   if (!alumno) return <div className="text-center py-20"><p className="text-slate-400">Perfil no encontrado.</p></div>;
-  const misPagos = pagos.filter(p=>p.alumno_id===alumno.id).sort((a,b)=>b.fecha_pago?.localeCompare(a.fecha_pago));
-  const getDays = f=>Math.ceil((new Date(f)-today)/86400000);
+  const hoyMisPagos = fmt(new Date());
+  const misPagosRaw = pagos.filter(p=>p.alumno_id===alumno.id).sort((a,b)=>b.fecha_pago?.localeCompare(a.fecha_pago));
+  const misPagos = misPagosRaw.map(p => {
+    if (!p.fecha_vencimiento) return p;
+    if (p.fecha_vencimiento <= hoyMisPagos) return { ...p, estado: "vencido" };
+    if (parseFloat(p.monto_pagado||0) >= parseFloat(p.monto||1)) return { ...p, estado: "pagado" };
+    if (parseFloat(p.monto_pagado||0) > 0) return { ...p, estado: "parcial" };
+    return { ...p, estado: "pendiente" };
+  });
+  const getDays = f => {
+    const hoyMs = new Date(hoyMisPagos + "T00:00:00").getTime();
+    const vencMs = new Date(f + "T00:00:00").getTime();
+    return Math.ceil((vencMs - hoyMs) / 86400000);
+  };
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>MIS PAGOS</h1>
@@ -1846,31 +1855,8 @@ export default function App() {
       db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"),
     ]);
     setStudents(Array.isArray(s)?s:[]);
-    // Actualizar estados en BD y memoria basados en fecha_vencimiento
-    const hoy = fmt(new Date());
-    const pagosActualizados = [];
-    if (Array.isArray(p)) {
-      for (const pago of p) {
-        let estadoReal;
-        if (!pago.fecha_vencimiento) {
-          estadoReal = pago.estado;
-        } else if (pago.fecha_vencimiento <= hoy) {
-          // Fecha vencida → VENCIDO siempre
-          estadoReal = "vencido";
-        } else if (parseFloat(pago.monto_pagado||0) >= parseFloat(pago.monto||1)) {
-          estadoReal = "pagado";
-        } else if (parseFloat(pago.monto_pagado||0) > 0) {
-          estadoReal = "parcial";
-        } else {
-          estadoReal = "pendiente";
-        }
-        if (estadoReal !== pago.estado) {
-          await db.update("pagos", pago.id, { estado: estadoReal });
-        }
-        pagosActualizados.push({ ...pago, estado: estadoReal });
-      }
-    }
-    setPagos(pagosActualizados);
+    // Estado se calcula en tiempo real, no se guarda en BD
+    setPagos(Array.isArray(p) ? p : []);
     setAsistencia(Array.isArray(a)?a:[]);
     setEventos(Array.isArray(e)?e:[]);
     setVentas(Array.isArray(v)?v:[]);
