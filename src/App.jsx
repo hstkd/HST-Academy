@@ -405,14 +405,15 @@ const ChangePasswordModal = ({ currentUser, onClose }) => {
   );
 };
 
-const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes }) => {
+const DashboardPage = ({ students, pagos, historialPagos, asistencia, ventas, eventos, examenes }) => {
   const activos = students.filter(s=>s.estado==="activo").length;
   const hoyDash = fmt(new Date());
   // Vencido = fecha_vencimiento <= hoy, sin importar si pagó
   const vencidos = pagos.filter(p =>
     p.fecha_vencimiento && p.fecha_vencimiento <= hoyDash
   ).length;
-  const ingresosMes = pagos.filter(p=>p.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
+  // Sumar todos los abonos del mes desde historial_pagos
+  const ingresosMes = (historialPagos||[]).filter(h=>h.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0);
   const ventasMes = (ventas||[]).filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.total||0),0);
   const eventosMes = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
   const examenesTotal = (examenes||[]).filter(ex=>ex.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,ex)=>a+parseFloat(ex.monto||0),0);
@@ -786,16 +787,17 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
 };
 
 const CompletarModal = ({ pago, historialPagos, reload, onClose }) => {
-  const [montaFaltante, setMontaFaltante] = useState("");
+  const [montoAbono, setMontoAbono] = useState("");
+  const [fechaPago, setFechaPago] = useState(fmt(new Date()));
   const [notas, setNotas] = useState("");
   const [saving, setSaving] = useState(false);
 
   const montoPendiente = Math.max(0, parseFloat(pago.monto||0) - parseFloat(pago.monto_pagado||0));
-  const montoCompletar = parseFloat(montaFaltante) || montoPendiente;
-  const nuevoMontoPagado = parseFloat(pago.monto_pagado||0) + montoCompletar;
+  const montoIngreso = parseFloat(montoAbono) || 0;
+  const nuevoMontoPagado = parseFloat(pago.monto_pagado||0) + montoIngreso;
 
   const save = async () => {
-    if (montoCompletar <= 0) return;
+    if (montoIngreso <= 0) return;
     setSaving(true);
     // Actualizar monto_pagado en pago
     await db.update("pagos", pago.id, {
@@ -805,11 +807,11 @@ const CompletarModal = ({ pago, historialPagos, reload, onClose }) => {
     await db.insert("historial_pagos", {
       alumno_id: pago.alumno_id,
       alumno_nombre: pago.alumno_nombre,
-      monto_pagado: montoCompletar,
-      fecha_pago: fmt(new Date()),
+      monto_pagado: montoIngreso,
+      fecha_pago: fechaPago,
       nueva_fecha_vencimiento: pago.fecha_vencimiento,
       tipo: pago.tipo,
-      observaciones: notas || "Pago parcial completado",
+      observaciones: notas || "Abono a cuenta",
     });
     await reload();
     setSaving(false);
@@ -834,20 +836,27 @@ const CompletarModal = ({ pago, historialPagos, reload, onClose }) => {
           </div>
         </div>
 
-        <Field label="Monto a completar ($)">
-          <Input 
-            type="number" 
-            value={montaFaltante} 
-            onChange={e=>setMontaFaltante(e.target.value)} 
-            placeholder={montoPendiente.toFixed(2)}
-            max={montoPendiente}
-          />
-          <p className="text-xs text-slate-400 mt-1">Máximo: ${montoPendiente.toFixed(2)}</p>
-        </Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Monto a abonar ($)">
+            <Input 
+              type="number" 
+              value={montoAbono} 
+              onChange={e=>setMontoAbono(e.target.value)} 
+              placeholder="0.00"
+              step="0.01"
+            />
+            <p className="text-xs text-slate-400 mt-1">Faltante: ${montoPendiente.toFixed(2)}</p>
+          </Field>
+
+          <Field label="Fecha del pago">
+            <Input type="date" value={fechaPago} onChange={e=>setFechaPago(e.target.value)} />
+          </Field>
+        </div>
 
         <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
           <p className="text-xs text-slate-400 mb-1">Nuevo total pagado</p>
           <p className="text-lg font-black text-emerald-400">${nuevoMontoPagado.toFixed(2)} / ${parseFloat(pago.monto||0).toFixed(2)}</p>
+          {nuevoMontoPagado >= parseFloat(pago.monto||0) && <p className="text-xs text-emerald-400 mt-1">✓ Pago completo</p>}
         </div>
 
         <Field label="Notas (opcional)">
@@ -857,7 +866,7 @@ const CompletarModal = ({ pago, historialPagos, reload, onClose }) => {
 
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||montoCompletar<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Completar pago"}</button>
+        <button onClick={save} disabled={saving||montoIngreso<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Completar pago"}</button>
       </div>
     </Modal>
   );
@@ -966,7 +975,8 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
     const vencMs = new Date(f + "T00:00:00").getTime();
     return Math.ceil((vencMs - hoyMs) / 86400000);
   };
-  const totalMes = pagosReal.filter(p=>p.fecha_pago?.slice(0,7)===hoyPagos.slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
+  // Sumar ingresos de historial_pagos del mes actual (todos los abonos)
+  const totalMes = historialPagos.filter(h=>h.fecha_pago?.slice(0,7)===hoyPagos.slice(0,7)).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0);
   const totalDeuda = pagosReal.filter(p=>p.estado==="vencido"||p.estado==="parcial"||p.estado==="pendiente").reduce((a,p)=>a+Math.max(0,parseFloat(p.monto||0)-parseFloat(p.monto_pagado||0)),0);
 
   const PagoForm = ({ onClose }) => {
@@ -1616,9 +1626,10 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
 };
 
 
-const FinancePage = ({ pagos, ventas, eventos, examenes }) => {
+const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes }) => {
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-  const byMonth = meses.map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
+  // Por mes desde historial_pagos
+  const byMonth = meses.map((label,i)=>({ label, value:(historialPagos||[]).filter(h=>parseInt(h.fecha_pago?.slice(5,7))===i+1).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0) }));
   const ventasByMonth = meses.map((label,i)=>({ label, value:(ventas||[]).filter(v=>parseInt(v.fecha?.slice(5,7))===i+1).reduce((a,v)=>a+parseFloat(v.total||0),0) }));
   const totalAnual = byMonth.reduce((a,m)=>a+m.value,0);
   const totalVentas = ventasByMonth.reduce((a,m)=>a+m.value,0);
@@ -2193,13 +2204,13 @@ export default function App() {
   const renderPage = () => {
     if (loading) return <Spinner />;
     switch(page) {
-      case "dashboard":     return <DashboardPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} eventos={eventos} examenes={examenes} />;
+      case "dashboard":     return <DashboardPage students={students} pagos={pagos} historialPagos={historialPagos} asistencia={asistencia} ventas={ventas} eventos={eventos} examenes={examenes} />;
       case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} asistencia={asistencia} examenes={examenes} eventos={eventos} />;
       case "payments":      return <PaymentsPage students={students} pagos={pagos} historialPagos={historialPagos} reload={loadAll} isAdmin={isAdmin} />;
       case "ventas":        return <VentasPage ventas={ventas} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} />;
-      case "finance":       return <FinancePage pagos={pagos} ventas={ventas} eventos={eventos} examenes={examenes} />;
+      case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} />;
       case "events":        return <EventsPage eventos={eventos} students={students} reload={loadAll} />;
       case "users":         return <UsersPage currentUser={user} setCurrentUser={setUser} allUsers={allUsers} reloadUsers={reloadUsers} />;
       case "mi_asistencia": return <MiAsistenciaPage currentUser={user} students={students} asistencia={asistencia} />;
