@@ -407,7 +407,8 @@ const ChangePasswordModal = ({ currentUser, onClose }) => {
 
 const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes }) => {
   const activos = students.filter(s=>s.estado==="activo").length;
-  const vencidos = pagos.filter(p => p.estado === "vencido" || (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < fmt(today))).length;
+  const hoyDash = fmt(today);
+  const vencidos = pagos.filter(p => p.estado === "vencido" || (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoyDash)).length;
   const ingresosMes = pagos.filter(p=>p.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
   const ventasMes = (ventas||[]).filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.total||0),0);
   const eventosMes = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
@@ -416,10 +417,10 @@ const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes 
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const chartData = meses.slice(0,today.getMonth()+1).map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
   const memCounts = MEMBRESIAS.map(m=>({ ...m, count:students.filter(s=>s.membresia===m.id&&s.estado==="activo").length }));
-  const hoyStr = fmt(today);
-  // Calcular estado real en tiempo real
+  // Los pagos ya vienen con estado actualizado desde loadAll
+  // Pero calculamos en tiempo real también por si acaso
   const pagosConEstadoReal = pagos.map(p => {
-    if (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoyStr) {
+    if (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoyDash) {
       return { ...p, estado: "vencido" };
     }
     return p;
@@ -771,10 +772,18 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
 const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
-  const filtered = filter==="Todos"?pagos:pagos.filter(p=>p.estado===filter);
+  // Calcular estado real en tiempo real
+  const hoyPagos = fmt(new Date());
+  const pagosReal = pagos.map(p => {
+    if (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoyPagos) {
+      return { ...p, estado: "vencido" };
+    }
+    return p;
+  });
+  const filtered = filter==="Todos" ? pagosReal : pagosReal.filter(p => p.estado===filter);
   const getDays = f=>Math.ceil((new Date(f)-today)/86400000);
-  const totalMes = pagos.filter(p=>p.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
-  const totalDeuda = pagos.reduce((a,p)=>a+Math.max(0,parseFloat(p.monto)-parseFloat(p.monto_pagado)),0);
+  const totalMes = pagosReal.filter(p=>p.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
+  const totalDeuda = pagosReal.reduce((a,p)=>a+Math.max(0,parseFloat(p.monto)-parseFloat(p.monto_pagado)),0);
 
   const PagoForm = ({ onClose }) => {
     const active = students.filter(s=>s.estado==="activo");
@@ -1820,27 +1829,22 @@ export default function App() {
       db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"),
     ]);
     setStudents(Array.isArray(s)?s:[]);
-    // Auto-marcar como vencido si pasó la fecha y no está pagado
+    // Actualizar estados vencidos en BD y en memoria
+    const hoy = fmt(new Date());
+    const pagosActualizados = [];
     if (Array.isArray(p)) {
-      const hoy = fmt(new Date());
       for (const pago of p) {
         if (pago.estado !== "pagado" && pago.fecha_vencimiento && pago.fecha_vencimiento < hoy) {
           if (pago.estado !== "vencido") {
             await db.update("pagos", pago.id, { estado: "vencido" });
-            pago.estado = "vencido";
           }
+          pagosActualizados.push({ ...pago, estado: "vencido" });
+        } else {
+          pagosActualizados.push(pago);
         }
       }
     }
-    // Calcular estado real en memoria también (sin esperar BD)
-    const pagosConEstado = Array.isArray(p) ? p.map(pago => {
-      if (pago.estado !== "pagado" && pago.fecha_vencimiento) {
-        const hoy = fmt(new Date());
-        if (pago.fecha_vencimiento < hoy) return { ...pago, estado: "vencido" };
-      }
-      return pago;
-    }) : [];
-    setPagos(pagosConEstado);
+    setPagos(pagosActualizados);
     setAsistencia(Array.isArray(a)?a:[]);
     setEventos(Array.isArray(e)?e:[]);
     setVentas(Array.isArray(v)?v:[]);
@@ -1891,12 +1895,12 @@ export default function App() {
   ];
 
   const navItems = allNavItems.filter(n=>perms.includes(n.id));
+  const hoyAlerts = fmt(new Date());
   const alerts = pagos.filter(p => {
-    const hoy = fmt(new Date());
     if (p.estado === "vencido") return true;
-    if (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoy) return true;
+    if (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoyAlerts) return true;
     if (p.estado !== "pagado" && p.fecha_vencimiento) {
-      const dias = Math.ceil((new Date(p.fecha_vencimiento) - new Date()) / 86400000);
+      const dias = Math.ceil((new Date(p.fecha_vencimiento + "T12:00:00") - new Date()) / 86400000);
       return dias >= 0 && dias <= 5;
     }
     return false;
