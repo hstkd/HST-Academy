@@ -408,10 +408,10 @@ const ChangePasswordModal = ({ currentUser, onClose }) => {
 const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes }) => {
   const activos = students.filter(s=>s.estado==="activo").length;
   const hoyDash = fmt(new Date());
-  const vencidos = pagos.filter(p => {
-    if (parseFloat(p.monto_pagado||0) >= parseFloat(p.monto||1)) return false;
-    return p.fecha_vencimiento && p.fecha_vencimiento <= hoyDash;
-  }).length;
+  // Vencido = fecha_vencimiento <= hoy, sin importar si pagó
+  const vencidos = pagos.filter(p =>
+    p.fecha_vencimiento && p.fecha_vencimiento <= hoyDash
+  ).length;
   const ingresosMes = pagos.filter(p=>p.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
   const ventasMes = (ventas||[]).filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.total||0),0);
   const eventosMes = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
@@ -420,11 +420,11 @@ const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes 
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const chartData = meses.slice(0,today.getMonth()+1).map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
   const memCounts = MEMBRESIAS.map(m=>({ ...m, count:students.filter(s=>s.membresia===m.id&&s.estado==="activo").length }));
-  // Estado real basado ÚNICAMENTE en fecha_vencimiento
+  // Estado basado SOLO en fecha_vencimiento
   const pagosConEstadoReal = pagos.map(p => {
     if (!p.fecha_vencimiento) return p;
-    if (parseFloat(p.monto_pagado||0) >= parseFloat(p.monto||1)) return { ...p, estado: "pagado" };
     if (p.fecha_vencimiento <= hoyDash) return { ...p, estado: "vencido" };
+    if (parseFloat(p.monto_pagado||0) >= parseFloat(p.monto||1)) return { ...p, estado: "pagado" };
     if (parseFloat(p.monto_pagado||0) > 0) return { ...p, estado: "parcial" };
     return { ...p, estado: "pendiente" };
   });
@@ -779,14 +779,16 @@ const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
   const hoyPagos = fmt(new Date());
   const getEstadoReal = (p) => {
     if (!p.fecha_vencimiento) return p.estado;
-    // Si pagó el monto completo → pagado
-    if (parseFloat(p.monto_pagado||0) >= parseFloat(p.monto||1)) return "pagado";
-    // Si la fecha de vencimiento ya pasó → vencido (sin importar nada más)
+    // REGLA: la fecha de vencimiento manda siempre
+    // Si ya venció (fecha_vencimiento <= hoy) → VENCIDO sin importar si pagó
     if (p.fecha_vencimiento <= hoyPagos) return "vencido";
+    // Si NO ha vencido → Al día (pagado en su período vigente)
     // Si no venció y tiene pago parcial → parcial
-    if (parseFloat(p.monto_pagado||0) > 0) return "parcial";
+    if (parseFloat(p.monto_pagado||0) > 0 && parseFloat(p.monto_pagado||0) < parseFloat(p.monto||1)) return "parcial";
     // Si no venció y no pagó nada → pendiente
-    return "pendiente";
+    if (parseFloat(p.monto_pagado||0) === 0) return "pendiente";
+    // Si no venció y pagó completo → pagado (al día)
+    return "pagado";
   };
   const pagosReal = pagos.map(p => ({ ...p, estado: getEstadoReal(p) }));
   const filtered = filter==="Todos" ? pagosReal : pagosReal.filter(p => p.estado===filter);
@@ -896,7 +898,7 @@ const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
         <div className="grid grid-cols-3 gap-4">
           <StatCard title="Ingresos Mes" value={`$${totalMes.toFixed(0)}`} icon="finance" accent="emerald" />
           <StatCard title="Deuda Total" value={`$${totalDeuda.toFixed(0)}`} icon="payments" accent="red" />
-          <StatCard title="Vencidos" value={pagos.filter(p=>{ if(parseFloat(p.monto_pagado||0)>=parseFloat(p.monto||1)) return false; return p.fecha_vencimiento && p.fecha_vencimiento<=fmt(new Date()); }).length} icon="payments" accent="amber" />
+          <StatCard title="Vencidos" value={pagos.filter(p=> p.fecha_vencimiento && p.fecha_vencimiento<=fmt(new Date())).length} icon="payments" accent="amber" />
         </div>
       )}
       <div className="flex gap-2 flex-wrap">
@@ -1850,10 +1852,13 @@ export default function App() {
     if (Array.isArray(p)) {
       for (const pago of p) {
         let estadoReal;
-        if (parseFloat(pago.monto_pagado||0) >= parseFloat(pago.monto||1)) {
-          estadoReal = "pagado";
-        } else if (pago.fecha_vencimiento && pago.fecha_vencimiento <= hoy) {
+        if (!pago.fecha_vencimiento) {
+          estadoReal = pago.estado;
+        } else if (pago.fecha_vencimiento <= hoy) {
+          // Fecha vencida → VENCIDO siempre
           estadoReal = "vencido";
+        } else if (parseFloat(pago.monto_pagado||0) >= parseFloat(pago.monto||1)) {
+          estadoReal = "pagado";
         } else if (parseFloat(pago.monto_pagado||0) > 0) {
           estadoReal = "parcial";
         } else {
