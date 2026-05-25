@@ -407,8 +407,11 @@ const ChangePasswordModal = ({ currentUser, onClose }) => {
 
 const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes }) => {
   const activos = students.filter(s=>s.estado==="activo").length;
-  const hoyDash = fmt(today);
-  const vencidos = pagos.filter(p => p.estado === "vencido" || (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoyDash)).length;
+  const hoyDash = fmt(new Date());
+  const vencidos = pagos.filter(p => {
+    if (parseFloat(p.monto_pagado||0) >= parseFloat(p.monto||1)) return false;
+    return p.fecha_vencimiento && p.fecha_vencimiento <= hoyDash;
+  }).length;
   const ingresosMes = pagos.filter(p=>p.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
   const ventasMes = (ventas||[]).filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.total||0),0);
   const eventosMes = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
@@ -417,13 +420,12 @@ const DashboardPage = ({ students, pagos, asistencia, ventas, eventos, examenes 
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const chartData = meses.slice(0,today.getMonth()+1).map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
   const memCounts = MEMBRESIAS.map(m=>({ ...m, count:students.filter(s=>s.membresia===m.id&&s.estado==="activo").length }));
-  // Estado real basado SOLO en fecha_vencimiento
+  // Estado real basado ÚNICAMENTE en fecha_vencimiento
   const pagosConEstadoReal = pagos.map(p => {
-    const montoPagado = parseFloat(p.monto_pagado||0);
-    const montoTotal = parseFloat(p.monto||0);
-    if (montoPagado >= montoTotal && montoTotal > 0) return { ...p, estado: "pagado" };
-    if (p.fecha_vencimiento && p.fecha_vencimiento < hoyDash) return { ...p, estado: "vencido" };
-    if (montoPagado > 0) return { ...p, estado: "parcial" };
+    if (!p.fecha_vencimiento) return p;
+    if (parseFloat(p.monto_pagado||0) >= parseFloat(p.monto||1)) return { ...p, estado: "pagado" };
+    if (p.fecha_vencimiento <= hoyDash) return { ...p, estado: "vencido" };
+    if (parseFloat(p.monto_pagado||0) > 0) return { ...p, estado: "parcial" };
     return { ...p, estado: "pendiente" };
   });
 
@@ -773,25 +775,28 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
 const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
-  // Calcular estado real basado SOLO en fecha_vencimiento
+  // Estado determinado ÚNICAMENTE por fecha_vencimiento vs hoy
   const hoyPagos = fmt(new Date());
-  const pagosReal = pagos.map(p => {
-    // Si está marcado como pagado completo, respetarlo
-    if (parseFloat(p.monto_pagado||0) >= parseFloat(p.monto||0)) {
-      return { ...p, estado: "pagado" };
-    }
-    // Si tiene fecha de vencimiento, determinar estado por fecha
-    if (p.fecha_vencimiento) {
-      if (p.fecha_vencimiento < hoyPagos) return { ...p, estado: "vencido" };
-      const dias = Math.ceil((new Date(p.fecha_vencimiento + "T12:00:00") - new Date()) / 86400000);
-      if (dias <= 30) return { ...p, estado: parseFloat(p.monto_pagado||0) > 0 ? "parcial" : "pendiente" };
-    }
-    return p;
-  });
+  const getEstadoReal = (p) => {
+    if (!p.fecha_vencimiento) return p.estado;
+    // Si pagó el monto completo → pagado
+    if (parseFloat(p.monto_pagado||0) >= parseFloat(p.monto||1)) return "pagado";
+    // Si la fecha de vencimiento ya pasó → vencido (sin importar nada más)
+    if (p.fecha_vencimiento <= hoyPagos) return "vencido";
+    // Si no venció y tiene pago parcial → parcial
+    if (parseFloat(p.monto_pagado||0) > 0) return "parcial";
+    // Si no venció y no pagó nada → pendiente
+    return "pendiente";
+  };
+  const pagosReal = pagos.map(p => ({ ...p, estado: getEstadoReal(p) }));
   const filtered = filter==="Todos" ? pagosReal : pagosReal.filter(p => p.estado===filter);
-  const getDays = f=>Math.ceil((new Date(f)-today)/86400000);
-  const totalMes = pagosReal.filter(p=>p.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
-  const totalDeuda = pagosReal.reduce((a,p)=>a+Math.max(0,parseFloat(p.monto)-parseFloat(p.monto_pagado)),0);
+  const getDays = f => {
+    const hoyMs = new Date(hoyPagos + "T00:00:00").getTime();
+    const vencMs = new Date(f + "T00:00:00").getTime();
+    return Math.ceil((vencMs - hoyMs) / 86400000);
+  };
+  const totalMes = pagosReal.filter(p=>p.fecha_pago?.slice(0,7)===hoyPagos.slice(0,7)).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
+  const totalDeuda = pagosReal.filter(p=>p.estado==="vencido"||p.estado==="parcial"||p.estado==="pendiente").reduce((a,p)=>a+Math.max(0,parseFloat(p.monto||0)-parseFloat(p.monto_pagado||0)),0);
 
   const PagoForm = ({ onClose }) => {
     const active = students.filter(s=>s.estado==="activo");
@@ -891,7 +896,7 @@ const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
         <div className="grid grid-cols-3 gap-4">
           <StatCard title="Ingresos Mes" value={`$${totalMes.toFixed(0)}`} icon="finance" accent="emerald" />
           <StatCard title="Deuda Total" value={`$${totalDeuda.toFixed(0)}`} icon="payments" accent="red" />
-          <StatCard title="Vencidos" value={pagos.filter(p=>p.estado==="vencido").length} icon="payments" accent="amber" />
+          <StatCard title="Vencidos" value={pagos.filter(p=>{ if(parseFloat(p.monto_pagado||0)>=parseFloat(p.monto||1)) return false; return p.fecha_vencimiento && p.fecha_vencimiento<=fmt(new Date()); }).length} icon="payments" accent="amber" />
         </div>
       )}
       <div className="flex gap-2 flex-wrap">
@@ -915,7 +920,9 @@ const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
               </div>
               <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                 <span>Vence: {p.fecha_vencimiento}</span>
-                <span className={dias<0?"text-red-400 font-bold":dias<7?"text-amber-400 font-bold":"text-emerald-400"}>{dias<0?`Vencido hace ${Math.abs(dias)} días`:`${dias} días restantes`}</span>
+                <span className={dias<0?"text-red-400 font-bold":dias<7?"text-amber-400 font-bold":"text-emerald-400"}>
+                  {dias<0?`Vencido hace ${Math.abs(dias)} día(s)`:`${dias} día(s) restantes`}
+                </span>
               </div>
               {p.estado!=="pagado"&&<div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background:p.estado==="vencido"?"#ef4444":"#f59e0b" }} /></div>}
               {isAdmin&&<div className="flex justify-end mt-3"><button onClick={()=>onDelete(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /> Eliminar</button></div>}
@@ -1842,19 +1849,12 @@ export default function App() {
     const pagosActualizados = [];
     if (Array.isArray(p)) {
       for (const pago of p) {
-        const montoPagado = parseFloat(pago.monto_pagado||0);
-        const montoTotal = parseFloat(pago.monto||0);
-        let estadoReal = pago.estado;
-        // Si pagó completo → pagado
-        if (montoPagado >= montoTotal && montoTotal > 0) {
+        let estadoReal;
+        if (parseFloat(pago.monto_pagado||0) >= parseFloat(pago.monto||1)) {
           estadoReal = "pagado";
-        }
-        // Si no pagó completo y venció → vencido
-        else if (pago.fecha_vencimiento && pago.fecha_vencimiento < hoy) {
+        } else if (pago.fecha_vencimiento && pago.fecha_vencimiento <= hoy) {
           estadoReal = "vencido";
-        }
-        // Si no pagó completo y no venció → parcial o pendiente
-        else if (montoPagado > 0) {
+        } else if (parseFloat(pago.monto_pagado||0) > 0) {
           estadoReal = "parcial";
         } else {
           estadoReal = "pendiente";
@@ -1918,13 +1918,13 @@ export default function App() {
   const navItems = allNavItems.filter(n=>perms.includes(n.id));
   const hoyAlerts = fmt(new Date());
   const alerts = pagos.filter(p => {
-    if (p.estado === "vencido") return true;
-    if (p.estado !== "pagado" && p.fecha_vencimiento && p.fecha_vencimiento < hoyAlerts) return true;
-    if (p.estado !== "pagado" && p.fecha_vencimiento) {
-      const dias = Math.ceil((new Date(p.fecha_vencimiento + "T12:00:00") - new Date()) / 86400000);
-      return dias >= 0 && dias <= 5;
-    }
-    return false;
+    if (parseFloat(p.monto_pagado||0) >= parseFloat(p.monto||1)) return false;
+    if (!p.fecha_vencimiento) return false;
+    // Vencido o próximo a vencer (5 días)
+    const hoyMs = new Date(hoyAlerts + "T00:00:00").getTime();
+    const vencMs = new Date(p.fecha_vencimiento + "T00:00:00").getTime();
+    const dias = Math.ceil((vencMs - hoyMs) / 86400000);
+    return dias <= 5;
   }).length;
   const roleColors = { admin:"#f59e0b", profesor:"#3b82f6", alumno:"#22c55e" };
 
