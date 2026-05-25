@@ -546,9 +546,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
       if (registrarPago && montoInscripcion && newStudent?.id) {
         const total = parseFloat(montoInscripcion) || 0;
         const pagado = parseFloat(montoPagadoIns) || 0;
-        const estadoPago = pagado >= total ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
         const memb = MEMBRESIAS.find(m => m.id === membresia);
-        const hoyStr = fmt(new Date());
         await db.insert("pagos", {
           alumno_id: newStudent.id,
           alumno_nombre: `${nombres} ${apellidos}`,
@@ -558,8 +556,20 @@ const StudentFormModal = ({ student, reload, onClose }) => {
           fecha_vencimiento: fechaVencIns,
           tipo: memb?.nombre || "Mensualidad",
           sede,
-          notas: "Pago registrado al momento de inscripción",
+          notas: "Pago al inscripción",
         });
+        // Guardar en historial también
+        if (pagado > 0) {
+          await db.insert("historial_pagos", {
+            alumno_id: newStudent.id,
+            alumno_nombre: `${nombres} ${apellidos}`,
+            monto_pagado: pagado,
+            fecha_pago: fechaIns,
+            nueva_fecha_vencimiento: fechaVencIns,
+            tipo: memb?.nombre || "Mensualidad",
+            observaciones: "Pago inicial al inscribirse",
+          });
+        }
       }
     }
     await reload();
@@ -791,17 +801,22 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
   const save = async () => {
     if (!montoTotal) return;
     setSaving(true);
-    // Registrar nuevo pago
-    await db.insert("pagos", {
-      alumno_id: pago.alumno_id,
-      alumno_nombre: pago.alumno_nombre,
+    // Actualizar pago existente
+    await db.update("pagos", pago.id, {
       monto: total,
       monto_pagado: pagado,
-      fecha_pago: fechaPago,
       fecha_vencimiento: fechaVenc,
       tipo: memb?.nombre || tipoPago,
-      sede: pago.sede,
-      notas: notas || "Renovación de membresía",
+    });
+    // Guardar renovación en historial
+    await db.insert("historial_pagos", {
+      alumno_id: pago.alumno_id,
+      alumno_nombre: pago.alumno_nombre,
+      monto_pagado: pagado,
+      fecha_pago: fechaPago,
+      nueva_fecha_vencimiento: fechaVenc,
+      tipo: memb?.nombre || tipoPago,
+      observaciones: notas || "Renovación de membresía",
     });
     await reload();
     setSaving(false);
@@ -847,7 +862,7 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
   );
 };
 
-const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
+const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
   const [renovarPago, setRenovarPago] = useState(null);
@@ -894,7 +909,52 @@ const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
     const save = async () => {
       if (!alumnoId||!montoTotal) return;
       setSaving(true);
-      await db.insert("pagos",{ alumno_id:alumnoId, alumno_nombre:`${alumno?.nombres} ${alumno?.apellidos}`, monto:total, monto_pagado:pagado, fecha_pago:fechaPago, fecha_vencimiento:fechaVenc, tipo:memb?.nombre||tipoPago, sede:alumno?.sede||"Quito", notas });
+      // Verificar si ya existe pago para este alumno
+      const pagoExistente = pagos.find(p => p.alumno_id === alumnoId);
+      if (pagoExistente) {
+        // Actualizar pago existente
+        await db.update("pagos", pagoExistente.id, {
+          monto: total,
+          monto_pagado: pagado,
+          fecha_vencimiento: fechaVenc,
+          tipo: memb?.nombre || tipoPago,
+        });
+        // Guardar en historial
+        await db.insert("historial_pagos", {
+          alumno_id: alumnoId,
+          alumno_nombre: `${alumno?.nombres} ${alumno?.apellidos}`,
+          monto_pagado: pagado,
+          fecha_pago: fechaPago,
+          nueva_fecha_vencimiento: fechaVenc,
+          tipo: memb?.nombre || tipoPago,
+          observaciones: notas,
+        });
+      } else {
+        // Nuevo pago (primer registro)
+        await db.insert("pagos", {
+          alumno_id: alumnoId,
+          alumno_nombre: `${alumno?.nombres} ${alumno?.apellidos}`,
+          monto: total,
+          monto_pagado: pagado,
+          fecha_pago: fechaPago,
+          fecha_vencimiento: fechaVenc,
+          tipo: memb?.nombre || tipoPago,
+          sede: alumno?.sede || "Quito",
+          notas,
+        });
+        // También en historial si pagó
+        if (pagado > 0) {
+          await db.insert("historial_pagos", {
+            alumno_id: alumnoId,
+            alumno_nombre: `${alumno?.nombres} ${alumno?.apellidos}`,
+            monto_pagado: pagado,
+            fecha_pago: fechaPago,
+            nueva_fecha_vencimiento: fechaVenc,
+            tipo: memb?.nombre || tipoPago,
+            observaciones: notas || "Pago inicial",
+          });
+        }
+      }
       await reload();
       setSaving(false);
       onClose();
@@ -1026,6 +1086,23 @@ const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
                 {p.estado !== "vencido" && <div />}
                 {isAdmin&&<button onClick={()=>onDelete(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>}
               </div>
+              {/* Historial de pagos recientes */}
+              {(() => {
+                const historialAlumno = historialPagos.filter(h => h.alumno_id === p.alumno_id).sort((a,b) => b.fecha_pago?.localeCompare(a.fecha_pago)).slice(0,3);
+                return historialAlumno.length > 0 ? (
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    <p className="text-xs text-slate-400 font-semibold mb-2">Últimos pagos:</p>
+                    <div className="space-y-1">
+                      {historialAlumno.map(h => (
+                        <div key={h.id} className="flex justify-between text-xs">
+                          <span className="text-slate-400">{h.fecha_pago}</span>
+                          <span className="text-emerald-400 font-bold">${parseFloat(h.monto_pagado||0).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
             </div>
           );
         })}
@@ -1954,13 +2031,16 @@ export default function App() {
   const [showChangePass, setShowChangePass] = useState(false);
   const refreshRef = useRef(null);
 
+  const [historialPagos, setHistorialPagos] = useState([]);
+
   const loadAll = useCallback(async () => {
-    const [s,p,a,e,v,ex] = await Promise.all([
-      db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"),
+    const [s,p,a,e,v,ex,h] = await Promise.all([
+      db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"), db.get("historial_pagos"),
     ]);
     setStudents(Array.isArray(s)?s:[]);
     // Estado se calcula en tiempo real, no se guarda en BD
     setPagos(Array.isArray(p) ? p : []);
+    setHistorialPagos(Array.isArray(h) ? h : []);
     setAsistencia(Array.isArray(a)?a:[]);
     setEventos(Array.isArray(e)?e:[]);
     setVentas(Array.isArray(v)?v:[]);
@@ -2028,7 +2108,7 @@ export default function App() {
     switch(page) {
       case "dashboard":     return <DashboardPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} eventos={eventos} examenes={examenes} />;
       case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} asistencia={asistencia} examenes={examenes} eventos={eventos} />;
-      case "payments":      return <PaymentsPage students={students} pagos={pagos} reload={loadAll} isAdmin={isAdmin} />;
+      case "payments":      return <PaymentsPage students={students} pagos={pagos} historialPagos={historialPagos} reload={loadAll} isAdmin={isAdmin} />;
       case "ventas":        return <VentasPage ventas={ventas} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} />;
