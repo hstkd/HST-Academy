@@ -518,7 +518,8 @@ const StudentFormModal = ({ student, reload, onClose }) => {
   const [registrarPago, setRegistrarPago] = useState(false);
   const [montoInscripcion, setMontoInscripcion] = useState("");
   const [montoPagadoIns, setMontoPagadoIns] = useState("");
-  const [fechaVencIns, setFechaVencIns] = useState(calcVencimiento(fmt(today), membresia));
+  // fechaVencIns se calcula dinámicamente desde fechaIns + membresia
+  const fechaVencIns = calcVencimiento(fechaIns, membresia);
 
   const save = async () => {
     if (!nombres || !apellidos) return;
@@ -537,16 +538,15 @@ const StudentFormModal = ({ student, reload, onClose }) => {
         const pagado = parseFloat(montoPagadoIns) || 0;
         const estadoPago = pagado >= total ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
         const memb = MEMBRESIAS.find(m => m.id === membresia);
-        const vencAuto = calcVencimiento(fechaIns, membresia);
         const hoyStr = fmt(new Date());
-        const estadoFinal = estadoPago === "pagado" ? "pagado" : (vencAuto < hoyStr ? "vencido" : estadoPago);
+        const estadoFinal = estadoPago === "pagado" ? "pagado" : (fechaVencIns < hoyStr ? "vencido" : estadoPago);
         await db.insert("pagos", {
           alumno_id: newStudent.id,
           alumno_nombre: `${nombres} ${apellidos}`,
           monto: total,
           monto_pagado: pagado,
           fecha_pago: fechaIns,
-          fecha_vencimiento: vencAuto,
+          fecha_vencimiento: fechaVencIns,
           tipo: memb?.nombre || "Mensualidad",
           estado: estadoFinal,
           sede,
@@ -609,10 +609,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
           </div>
         </Field>
         <Field label="Fecha Inscripción">
-          <Input type="date" value={fechaIns} onChange={e => {
-            setFechaIns(e.target.value);
-            setFechaVencIns(calcVencimiento(e.target.value, membresia));
-          }} />
+          <Input type="date" value={fechaIns} onChange={e => setFechaIns(e.target.value)} />
         </Field>
         <Field label="Observaciones" className="col-span-2"><Textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} /></Field>
         {!student && (
@@ -628,12 +625,16 @@ const StudentFormModal = ({ student, reload, onClose }) => {
               <div className="grid grid-cols-3 gap-3 mt-2">
                 <Field label="Monto Total ($)"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" value={montoInscripcion} onChange={e=>{
                   setMontoInscripcion(e.target.value);
-                  setFechaVencIns(calcVencimiento(fechaIns, membresia));
                 }} placeholder="0.00" /></Field>
                 <Field label="Monto Pagado ($)"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" value={montoPagadoIns} onChange={e=>setMontoPagadoIns(e.target.value)} placeholder="0.00" /></Field>
-                <Field label="Fecha Vencimiento (auto)">
-                  <div className="flex items-center h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
-                    <span className="text-emerald-400 text-sm font-bold">{fechaVencIns}</span>
+                <Field label="Vence automáticamente">
+                  <div className="flex items-center gap-2 h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
+                    <span className={`text-sm font-bold ${fechaVencIns < fmt(today) ? "text-red-400" : "text-emerald-400"}`}>
+                      {fechaVencIns}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${fechaVencIns < fmt(today) ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"}`}>
+                      {fechaVencIns < fmt(today) ? "Vencido" : `en ${Math.ceil((new Date(fechaVencIns + "T12:00:00") - today) / 86400000)} días`}
+                    </span>
                   </div>
                 </Field>
               </div>
