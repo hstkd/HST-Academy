@@ -606,9 +606,23 @@ const StudentFormModal = ({ student, reload, onClose }) => {
             </div>
             {registrarPago && (
               <div className="grid grid-cols-3 gap-3 mt-2">
-                <Field label="Monto Total ($)"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" value={montoInscripcion} onChange={e=>setMontoInscripcion(e.target.value)} placeholder="0.00" /></Field>
+                <Field label="Monto Total ($)"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" value={montoInscripcion} onChange={e=>{
+                  setMontoInscripcion(e.target.value);
+                  // Auto-calcular vencimiento desde hoy según membresía
+                  const base = new Date();
+                  let venc = new Date(base);
+                  if (membresia==="trimestral") venc.setMonth(venc.getMonth()+3);
+                  else if (membresia==="semestral") venc.setMonth(venc.getMonth()+6);
+                  else if (membresia==="anual") venc.setFullYear(venc.getFullYear()+1);
+                  else venc.setMonth(venc.getMonth()+1);
+                  setFechaVencIns(fmt(venc));
+                }} placeholder="0.00" /></Field>
                 <Field label="Monto Pagado ($)"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" value={montoPagadoIns} onChange={e=>setMontoPagadoIns(e.target.value)} placeholder="0.00" /></Field>
-                <Field label="Fecha Vencimiento"><input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="date" value={fechaVencIns} onChange={e=>setFechaVencIns(e.target.value)} /></Field>
+                <Field label="Fecha Vencimiento (auto)">
+                  <div className="flex items-center h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
+                    <span className="text-emerald-400 text-sm font-bold">{fechaVencIns}</span>
+                  </div>
+                </Field>
               </div>
             )}
           </div>
@@ -665,7 +679,9 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
               </div>
               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.estado==="activo"?"bg-emerald-500/20 text-emerald-400":"bg-slate-500/20 text-slate-400"}`}>{s.estado}</span>
             </div>
-            <div className="flex items-center gap-2 mb-2 flex-wrap"><BeltBadge cinturon={s.cinturon} /><CategoriaBadge categoria={s.categoria||getCategoria(s.fecha_nacimiento)} /><MembresiaTag membresiaId={s.membresia} /></div>
+            <div className="flex items-center gap-2 mb-2 flex-wrap"><BeltBadge cinturon={s.cinturon} /><CategoriaBadge categoria={s.categoria||getCategoria(s.fecha_nacimiento)} /><MembresiaTag membresiaId={s.membresia} />
+              {examenes && examenes.some(ex=>ex.alumno_id===s.id&&ex.tipo?.includes("GAL")) ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">✓ GAL</span> : <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400">Sin GAL</span>}
+            </div>
             <div className="text-xs text-slate-500 space-y-1"><p>📱 {s.telefono}</p><p>👤 {s.representante}</p></div>
             <div className="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
               <button onClick={()=>setViewStudent(s)} className="flex-1 py-2 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30 flex items-center justify-center gap-1"><Icon name="eye" className="w-3 h-3" /> Ver</button>
@@ -684,7 +700,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
               <div><h2 className="text-2xl font-black text-white">{viewStudent.nombres} {viewStudent.apellidos}</h2><div className="flex gap-2 mt-1 flex-wrap"><BeltBadge cinturon={viewStudent.cinturon} /><CategoriaBadge categoria={viewStudent.categoria||getCategoria(viewStudent.fecha_nacimiento)} /><MembresiaTag membresiaId={viewStudent.membresia} /></div></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {[["Sede",viewStudent.sede],["Estado",viewStudent.estado],["Edad",`${viewStudent.edad} años`],["Nacimiento",viewStudent.fecha_nacimiento],["Representante",viewStudent.representante],["Teléfono",viewStudent.telefono],["Correo",viewStudent.correo],["Dirección",viewStudent.direccion],["Inscripción",viewStudent.fecha_inscripcion]].map(([k,v])=>(
+              {[["Sede",viewStudent.sede],["Estado",viewStudent.estado],["Edad",`${viewStudent.edad} años`],["Nacimiento",viewStudent.fecha_nacimiento],["Representante",viewStudent.representante],["Teléfono",viewStudent.telefono],["Correo",viewStudent.correo],["Dirección",viewStudent.direccion],["Inscripción",viewStudent.fecha_inscripcion],["GAL", examenes&&examenes.some(ex=>ex.alumno_id===viewStudent.id&&ex.tipo?.includes("GAL"))?"✓ Sí":"✗ No"]].map(([k,v])=>(
                 <div key={k} className="bg-white/5 rounded-xl p-3"><p className="text-xs text-slate-500 mb-0.5">{k}</p><p className="text-sm font-semibold text-white">{v||"—"}</p></div>
               ))}
             </div>
@@ -775,7 +791,19 @@ const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
           <Field label="Membresía">
             <div className="grid grid-cols-3 gap-3 mt-1">
               {MEMBRESIAS.map(m=>(
-                <button key={m.id} type="button" onClick={()=>setTipoPago(m.id)}
+                <button key={m.id} type="button" onClick={()=>{
+                  setTipoPago(m.id);
+                  // Recalcular vencimiento si ya hay fecha de pago
+                  if (fechaPago) {
+                    const base = new Date(fechaPago + "T12:00:00");
+                    let venc = new Date(base);
+                    if (m.id==="trimestral") venc.setMonth(venc.getMonth()+3);
+                    else if (m.id==="semestral") venc.setMonth(venc.getMonth()+6);
+                    else if (m.id==="anual") venc.setFullYear(venc.getFullYear()+1);
+                    else venc.setMonth(venc.getMonth()+1);
+                    setFechaVenc(fmt(venc));
+                  }
+                }}
                   className="p-4 rounded-2xl border text-center transition-all"
                   style={{ background:tipoPago===m.id?`${m.color}25`:"rgba(255,255,255,0.03)", borderColor:tipoPago===m.id?m.color:"rgba(255,255,255,0.1)" }}>
                   <p className="text-xs font-bold" style={{ color:tipoPago===m.id?m.color:"#94a3b8" }}>{m.nombre}</p>
@@ -787,8 +815,31 @@ const PaymentsPage = ({ students, pagos, reload, isAdmin }) => {
           <div className="grid grid-cols-2 gap-4">
             <Field label="Monto Total ($)"><Input type="number" value={montoTotal} onChange={e=>setMontoTotal(e.target.value)} placeholder="0.00" /></Field>
             <Field label="Monto Pagado ($)"><Input type="number" value={montoPagado} onChange={e=>setMontoPagado(e.target.value)} placeholder="0.00" /></Field>
-            <Field label="Fecha Pago"><Input type="date" value={fechaPago} onChange={e=>setFechaPago(e.target.value)} /></Field>
-            <Field label="Fecha Vencimiento"><Input type="date" value={fechaVenc} onChange={e=>setFechaVenc(e.target.value)} /></Field>
+            <Field label="Fecha de Pago">
+              <Input type="date" value={fechaPago} onChange={e=>{
+                setFechaPago(e.target.value);
+                // Auto-calcular vencimiento según membresía
+                if (e.target.value) {
+                  const base = new Date(e.target.value + "T12:00:00");
+                  let venc = new Date(base);
+                  if (tipoPago==="trimestral") venc.setMonth(venc.getMonth()+3);
+                  else if (tipoPago==="semestral") venc.setMonth(venc.getMonth()+6);
+                  else if (tipoPago==="anual") venc.setFullYear(venc.getFullYear()+1);
+                  else venc.setMonth(venc.getMonth()+1); // mensual por defecto
+                  setFechaVenc(fmt(venc));
+                }
+              }} />
+            </Field>
+            <Field label="Fecha Vencimiento (automático)">
+              <div className="flex items-center gap-2 h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
+                <span className={`text-sm font-bold ${fechaVenc && fechaVenc < fmt(today) ? "text-red-400" : "text-emerald-400"}`}>
+                  {fechaVenc || "Selecciona fecha de pago"}
+                </span>
+                {fechaVenc && <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${fechaVenc < fmt(today) ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"}`}>
+                  {fechaVenc < fmt(today) ? "Vencido" : `${Math.ceil((new Date(fechaVenc)-today)/86400000)} días`}
+                </span>}
+              </div>
+            </Field>
           </div>
           {montoTotal&&<div className={`p-3 rounded-xl text-sm font-bold border ${deuda>0?"bg-red-500/10 border-red-500/30 text-red-400":"bg-emerald-500/10 border-emerald-500/30 text-emerald-400"}`}>Deuda: ${deuda.toFixed(2)} {deuda===0&&"✓ Pagado completo"}</div>}
           <Field label="Notas"><Textarea value={notas} onChange={e=>setNotas(e.target.value)} /></Field>
@@ -1097,14 +1148,19 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
 
   const registrarGal = async () => {
     if (!galAlumnoId) return;
+    // Verificar si ya tiene GAL
+    const yaGal = examenes.some(ex => ex.alumno_id === galAlumnoId && ex.tipo?.includes("GAL"));
+    if (yaGal) {
+      alert("Este alumno ya tiene un GAL registrado. Solo se puede emitir 1 GAL por alumno.");
+      return;
+    }
     setSavingGal(true);
     const al = students.find(s => s.id === galAlumnoId);
-    const qty = parseInt(galQty) || 1;
     await db.insert("examenes", {
       alumno_id: galAlumnoId,
       alumno_nombre: `${al?.nombres} ${al?.apellidos}`,
-      tipo: `GAL${qty > 1 ? ` x${qty}` : ""}`,
-      monto: 13 * qty,
+      tipo: "GAL",
+      monto: 13,
       fecha: fmt(today),
     });
     await reloadExamenes();
@@ -1190,14 +1246,15 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
               <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={galAlumnoId} onChange={e=>setGalAlumnoId(e.target.value)}>
                 <option value="">Seleccionar alumno...</option>
                 {students.filter(s=>s.estado==="activo").map(s=>{
-                  const gals = examenes.filter(ex=>ex.alumno_id===s.id&&ex.tipo?.includes("GAL")).length;
-                  return <option key={s.id} value={s.id}>{s.nombres} {s.apellidos}{gals>0?` (${gals} GAL)`:""}</option>;
+                  const tieneGal = examenes.some(ex=>ex.alumno_id===s.id&&ex.tipo?.includes("GAL"));
+                  return <option key={s.id} value={s.id} disabled={tieneGal}>{s.nombres} {s.apellidos}{tieneGal?" — ✓ Ya tiene GAL":""}</option>;
                 })}
               </select>
             </Field>
-            <Field label="Cantidad de GALs">
-              <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50" type="number" min="1" value={galQty} onChange={e=>setGalQty(e.target.value)} />
-              {galQty>0 && <p className="text-xs text-emerald-400 mt-1 font-semibold">Total: ${(13*parseInt(galQty||1)).toFixed(2)}</p>}
+            <Field label="Valor">
+              <div className="flex items-center h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
+                <span className="text-amber-400 font-bold">$13.00 — 1 GAL por alumno</span>
+              </div>
             </Field>
             <Field label="Acción">
               <button onClick={registrarGal} disabled={savingGal||!galAlumnoId} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{savingGal?"Registrando...":"Registrar GAL"}</button>
