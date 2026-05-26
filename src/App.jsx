@@ -513,6 +513,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
   const [representante, setRepresentante] = useState(student?.representante || "");
   const [telefono, setTelefono] = useState(student?.telefono || "");
   const [correo, setCorreo] = useState(student?.correo || ""); // Usuario para login
+  const [userPass, setUserPass] = useState(""); // dummy, no se usa
   const [direccion, setDireccion] = useState(student?.direccion || "");
   const [sede, setSede] = useState(student?.sede || "Quito");
   const [cinturon, setCinturon] = useState(student?.cinturon || "Blanco");
@@ -631,10 +632,10 @@ const StudentFormModal = ({ student, reload, onClose }) => {
         <Field label="Teléfono"><Input value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="0991234567" /></Field>
         <Field label="Usuario (para login en app)" className="col-span-2"><Input value={correo} onChange={e => setCorreo(e.target.value)} placeholder="ej: juan.mendoza" /></Field>
         {!student && (
-          <Field label="Contraseña de acceso alumno/padre" className="col-span-2">
-            <Input type="password" value={userPass} onChange={e => setUserPass(e.target.value)} placeholder="Mínimo 6 caracteres (opcional)" />
-            <p className="text-xs text-slate-500 mt-1">Si ingresas correo y contraseña se crea usuario automáticamente.</p>
-          </Field>
+          <div className="col-span-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+            <p className="text-xs text-emerald-400 font-semibold">✓ Contraseña generada automáticamente</p>
+            <p className="text-xs text-slate-400 mt-1">Se creará un usuario con una contraseña temporal que el alumno/padre podrá cambiar.</p>
+          </div>
         )}
         <Field label="Dirección" className="col-span-2"><Input value={direccion} onChange={e => setDireccion(e.target.value)} placeholder="Dirección" /></Field>
         <Field label="Sede">
