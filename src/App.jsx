@@ -1239,33 +1239,55 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   const [reanudarPago, setReanudarPago] = useState(null);
   // Estado determinado ÚNICAMENTE por fecha_vencimiento vs hoy
   const hoyPagos = fmt(new Date());
-  const getEstadoReal = (p) => {
-    // Si membresía está pausada, siempre retorna "pausado"
-    if (p.estado_membresia === "Pausada") return "pausado";
+  // Retorna TODOS los estados aplicables (array)
+  const getEstadosReal = (p) => {
+    const estados = [];
     
-    // Sin fecha de vencimiento → pendiente
-    if (!p.fecha_vencimiento) return "pendiente";
+    if (p.estado_membresia === "Pausada") {
+      estados.push("pausado");
+      return estados;
+    }
+    
+    if (!p.fecha_vencimiento) {
+      estados.push("pendiente");
+      return estados;
+    }
     
     const pagado = parseFloat(p.monto_pagado||0);
     const total = parseFloat(p.monto||0);
+    const vencido = p.fecha_vencimiento <= hoyPagos;
     
-    // fecha_vencimiento <= hoy → VENCIDO
-    if (p.fecha_vencimiento <= hoyPagos) {
-      // Si pagó completo pero venció → "vencido_pagado"
-      if (pagado >= total && total > 0) return "vencido_pagado";
-      // Si tiene saldo pendiente y venció → "vencido_saldo"
-      if (pagado > 0 && pagado < total) return "vencido_saldo";
-      // Si no pagó nada y venció → "vencido"
-      return "vencido";
+    // Estados de vencimiento
+    if (vencido) {
+      if (pagado >= total && total > 0) {
+        estados.push("vencido_pagado");
+      } else if (pagado > 0 && pagado < total) {
+        estados.push("vencido");
+        estados.push("parcial");
+      } else {
+        estados.push("vencido");
+      }
+    } else {
+      // No vencido aún
+      if (pagado === 0) {
+        estados.push("pendiente");
+      } else if (pagado >= total && total > 0) {
+        estados.push("al día");
+      } else {
+        estados.push("parcial");
+      }
     }
     
-    // No vencido:
-    if (pagado === 0) return "pendiente";
-    if (total > 0 && pagado >= total) return "pagado";
-    return "parcial";
+    return estados;
   };
-  const pagosReal = pagos.map(p => ({ ...p, estado: getEstadoReal(p) }));
-  const filtered = filter==="Todos" ? pagosReal : pagosReal.filter(p => p.estado===filter);
+  
+  // Para compatibilidad, getEstadoReal retorna el principal
+  const getEstadoReal = (p) => getEstadosReal(p)[0];
+  const pagosReal = pagos.map(p => {
+    const estados = getEstadosReal(p);
+    return { ...p, estado: estados[0], estados };
+  });
+  const filtered = filter==="Todos" ? pagosReal : pagosReal.filter(p => p.estados && p.estados.includes(filter));
   const getDays = f => {
     const hoyMs = new Date(hoyPagos + "T00:00:00").getTime();
     const vencMs = new Date(f + "T00:00:00").getTime();
@@ -1273,7 +1295,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   };
   // Sumar ingresos de historial_pagos del mes actual (todos los abonos)
   const totalMes = historialPagos.filter(h=>h.fecha_pago?.slice(0,7)===hoyPagos.slice(0,7)).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0);
-  const totalDeuda = pagosReal.filter(p=>p.estado==="vencido"||p.estado==="parcial"||p.estado==="pendiente").reduce((a,p)=>a+Math.max(0,parseFloat(p.monto||0)-parseFloat(p.monto_pagado||0)),0);
+  const totalDeuda = pagosReal.filter(p=>p.estados && (p.estados.includes("vencido")||p.estados.includes("parcial")||p.estados.includes("pendiente"))).reduce((a,p)=>a+Math.max(0,parseFloat(p.monto||0)-parseFloat(p.monto_pagado||0)),0);
 
   const PagoForm = ({ onClose }) => {
     const active = students.filter(s=>s.estado==="activo");
@@ -1421,9 +1443,9 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
         </div>
       )}
       <div className="flex gap-2 flex-wrap">
-        {["Todos","pagado","parcial","vencido","pendiente"].map(f=>(
+        {["Todos","al día","pagado","parcial","vencido","vencido_pagado","pendiente","pausado"].map(f=>(
           <button key={f} onClick={()=>setFilter(f)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={filter===f?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>
-            {f==="Todos"?"Todos":pagoEstadoConfig[f]?.label}
+            {f==="Todos"?"Todos":f==="al día"?"Al día":f==="vencido_pagado"?"Vencido Pagado":f==="pausado"?"Pausado":f.charAt(0).toUpperCase()+f.slice(1)}
           </button>
         ))}
       </div>
@@ -1453,7 +1475,12 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[#020617] font-black text-sm" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{p.alumno_nombre?.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
                   <div><p className="font-bold text-white text-sm">{p.alumno_nombre}</p><p className="text-xs text-slate-500">{p.tipo} · {p.sede} · {p.fecha_pago}</p></div>
                 </div>
-                <div className="text-right"><p className="text-lg font-black text-white">${parseFloat(p.monto_pagado).toFixed(2)}<span className="text-sm text-slate-500">/${parseFloat(p.monto).toFixed(2)}</span></p><StatusBadge estado={p.estado} /></div>
+                <div className="text-right">
+                  <p className="text-lg font-black text-white">${parseFloat(p.monto_pagado).toFixed(2)}<span className="text-sm text-slate-500">/${parseFloat(p.monto).toFixed(2)}</span></p>
+                  <div className="flex gap-1.5 justify-end mt-1 flex-wrap">
+                    {p.estados && p.estados.map(est => <StatusBadge key={est} estado={est} />)}
+                  </div>
+                </div>
               </div>
               <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                 <span>Vence: {p.fecha_vencimiento}</span>
