@@ -952,8 +952,11 @@ const CompletarModal = ({ pago, historialPagos, reload, onClose }) => {
     if (montoIngreso <= 0) return;
     setSaving(true);
     // Actualizar monto_pagado en pago
+    const montoCuota = parseFloat(pago.monto||0);
+    const nuevoEstadoMembresia = nuevoMontoPagado >= montoCuota ? "Activa" : pago.estado_membresia;
     await db.update("pagos", pago.id, {
       monto_pagado: nuevoMontoPagado,
+      estado_membresia: nuevoEstadoMembresia,
     });
     // Guardar en historial
     await db.insert("historial_pagos", {
@@ -994,7 +997,7 @@ const CompletarModal = ({ pago, historialPagos, reload, onClose }) => {
               type="number" 
               value={montoAbono} 
               onChange={e=>setMontoAbono(e.target.value)} 
-              placeholder="0.00"
+              placeholder={montoPendiente.toFixed(2)}
               step="0.01"
             />
             <p className="text-xs text-slate-400 mt-1">Faltante: ${montoPendiente.toFixed(2)}</p>
@@ -1008,7 +1011,12 @@ const CompletarModal = ({ pago, historialPagos, reload, onClose }) => {
         <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
           <p className="text-xs text-slate-400 mb-1">Nuevo total pagado</p>
           <p className="text-lg font-black text-emerald-400">${nuevoMontoPagado.toFixed(2)} / ${parseFloat(pago.monto||0).toFixed(2)}</p>
-          {nuevoMontoPagado >= parseFloat(pago.monto||0) && <p className="text-xs text-emerald-400 mt-1">✓ Pago completo</p>}
+          {nuevoMontoPagado >= parseFloat(pago.monto||0) && (
+            <p className="text-xs text-emerald-400 mt-1">✓ Pago completo - Se actualizará a pagado</p>
+          )}
+          {nuevoMontoPagado < parseFloat(pago.monto||0) && (
+            <p className="text-xs text-amber-400 mt-1">⚠️ Aún falta: ${(parseFloat(pago.monto||0) - nuevoMontoPagado).toFixed(2)}</p>
+          )}
         </div>
 
         <Field label="Notas (opcional)">
@@ -1019,6 +1027,127 @@ const CompletarModal = ({ pago, historialPagos, reload, onClose }) => {
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
         <button onClick={save} disabled={saving||montoIngreso<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Completar pago"}</button>
+      </div>
+    </Modal>
+  );
+};
+
+const PausarModal = ({ pago, reload, onClose }) => {
+  const [notas, setNotas] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    await db.update("pagos", pago.id, {
+      estado_membresia: "Pausada",
+    });
+    // Registrar en historial
+    await db.insert("historial_pagos", {
+      alumno_id: pago.alumno_id,
+      alumno_nombre: pago.alumno_nombre,
+      monto_pagado: 0,
+      fecha_pago: fmt(new Date()),
+      nueva_fecha_vencimiento: pago.fecha_vencimiento,
+      tipo: "Pausa de membresía",
+      observaciones: notas || "Membresía pausada temporalmente",
+    });
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={`Pausar membresía — ${pago.alumno_nombre}`} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="p-3 rounded-xl bg-slate-500/10 border border-slate-500/20">
+          <p className="text-xs text-slate-400 mb-2">ℹ️ Información</p>
+          <p className="text-sm text-slate-300">
+            La membresía será pausada. No se marcará como morosa o pendiente mientras esté pausada.
+          </p>
+          <p className="text-xs text-slate-500 mt-2">Membresía actual vence: {pago.fecha_vencimiento}</p>
+        </div>
+
+        <Field label="Motivo de la pausa (opcional)">
+          <Textarea value={notas} onChange={e=>setNotas(e.target.value)} placeholder="Ej: El alumno está de viaje, retomará en..." />
+        </Field>
+      </div>
+
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Pausar membresía"}</button>
+      </div>
+    </Modal>
+  );
+};
+
+const ReanudirModal = ({ pago, students, reload, onClose }) => {
+  const [tipoPago, setTipoPago] = useState("estandar");
+  const [montoTotal, setMontoTotal] = useState("");
+  const [montoPagado, setMontoPagado] = useState("");
+  const [fechaPago, setFechaPago] = useState(fmt(new Date()));
+  const [notas, setNotas] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const fechaVenc = calcVencimiento(fechaPago, tipoPago);
+  const total = parseFloat(montoTotal)||0;
+  const pagado = parseFloat(montoPagado)||0;
+  const memb = MEMBRESIAS.find(m=>m.id===tipoPago);
+
+  const save = async () => {
+    if (!montoTotal) return;
+    setSaving(true);
+    // Actualizar pago existente
+    await db.update("pagos", pago.id, {
+      monto: total,
+      monto_pagado: pagado,
+      fecha_pago: fechaPago,
+      fecha_vencimiento: fechaVenc,
+      tipo: memb?.nombre || tipoPago,
+      estado_membresia: "Activa",
+    });
+    // Guardar renovación en historial
+    await db.insert("historial_pagos", {
+      alumno_id: pago.alumno_id,
+      alumno_nombre: pago.alumno_nombre,
+      monto_pagado: pagado,
+      fecha_pago: fechaPago,
+      nueva_fecha_vencimiento: fechaVenc,
+      tipo: memb?.nombre || tipoPago,
+      observaciones: notas || "Reanudación de membresía",
+    });
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={`Reanudar — ${pago.alumno_nombre}`} onClose={onClose} wide>
+      <div className="mb-4 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm">
+        ▶️ Membresía reanudada. Define nueva membresía desde hoy.
+      </div>
+      <div className="space-y-5">
+        <Field label="Nueva Membresía">
+          <div className="grid grid-cols-3 gap-2">
+            {MEMBRESIAS.map(m=>(
+              <button key={m.id} type="button" onClick={()=>setTipoPago(m.id)}
+                className="p-3 rounded-xl border text-center transition-all"
+                style={{ background:tipoPago===m.id?`${m.color}25`:"rgba(255,255,255,0.03)", borderColor:tipoPago===m.id?m.color:"rgba(255,255,255,0.1)" }}>
+                <p className="text-xs font-bold" style={{ color:tipoPago===m.id?m.color:"#94a3b8" }}>{m.nombre}</p>
+              </button>
+            ))}
+          </div>
+        </Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Monto Total ($)"><Input type="number" value={montoTotal} onChange={e=>setMontoTotal(e.target.value)} placeholder="0.00" /></Field>
+          <Field label="Monto Pagado ($)"><Input type="number" value={montoPagado} onChange={e=>setMontoPagado(e.target.value)} placeholder="0.00" /></Field>
+          <Field label="Fecha de inicio"><Input type="date" value={fechaPago} onChange={e=>setFechaPago(e.target.value)} /></Field>
+          <Field label="Vence"><div className="flex items-center h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl"><span className="text-emerald-400 text-sm font-bold">{fechaVenc}</span></div></Field>
+        </div>
+        <Field label="Notas (opcional)"><Textarea value={notas} onChange={e=>setNotas(e.target.value)} placeholder="Ej: Retomó clases..." /></Field>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+        <button onClick={save} disabled={saving||!montoTotal} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Reanudar membresía"}</button>
       </div>
     </Modal>
   );
@@ -1106,16 +1235,31 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   const [filter, setFilter] = useState("Todos");
   const [renovarPago, setRenovarPago] = useState(null);
   const [completarPago, setCompletarPago] = useState(null);
+  const [pausarPago, setPausarPago] = useState(null);
+  const [reanudarPago, setReanudarPago] = useState(null);
   // Estado determinado ÚNICAMENTE por fecha_vencimiento vs hoy
   const hoyPagos = fmt(new Date());
   const getEstadoReal = (p) => {
+    // Si membresía está pausada, siempre retorna "pausado"
+    if (p.estado_membresia === "Pausada") return "pausado";
+    
     // Sin fecha de vencimiento → pendiente
     if (!p.fecha_vencimiento) return "pendiente";
-    // fecha_vencimiento <= hoy → VENCIDO siempre
-    if (p.fecha_vencimiento <= hoyPagos) return "vencido";
-    // No vencido:
+    
     const pagado = parseFloat(p.monto_pagado||0);
     const total = parseFloat(p.monto||0);
+    
+    // fecha_vencimiento <= hoy → VENCIDO
+    if (p.fecha_vencimiento <= hoyPagos) {
+      // Si pagó completo pero venció → "vencido_pagado"
+      if (pagado >= total && total > 0) return "vencido_pagado";
+      // Si tiene saldo pendiente y venció → "vencido_saldo"
+      if (pagado > 0 && pagado < total) return "vencido_saldo";
+      // Si no pagó nada y venció → "vencido"
+      return "vencido";
+    }
+    
+    // No vencido:
     if (pagado === 0) return "pendiente";
     if (total > 0 && pagado >= total) return "pagado";
     return "parcial";
@@ -1319,17 +1463,37 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
               </div>
               {p.estado!=="pagado"&&<div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background:p.estado==="vencido"?"#ef4444":"#f59e0b" }} /></div>}
               <div className="flex justify-between items-center mt-3 flex-wrap gap-2">
-                {p.estado === "vencido" && (
-                  <button onClick={()=>setRenovarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/30">
-                    🔄 Renovar
+                {/* Estado Pausado */}
+                {p.estado_membresia === "Pausada" && (
+                  <button onClick={()=>setReanudarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-400 text-xs font-semibold hover:bg-purple-500/30">
+                    ▶️ Reanudar
                   </button>
                 )}
-                {p.estado === "parcial" && (
+                {/* Estado Activo o Parcial */}
+                {(p.estado === "pagado" || p.estado === "parcial") && (
+                  <button onClick={()=>setPausarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-500/20 text-slate-400 text-xs font-semibold hover:bg-slate-500/30">
+                    ⏸ Pausar
+                  </button>
+                )}
+                {/* Vencido - opciones de renovar o completar saldo */}
+                {(p.estado === "vencido" || p.estado === "vencido_pagado" || p.estado === "vencido_saldo") && (
+                  <>
+                    <button onClick={()=>setRenovarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/30">
+                      🔄 Renovar
+                    </button>
+                    {p.estado === "vencido_saldo" && (
+                      <button onClick={()=>setCompletarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30">
+                        ✓ Completar saldo
+                      </button>
+                    )}
+                  </>
+                )}
+                {/* Parcial sin vencer */}
+                {p.estado === "parcial" && p.fecha_vencimiento > fmt(today) && (
                   <button onClick={()=>setCompletarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30">
                     ✓ Completar pago
                   </button>
                 )}
-                {(p.estado !== "vencido" && p.estado !== "parcial") && <div />}
                 {isAdmin&&<button onClick={()=>onDelete(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>}
               </div>
               {/* Historial de pagos recientes */}
@@ -1359,6 +1523,12 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
       )}
       {completarPago && (
         <CompletarModal pago={completarPago} historialPagos={historialPagos} reload={reload} onClose={()=>setCompletarPago(null)} />
+      )}
+      {pausarPago && (
+        <PausarModal pago={pausarPago} reload={reload} onClose={()=>setPausarPago(null)} />
+      )}
+      {reanudarPago && (
+        <ReanudirModal pago={reanudarPago} students={students} reload={reload} onClose={()=>setReanudarPago(null)} />
       )}
     </div>
   );
