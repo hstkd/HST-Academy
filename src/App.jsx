@@ -1257,23 +1257,27 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
     const total = parseFloat(p.monto||0);
     const vencido = p.fecha_vencimiento <= hoyPagos;
     
-    // Estados de vencimiento
+    // Si pagó completo → "al día" (independientemente de si venció)
+    if (pagado >= total && total > 0) {
+      estados.push("al día");
+      // Si además venció pero pagó, aún es "al día"
+      return estados;
+    }
+    
+    // No pagó completo
     if (vencido) {
-      if (pagado >= total && total > 0) {
-        estados.push("vencido_pagado");
-      } else if (pagado > 0 && pagado < total) {
-        estados.push("vencido");
+      // Venció y no pagó completo
+      estados.push("vencido");
+      if (pagado > 0) {
+        // Si pagó algo pero no completo → también "parcial"
         estados.push("parcial");
-      } else {
-        estados.push("vencido");
       }
     } else {
-      // No vencido aún
+      // No ha vencido aún
       if (pagado === 0) {
         estados.push("pendiente");
-      } else if (pagado >= total && total > 0) {
-        estados.push("al día");
       } else {
+        // Pagó algo pero no completo, y no venció
         estados.push("parcial");
       }
     }
@@ -1443,9 +1447,9 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
         </div>
       )}
       <div className="flex gap-2 flex-wrap">
-        {["Todos","al día","pagado","parcial","vencido","vencido_pagado","pendiente","pausado"].map(f=>(
+        {["Todos","al día","parcial","vencido","pendiente","pausado"].map(f=>(
           <button key={f} onClick={()=>setFilter(f)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={filter===f?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>
-            {f==="Todos"?"Todos":f==="al día"?"Al día":f==="vencido_pagado"?"Vencido Pagado":f==="pausado"?"Pausado":f.charAt(0).toUpperCase()+f.slice(1)}
+            {f==="Todos"?"Todos":f==="al día"?"Al día":f==="pausado"?"Pausado":f.charAt(0).toUpperCase()+f.slice(1)}
           </button>
         ))}
       </div>
@@ -1496,27 +1500,28 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                     ▶️ Reanudar
                   </button>
                 )}
-                {/* Estado Activo o Parcial */}
-                {(p.estado === "pagado" || p.estado === "parcial") && (
+                {/* Al día */}
+                {p.estado === "al día" && (
                   <button onClick={()=>setPausarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-500/20 text-slate-400 text-xs font-semibold hover:bg-slate-500/30">
                     ⏸ Pausar
                   </button>
                 )}
-                {/* Vencido - opciones de renovar o completar saldo */}
-                {(p.estado === "vencido" || p.estado === "vencido_pagado" || p.estado === "vencido_saldo") && (
+                {/* Vencido → siempre tiene opción renovar */}
+                {p.estados && p.estados.includes("vencido") && (
                   <>
                     <button onClick={()=>setRenovarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/30">
-                      🔄 Renovar
+                      🔄 Renovar membresía
                     </button>
-                    {p.estado === "vencido_saldo" && (
+                    {/* Si además es parcial, mostrar completar pago */}
+                    {p.estados && p.estados.includes("parcial") && (
                       <button onClick={()=>setCompletarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30">
-                        ✓ Completar saldo
+                        ✓ Completar pago
                       </button>
                     )}
                   </>
                 )}
-                {/* Parcial sin vencer */}
-                {p.estado === "parcial" && p.fecha_vencimiento > fmt(today) && (
+                {/* Parcial sin vencer → completar pago */}
+                {p.estados && p.estados.includes("parcial") && !p.estados.includes("vencido") && (
                   <button onClick={()=>setCompletarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30">
                     ✓ Completar pago
                   </button>
