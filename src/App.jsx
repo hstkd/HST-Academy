@@ -418,7 +418,7 @@ const DashboardPage = ({ students, pagos, historialPagos, asistencia, ventas, ev
   const ingresosMes = (historialPagos||[]).filter(h=>h.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0);
   const ventasMes = (ventas||[]).filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.total||0),0);
   const eventosMes = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
-  const examenesTotal = (examenes||[]).filter(ex=>ex.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,ex)=>a+parseFloat(ex.monto||0),0);
+  const examenesTotal = (examenes||[]).filter(ex=>ex.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,ex)=>a+parseFloat(ex.monto_pagado||ex.monto||0),0);
   const hoyPresentes = asistencia.filter(a=>a.fecha===fmt(today)&&a.presente).length;
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const chartData = meses.slice(0,today.getMonth()+1).map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
@@ -2042,14 +2042,74 @@ const AttendancePage = ({ students, asistencia, reload }) => {
   );
 };
 
+const AbonoExamenModal = ({ examen, reload, onClose }) => {
+  const [montoAbono, setMontoAbono] = useState("");
+  const [fechaAbono, setFechaAbono] = useState(fmt(today));
+  const [saving, setSaving] = useState(false);
+
+  const saldoActual = parseFloat(examen.saldo_pendiente || Math.max(0, parseFloat(examen.monto||0) - parseFloat(examen.monto_pagado||0)));
+  const abono = parseFloat(montoAbono) || 0;
+  const nuevoSaldo = Math.max(0, saldoActual - abono);
+  const nuevoMontoPagado = parseFloat(examen.monto_pagado||0) + abono;
+  const nuevoEstado = nuevoSaldo <= 0 ? "pagado" : "parcial";
+
+  const save = async () => {
+    if (abono <= 0) return;
+    setSaving(true);
+    await db.update("examenes", examen.id, {
+      monto_pagado: nuevoMontoPagado,
+      saldo_pendiente: nuevoSaldo,
+      estado_pago: nuevoEstado,
+    });
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={`Abono — ${examen.alumno_nombre}`} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="p-3 bg-white/5 rounded-xl text-sm text-slate-300">{examen.tipo} · {examen.fecha}</div>
+        <div className="grid grid-cols-3 gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+          <div className="text-center"><p className="text-xs text-slate-400">Total</p><p className="text-sm font-bold text-white">${parseFloat(examen.monto||0).toFixed(2)}</p></div>
+          <div className="text-center"><p className="text-xs text-slate-400">Pagado</p><p className="text-sm font-bold text-emerald-400">${parseFloat(examen.monto_pagado||0).toFixed(2)}</p></div>
+          <div className="text-center"><p className="text-xs text-slate-400">Saldo</p><p className="text-sm font-bold text-red-400">${saldoActual.toFixed(2)}</p></div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Monto a abonar ($)">
+            <Input type="number" value={montoAbono} onChange={e=>setMontoAbono(e.target.value)} placeholder={saldoActual.toFixed(2)} step="0.01" />
+          </Field>
+          <Field label="Fecha del abono">
+            <Input type="date" value={fechaAbono} onChange={e=>setFechaAbono(e.target.value)} />
+          </Field>
+        </div>
+        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+          <p className="text-xs text-slate-400 mb-1">Nuevo saldo</p>
+          <p className="text-lg font-black text-emerald-400">${nuevoSaldo.toFixed(2)}</p>
+          {nuevoSaldo <= 0 && <p className="text-xs text-emerald-400 mt-1">✓ Quedará totalmente pagado</p>}
+        </div>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+        <button onClick={save} disabled={saving||abono<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar abono"}</button>
+      </div>
+    </Modal>
+  );
+};
+
 const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
   const [selectedId, setSelectedId] = useState("");
   const [newBelt, setNewBelt] = useState(CINTURONES[0]);
   const [saving, setSaving] = useState(false);
+  const [ascPagado, setAscPagado] = useState("");
+  const [ascFecha, setAscFecha] = useState(fmt(today));
   const [galAlumnoId, setGalAlumnoId] = useState("");
   const [galQty, setGalQty] = useState(1);
+  const [galPagado, setGalPagado] = useState("");
+  const [galFecha, setGalFecha] = useState(fmt(today));
   const [savingGal, setSavingGal] = useState(false);
   const [tab, setTab] = useState("ascenso");
+  const [abonoExamen, setAbonoExamen] = useState(null);
 
   const selectedStudent = students.find(s => s.id === selectedId);
   const costoInfo = selectedStudent ? COSTOS_ASCENSO[selectedStudent.cinturon] : null;
@@ -2067,24 +2127,30 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
     setSaving(true);
     const costo = costoInfo?.costo || 0;
     const al = students.find(s => s.id === selectedId);
+    const pagado = parseFloat(ascPagado) || 0;
+    const saldo = Math.max(0, costo - pagado);
+    const estadoPago = pagado >= costo && costo > 0 ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
     await db.update("students", selectedId, { cinturon: newBelt });
-    // Registrar ingreso del examen
     await db.insert("examenes", {
       alumno_id: selectedId,
       alumno_nombre: `${al?.nombres} ${al?.apellidos}`,
       tipo: `Ascenso ${al?.cinturon} → ${newBelt}`,
       monto: costo,
-      fecha: fmt(today),
+      monto_pagado: pagado,
+      saldo_pendiente: saldo,
+      estado_pago: estadoPago,
+      fecha: ascFecha,
     });
     await reload();
     await reloadExamenes();
     setSaving(false);
     setSelectedId("");
+    setAscPagado("");
+    setAscFecha(fmt(today));
   };
 
   const registrarGal = async () => {
     if (!galAlumnoId) return;
-    // Verificar si ya tiene GAL
     const yaGal = examenes.some(ex => ex.alumno_id === galAlumnoId && ex.tipo?.includes("GAL"));
     if (yaGal) {
       alert("Este alumno ya tiene un GAL registrado. Solo se puede emitir 1 GAL por alumno.");
@@ -2092,21 +2158,28 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
     }
     setSavingGal(true);
     const al = students.find(s => s.id === galAlumnoId);
+    const pagado = parseFloat(galPagado) || 0;
+    const saldo = Math.max(0, 13 - pagado);
+    const estadoPago = pagado >= 13 ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
     await db.insert("examenes", {
       alumno_id: galAlumnoId,
       alumno_nombre: `${al?.nombres} ${al?.apellidos}`,
       tipo: "GAL",
       monto: 13,
-      fecha: fmt(today),
+      monto_pagado: pagado,
+      saldo_pendiente: saldo,
+      estado_pago: estadoPago,
+      fecha: galFecha,
     });
     await reloadExamenes();
     setSavingGal(false);
     setGalAlumnoId("");
-    setGalQty(1);
+    setGalPagado("");
+    setGalFecha(fmt(today));
   };
 
-  const totalExamenes = examenes.reduce((a,e)=>a+parseFloat(e.monto||0),0);
-  const totalMes = examenes.filter(e=>e.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,e)=>a+parseFloat(e.monto||0),0);
+  const totalExamenes = examenes.reduce((a,e)=>a+parseFloat(e.monto_pagado||e.monto||0),0);
+  const totalMes = examenes.filter(e=>e.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,e)=>a+parseFloat(e.monto_pagado||e.monto||0),0);
 
   return (
     <div className="space-y-6">
@@ -2137,24 +2210,47 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
         </div>
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
           <h2 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>REGISTRAR ASCENSO</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Field label="Alumno">
-              <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={selectedId} onChange={e=>handleSelectStudent(e.target.value)}>
-                <option value="">Seleccionar...</option>
-                {students.filter(s=>s.estado==="activo").map(s=><option key={s.id} value={s.id}>{s.nombres} {s.apellidos} — {s.cinturon}</option>)}
-              </select>
-            </Field>
-            <Field label="Nuevo Cinturón">
-              <Select options={CINTURONES} value={newBelt} onChange={e=>setNewBelt(e.target.value)} />
-              {costoInfo && costoInfo.costo > 0 && (
-                <div className="mt-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 font-semibold">
-                  💰 Costo del examen: ${costoInfo.costo}.00
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="Alumno">
+                <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={selectedId} onChange={e=>handleSelectStudent(e.target.value)}>
+                  <option value="">Seleccionar...</option>
+                  {students.filter(s=>s.estado==="activo").map(s=><option key={s.id} value={s.id}>{s.nombres} {s.apellidos} — {s.cinturon}</option>)}
+                </select>
+              </Field>
+              <Field label="Nuevo Cinturón">
+                <Select options={CINTURONES} value={newBelt} onChange={e=>setNewBelt(e.target.value)} />
+                {costoInfo && costoInfo.costo > 0 && (
+                  <div className="mt-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 font-semibold">
+                    💰 Costo del examen: ${costoInfo.costo}.00
+                  </div>
+                )}
+              </Field>
+            </div>
+            {/* Pago del examen */}
+            <div className="grid grid-cols-3 gap-3 p-4 bg-white/3 border border-white/8 rounded-xl">
+              <Field label="Monto pagado ($)">
+                <Input type="number" value={ascPagado} onChange={e=>setAscPagado(e.target.value)}
+                  placeholder={costoInfo?.costo?.toString() || "0.00"} step="0.01" />
+              </Field>
+              <Field label="Fecha">
+                <Input type="date" value={ascFecha} onChange={e=>setAscFecha(e.target.value)} />
+              </Field>
+              <Field label="Estado pago">
+                <div className={`h-[42px] flex items-center justify-center rounded-xl text-xs font-bold border ${
+                  !ascPagado ? "bg-slate-500/20 text-slate-400 border-slate-500/30" :
+                  parseFloat(ascPagado) >= (costoInfo?.costo||0) ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
+                  "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                }`}>
+                  {!ascPagado ? "Pendiente" :
+                   parseFloat(ascPagado) >= (costoInfo?.costo||0) ? "✓ Pagado" :
+                   `Debe $${Math.max(0,(costoInfo?.costo||0)-parseFloat(ascPagado)).toFixed(2)}`}
                 </div>
-              )}
-            </Field>
-            <Field label="Acción">
-              <button onClick={upgrade} disabled={saving||!selectedId} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar Ascenso"}</button>
-            </Field>
+              </Field>
+            </div>
+            <button onClick={upgrade} disabled={saving||!selectedId} className="w-full py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>
+              {saving ? "Guardando..." : "Registrar Ascenso"}
+            </button>
           </div>
         </div>
         <div className="space-y-2">
@@ -2177,7 +2273,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
           <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm text-amber-400">
             💰 Valor por GAL: <span className="font-black">$13.00</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-4">
             <Field label="Alumno">
               <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={galAlumnoId} onChange={e=>setGalAlumnoId(e.target.value)}>
                 <option value="">Seleccionar alumno...</option>
@@ -2187,14 +2283,30 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
                 })}
               </select>
             </Field>
-            <Field label="Valor">
-              <div className="flex items-center h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
-                <span className="text-amber-400 font-bold">$13.00 — 1 GAL por alumno</span>
-              </div>
-            </Field>
-            <Field label="Acción">
-              <button onClick={registrarGal} disabled={savingGal||!galAlumnoId} className="w-full py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{savingGal?"Registrando...":"Registrar GAL"}</button>
-            </Field>
+            {/* Pago del GAL */}
+            <div className="grid grid-cols-3 gap-3 p-4 bg-white/3 border border-white/8 rounded-xl">
+              <Field label="Monto pagado ($)">
+                <Input type="number" value={galPagado} onChange={e=>setGalPagado(e.target.value)} placeholder="13.00" step="0.01" />
+                <p className="text-xs text-slate-400 mt-1">Total: $13.00</p>
+              </Field>
+              <Field label="Fecha">
+                <Input type="date" value={galFecha} onChange={e=>setGalFecha(e.target.value)} />
+              </Field>
+              <Field label="Estado pago">
+                <div className={`h-[42px] flex items-center justify-center rounded-xl text-xs font-bold border ${
+                  !galPagado ? "bg-slate-500/20 text-slate-400 border-slate-500/30" :
+                  parseFloat(galPagado) >= 13 ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
+                  "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                }`}>
+                  {!galPagado ? "Pendiente" :
+                   parseFloat(galPagado) >= 13 ? "✓ Pagado" :
+                   `Debe $${Math.max(0, 13 - parseFloat(galPagado)).toFixed(2)}`}
+                </div>
+              </Field>
+            </div>
+            <button onClick={registrarGal} disabled={savingGal||!galAlumnoId} className="w-full py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>
+              {savingGal ? "Registrando..." : "Registrar GAL"}
+            </button>
           </div>
           {/* Mostrar GALs del alumno seleccionado */}
           {galAlumnoId && (() => {
@@ -2223,37 +2335,50 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
           <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>HISTORIAL</h3>
           <div className="space-y-2">
             {examenes.length===0 && <p className="text-slate-500 text-sm text-center py-4">Sin registros aún</p>}
-            {examenes.map(ex=>(
-              <div key={ex.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
-                <div>
-                  <p className="text-sm font-semibold text-white">{ex.alumno_nombre}</p>
-                  <p className="text-xs text-slate-500">{ex.tipo} · {ex.fecha}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-lg font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${parseFloat(ex.monto||0).toFixed(2)}</span>
-                  <button onClick={async()=>{
-                    if(!confirm("¿Eliminar este registro? Si es un ascenso, se revertirá el cinturón.")) return;
-                    // Si es ascenso, revertir cinturón
-                    if (ex.tipo?.includes("Ascenso") && ex.alumno_id) {
-                      const match = ex.tipo.match(/Ascenso (.+) → (.+)/);
-                      if (match) {
-                        await db.update("students", ex.alumno_id, { cinturon: match[1] });
+            {examenes.sort((a,b)=>b.fecha?.localeCompare(a.fecha)).map(ex=>{
+              const saldo = parseFloat(ex.saldo_pendiente || Math.max(0, parseFloat(ex.monto||0)-parseFloat(ex.monto_pagado||0)));
+              const ep = ex.estado_pago || (parseFloat(ex.monto_pagado||0)>=parseFloat(ex.monto||1)?"pagado":"pendiente");
+              return (
+              <div key={ex.id} className="p-3 bg-white/5 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{ex.alumno_nombre}</p>
+                    <p className="text-xs text-slate-500">{ex.tipo} · {ex.fecha}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <p className="text-base font-black text-amber-400">${parseFloat(ex.monto_pagado||ex.monto||0).toFixed(2)}<span className="text-xs text-slate-500">/${parseFloat(ex.monto||0).toFixed(2)}</span></p>
+                      {saldo>0 && <p className="text-xs text-red-400">Debe: ${saldo.toFixed(2)}</p>}
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${ep==="pagado"?"bg-emerald-500/20 text-emerald-400":ep==="parcial"?"bg-amber-500/20 text-amber-400":"bg-slate-500/20 text-slate-400"}`}>
+                      {ep==="pagado"?"✓":ep==="parcial"?"Parcial":"Pendiente"}
+                    </span>
+                    <button onClick={async()=>{
+                      if(!confirm("¿Eliminar este registro?")) return;
+                      if (ex.tipo?.includes("Ascenso") && ex.alumno_id) {
+                        const match = ex.tipo.match(/Ascenso (.+) → (.+)/);
+                        if (match) await db.update("students", ex.alumno_id, { cinturon: match[1] });
                       }
-                    }
-                    await db.delete("examenes", ex.id);
-                    await reloadExamenes();
-                    await reload();
-                  }} className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /></button>
+                      await db.delete("examenes", ex.id);
+                      await reloadExamenes();
+                      await reload();
+                    }} className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /></button>
+                  </div>
                 </div>
+                {saldo>0 && (
+                  <button onClick={()=>setAbonoExamen(ex)} className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30">
+                    + Abonar
+                  </button>
+                )}
               </div>
-            ))}
+            );})}
           </div>
         </div>
       )}
+      {abonoExamen && <AbonoExamenModal examen={abonoExamen} reload={reloadExamenes} onClose={()=>setAbonoExamen(null)} />}
     </div>
   );
 };
-
 
 const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes }) => {
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -2265,7 +2390,7 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes }) => {
   // Ingresos de eventos (participantes pagados)
   const totalEventos = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
   // Ingresos de exámenes y GALs
-  const totalExamenes = (examenes||[]).reduce((a,ex)=>a+parseFloat(ex.monto||0),0);
+  const totalExamenes = (examenes||[]).reduce((a,ex)=>a+parseFloat(ex.monto_pagado||ex.monto||0),0);
   const bySede = SEDES.map(sede=>({ sede, total:pagos.filter(p=>p.sede===sede).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
   return (
     <div className="space-y-6">
