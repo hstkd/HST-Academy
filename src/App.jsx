@@ -528,6 +528,8 @@ const StudentFormModal = ({ student, reload, onClose }) => {
 
   const [registrarPago, setRegistrarPago] = useState(false);
   const [montoInscripcion, setMontoInscripcion] = useState("");
+  const [generatedPassword, setGeneratedPassword] = useState(""); // Para mostrar credenciales
+  const [showCredentials, setShowCredentials] = useState(false);
   const [montoPagadoIns, setMontoPagadoIns] = useState("");
   // fechaVencIns se calcula dinámicamente desde fechaIns + membresia
   const fechaVencIns = calcVencimiento(fechaIns, membresia);
@@ -535,6 +537,15 @@ const StudentFormModal = ({ student, reload, onClose }) => {
   const save = async () => {
     if (!nombres || !apellidos) return;
     if (registrarPago && !fechaIns) { alert("Debes ingresar la fecha de inscripción para registrar el pago."); return; }
+    
+    // Si es nuevo alumno y tiene usuario, generar contraseña y mostrar credenciales
+    if (!student && correo) {
+      const tempPass = Math.random().toString(36).substring(2, 10);
+      setGeneratedPassword(tempPass);
+      setShowCredentials(true);
+      return; // No guardar aún, esperar confirmación
+    }
+    
     setSaving(true);
     const data = { nombres, apellidos, edad: edadInfo.total, fecha_nacimiento: fechaNac, representante, telefono, correo, direccion, sede, cinturon, membresia, estado, categoria, observaciones, fecha_inscripcion: fechaIns };
     if (student) {
@@ -569,7 +580,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
       const newStudent = await db.insert("students", data);
       // Crear usuario automáticamente si tiene usuario asignado
       if (correo) {
-        const tempPassword = Math.random().toString(36).substring(2, 10);
+        const tempPassword = generatedPassword || Math.random().toString(36).substring(2, 10);
         try {
           await db.insert("users", { 
             nombre: `${nombres} ${apellidos}`, 
@@ -610,6 +621,61 @@ const StudentFormModal = ({ student, reload, onClose }) => {
             observaciones: "Pago inicial al inscribirse",
           });
         }
+      }
+    }
+    await reload();
+    setSaving(false);
+    setShowCredentials(false);
+    onClose();
+  };
+
+  const confirmAndSave = async () => {
+    setSaving(true);
+    setShowCredentials(false);
+    const data = { nombres, apellidos, edad: edadInfo.total, fecha_nacimiento: fechaNac, representante, telefono, correo, direccion, sede, cinturon, membresia, estado, categoria, observaciones, fecha_inscripcion: fechaIns };
+    const newStudent = await db.insert("students", data);
+    // Crear usuario automáticamente si tiene usuario asignado
+    if (correo) {
+      const tempPassword = generatedPassword || Math.random().toString(36).substring(2, 10);
+      try {
+        await db.insert("users", { 
+          nombre: `${nombres} ${apellidos}`, 
+          email: correo, 
+          password: tempPassword, 
+          role: "alumno",
+          created_at: fmt(new Date())
+        });
+      } catch (err) {
+        console.log("Usuario ya existe o error:", err);
+      }
+    }
+    // Registrar pago inicial si se indicó
+    if (registrarPago && montoInscripcion && newStudent?.id) {
+      const total = parseFloat(montoInscripcion) || 0;
+      const pagado = parseFloat(montoPagadoIns) || 0;
+      const memb = MEMBRESIAS.find(m => m.id === membresia);
+      await db.insert("pagos", {
+        alumno_id: newStudent.id,
+        alumno_nombre: `${nombres} ${apellidos}`,
+        monto: total,
+        monto_pagado: pagado,
+        fecha_pago: fechaIns,
+        fecha_vencimiento: fechaVencIns,
+        tipo: memb?.nombre || "Mensualidad",
+        sede,
+        notas: "Pago al inscripción",
+      });
+      // Guardar en historial también
+      if (pagado > 0) {
+        await db.insert("historial_pagos", {
+          alumno_id: newStudent.id,
+          alumno_nombre: `${nombres} ${apellidos}`,
+          monto_pagado: pagado,
+          fecha_pago: fechaIns,
+          nueva_fecha_vencimiento: fechaVencIns,
+          tipo: memb?.nombre || "Mensualidad",
+          observaciones: "Pago inicial al inscribirse",
+        });
       }
     }
     await reload();
@@ -711,6 +777,53 @@ const StudentFormModal = ({ student, reload, onClose }) => {
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
         <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving ? "Guardando..." : student ? "Guardar Cambios" : "Crear Alumno"}</button>
       </div>
+
+      {/* Modal de Credenciales Temporales */}
+      {showCredentials && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 max-w-md w-full">
+            <p className="text-xs text-amber-400 font-bold mb-2">⚠️ CREDENCIALES TEMPORALES</p>
+            <h3 className="text-lg font-black text-white mb-4">Nuevo Usuario Creado</h3>
+            
+            <div className="space-y-3 mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+              <div>
+                <p className="text-xs text-slate-400">Usuario (para login)</p>
+                <p className="font-mono text-sm font-bold text-white bg-white/5 p-2.5 rounded mt-1 break-all select-all">{correo}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">Contraseña temporal</p>
+                <p className="font-mono text-lg font-black text-emerald-400 bg-white/5 p-2.5 rounded mt-1 select-all">{generatedPassword}</p>
+              </div>
+            </div>
+            
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 mb-4">
+              <p className="text-xs text-blue-400 font-semibold">ℹ️ Importante</p>
+              <p className="text-xs text-slate-400 mt-2">
+                • Comparte estas credenciales con el alumno/padre<br/>
+                • La contraseña puede ser cambiada desde la app<br/>
+                • Guarda esta información en un lugar seguro
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowCredentials(false)} 
+                className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmAndSave} 
+                disabled={saving}
+                className="flex-1 py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" 
+                style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}
+              >
+                {saving ? "Guardando..." : "Confirmar y Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 };
