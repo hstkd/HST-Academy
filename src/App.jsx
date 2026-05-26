@@ -1886,78 +1886,157 @@ const AttendancePage = ({ students, asistencia, reload }) => {
   const [saving, setSaving] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [expanded, setExpanded] = useState(null);
-  const fs = students.filter(s=>s.estado==="activo"&&(sede==="Todas"||s.sede===sede));
-  const getStatus = id=>{ const r=asistencia.find(a=>a.alumno_id===id&&a.fecha===fecha); return r?r.presente:null; };
-  const getRecord = id=>asistencia.find(a=>a.alumno_id===id&&a.fecha===fecha);
 
-  const toggle = async (student, presente) => {
+  const fs = students.filter(s=>s.estado==="activo"&&(sede==="Todas"||s.sede===sede));
+
+  // Solo retorna true si está marcado presente, null si no hay registro (= falta automática)
+  const getStatus = id => {
+    const r = asistencia.find(a=>a.alumno_id===id&&a.fecha===fecha);
+    return r ? r.presente : null;
+  };
+  const getRecord = id => asistencia.find(a=>a.alumno_id===id&&a.fecha===fecha);
+
+  // Toggle: si ya está presente, desmarca (elimina registro). Si no, marca presente.
+  const toggle = async (student) => {
     setSaving(true);
     const ex = getRecord(student.id);
-    if (ex) await db.update("asistencia",ex.id,{ presente });
-    else await db.insert("asistencia",{ alumno_id:student.id, alumno_nombre:`${student.nombres} ${student.apellidos}`, fecha, presente, sede:student.sede });
+    if (ex && ex.presente) {
+      // Ya está presente → desmarcar (borrar registro)
+      await db.delete("asistencia", ex.id);
+    } else if (ex && !ex.presente) {
+      // Tenía registro de ausente → actualizar a presente
+      await db.update("asistencia", ex.id, { presente: true });
+    } else {
+      // No hay registro → insertar presente
+      await db.insert("asistencia", {
+        alumno_id: student.id,
+        alumno_nombre: `${student.nombres} ${student.apellidos}`,
+        fecha, presente: true, sede: student.sede
+      });
+    }
     await reload();
     setSaving(false);
   };
 
-  const marcarTodos = async presente => {
+  // Marcar todos presentes
+  const marcarTodos = async () => {
     setSaving(true);
     for (const s of fs) {
       const ex = getRecord(s.id);
-      if (ex) await db.update("asistencia",ex.id,{ presente });
-      else await db.insert("asistencia",{ alumno_id:s.id, alumno_nombre:`${s.nombres} ${s.apellidos}`, fecha, presente, sede:s.sede });
+      if (ex) await db.update("asistencia", ex.id, { presente: true });
+      else await db.insert("asistencia", {
+        alumno_id: s.id, alumno_nombre: `${s.nombres} ${s.apellidos}`,
+        fecha, presente: true, sede: s.sede
+      });
+    }
+    await reload();
+    setSaving(false);
+  };
+
+  // Desmarcar todos (limpiar el día)
+  const limpiarTodos = async () => {
+    if (!confirm("¿Desmarcar todos los presentes de este día?")) return;
+    setSaving(true);
+    for (const s of fs) {
+      const ex = getRecord(s.id);
+      if (ex) await db.delete("asistencia", ex.id);
     }
     await reload();
     setSaving(false);
   };
 
   const presentes = fs.filter(s=>getStatus(s.id)===true).length;
-  const ausentes = fs.filter(s=>getStatus(s.id)===false).length;
-  const pct = fs.length?Math.round((presentes/fs.length)*100):0;
+  // Ausentes = los que NO están marcados (null = falta automática)
+  const ausentes = fs.length - presentes;
+  const pct = fs.length ? Math.round((presentes/fs.length)*100) : 0;
+
+  const filtrados = fs.filter(s=>`${s.nombres} ${s.apellidos}`.toLowerCase().includes(busqueda.toLowerCase()));
 
   return (
     <div className="space-y-6">
-      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>ASISTENCIA {saving&&<span className="text-sm text-amber-400 ml-2 font-normal">Guardando...</span>}</h1>
-      <div className="flex gap-3 flex-wrap">
+      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>
+        ASISTENCIA {saving&&<span className="text-sm text-amber-400 ml-2 font-normal">Guardando...</span>}
+      </h1>
+
+      {/* Filtros */}
+      <div className="flex gap-3 flex-wrap items-center">
         <Input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={{ width:"auto" }} />
         <Select options={["Todas",...SEDES]} value={sede} onChange={e=>setSede(e.target.value)} />
-        <button onClick={()=>marcarTodos(true)} disabled={saving} className="px-4 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/30 disabled:opacity-50">✓ Todos Presentes</button>
-        <button onClick={()=>marcarTodos(false)} disabled={saving} className="px-4 py-2.5 rounded-xl bg-red-500/20 text-red-400 text-sm font-semibold hover:bg-red-500/30 disabled:opacity-50">✗ Todos Ausentes</button>
+        <button onClick={marcarTodos} disabled={saving} className="px-4 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/30 disabled:opacity-50">
+          ✓ Todos Presentes
+        </button>
+        <button onClick={limpiarTodos} disabled={saving} className="px-4 py-2.5 rounded-xl bg-slate-500/20 text-slate-400 text-sm font-semibold hover:bg-slate-500/30 disabled:opacity-50">
+          ↺ Limpiar día
+        </button>
       </div>
+
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-emerald-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{presentes}</p><p className="text-xs text-slate-400 mt-1">Presentes</p></div>
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-red-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{ausentes}</p><p className="text-xs text-slate-400 mt-1">Ausentes</p></div>
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{pct}%</p><p className="text-xs text-slate-400 mt-1">Asistencia</p></div>
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-center">
+          <p className="text-3xl font-black text-emerald-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{presentes}</p>
+          <p className="text-xs text-slate-400 mt-1">Presentes</p>
+        </div>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center">
+          <p className="text-3xl font-black text-red-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{ausentes}</p>
+          <p className="text-xs text-slate-400 mt-1">Faltas</p>
+        </div>
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-center">
+          <p className="text-3xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{pct}%</p>
+          <p className="text-xs text-slate-400 mt-1">Asistencia</p>
+        </div>
       </div>
-      {/* Búsqueda rápida */}
+
+      {/* Búsqueda */}
       <div className="relative">
         <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-        <input className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-400/50" placeholder="Buscar alumno..." value={busqueda} onChange={e=>setBusqueda(e.target.value)} />
+        <input className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-400/50"
+          placeholder="Buscar alumno..." value={busqueda} onChange={e=>setBusqueda(e.target.value)} />
       </div>
+
+      {/* Lista */}
       <div className="space-y-2">
-        {fs.filter(s=>`${s.nombres} ${s.apellidos}`.toLowerCase().includes(busqueda.toLowerCase())).map(s=>{ const st=getStatus(s.id); return (
-          <div key={s.id} className={`rounded-2xl border transition-all ${st===true?"bg-emerald-500/10 border-emerald-500/20":st===false?"bg-red-500/10 border-red-500/20":"bg-white/3 border-white/8"}`}>
-            <div className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={()=>setExpanded(e=>e===s.id?null:s.id)}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
-                <div><p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p><BeltBadge cinturon={s.cinturon} /></div>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={()=>toggle(s,true)} disabled={saving} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${st===true?"bg-emerald-500 text-white":"bg-white/5 text-slate-500 hover:bg-emerald-500/30 hover:text-emerald-400"}`}><Icon name="check" className="w-5 h-5" /></button>
-                <button onClick={()=>toggle(s,false)} disabled={saving} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${st===false?"bg-red-500 text-white":"bg-white/5 text-slate-500 hover:bg-red-500/30 hover:text-red-400"}`}><Icon name="x" className="w-5 h-5" /></button>
-              </div>
-            </div>
-            {expanded===s.id && (
-              <div className="px-4 pb-4 space-y-1">
-                <p className="text-xs text-slate-500 font-semibold uppercase mb-2">Últimas asistencias</p>
-                {asistencia.filter(a=>a.alumno_id===s.id).sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,7).map(a=>(
-                  <div key={a.id} className={`flex justify-between p-2 rounded-lg text-xs ${a.presente?"bg-emerald-500/10 text-emerald-400":"bg-red-500/10 text-red-400"}`}>
-                    <span>{a.fecha}</span><span>{a.presente?"✓ Presente":"✗ Ausente"}</span>
+        {filtrados.map(s => {
+          const presente = getStatus(s.id) === true;
+          return (
+            <div key={s.id} className={`rounded-2xl border transition-all ${presente ? "bg-emerald-500/10 border-emerald-500/30" : "bg-white/3 border-white/8"}`}>
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={()=>setExpanded(e=>e===s.id?null:s.id)}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>
+                    {s.nombres[0]}{s.apellidos[0]}
                   </div>
-                ))}
+                  <div>
+                    <p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p>
+                    <BeltBadge cinturon={s.cinturon} />
+                  </div>
+                </div>
+                {/* Solo botón de check */}
+                <button onClick={()=>toggle(s)} disabled={saving}
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all text-lg font-black ${
+                    presente
+                      ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
+                      : "bg-white/5 text-slate-600 hover:bg-emerald-500/20 hover:text-emerald-400 border border-white/10"
+                  }`}>
+                  {presente ? "✓" : ""}
+                </button>
               </div>
-            )}
-          </div>
-        ); })}
+
+              {/* Últimas asistencias desplegable */}
+              {expanded===s.id && (
+                <div className="px-4 pb-4 space-y-1 border-t border-white/10 pt-3">
+                  <p className="text-xs text-slate-500 font-semibold uppercase mb-2">Últimas asistencias (solo presentes)</p>
+                  {asistencia.filter(a=>a.alumno_id===s.id&&a.presente).sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,7).map(a=>(
+                    <div key={a.id} className="flex justify-between p-2 rounded-lg text-xs bg-emerald-500/10 text-emerald-400">
+                      <span>{a.fecha}</span><span>✓ Presente</span>
+                    </div>
+                  ))}
+                  {asistencia.filter(a=>a.alumno_id===s.id&&a.presente).length===0 && (
+                    <p className="text-xs text-slate-500 text-center py-2">Sin asistencias registradas</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
