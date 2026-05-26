@@ -512,7 +512,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
   const [fechaNac, setFechaNac] = useState(student?.fecha_nacimiento || "");
   const [representante, setRepresentante] = useState(student?.representante || "");
   const [telefono, setTelefono] = useState(student?.telefono || "");
-  const [correo, setCorreo] = useState(student?.correo || "");
+  const [correo, setCorreo] = useState(student?.correo || ""); // Usuario para login
   const [direccion, setDireccion] = useState(student?.direccion || "");
   const [sede, setSede] = useState(student?.sede || "Quito");
   const [cinturon, setCinturon] = useState(student?.cinturon || "Blanco");
@@ -520,7 +520,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
   const [estado, setEstado] = useState(student?.estado || "activo");
   const [observaciones, setObservaciones] = useState(student?.observaciones || "");
   const [fechaIns, setFechaIns] = useState(student?.fecha_inscripcion || "");
-  const [userPass, setUserPass] = useState("");
+  // Contraseña se genera automáticamente
   const [saving, setSaving] = useState(false);
   const edadInfo = calcEdad(fechaNac);
   const categoria = getCategoria(fechaNac);
@@ -537,11 +537,49 @@ const StudentFormModal = ({ student, reload, onClose }) => {
     setSaving(true);
     const data = { nombres, apellidos, edad: edadInfo.total, fecha_nacimiento: fechaNac, representante, telefono, correo, direccion, sede, cinturon, membresia, estado, categoria, observaciones, fecha_inscripcion: fechaIns };
     if (student) {
+      // Si cambió el usuario, actualizar en tabla users
+      if (student.correo && correo !== student.correo) {
+        try {
+          const users = await db.get("users");
+          const userOld = users?.find(u => u.email === student.correo && u.role === "alumno");
+          if (userOld) {
+            await db.update("users", userOld.id, { email: correo, nombre: `${nombres} ${apellidos}` });
+          }
+        } catch (err) {
+          console.log("Error actualizando usuario:", err);
+        }
+      } else if (!student.correo && correo) {
+        // Crear usuario si no existía antes
+        try {
+          const tempPassword = Math.random().toString(36).substring(2, 10);
+          await db.insert("users", { 
+            nombre: `${nombres} ${apellidos}`, 
+            email: correo, 
+            password: tempPassword, 
+            role: "alumno",
+            created_at: fmt(new Date())
+          });
+        } catch (err) {
+          console.log("Error creando usuario:", err);
+        }
+      }
       await db.update("students", student.id, data);
     } else {
       const newStudent = await db.insert("students", data);
-      if (correo && userPass) {
-        await db.insert("users", { nombre: `${nombres} ${apellidos}`, email: correo, password: userPass, role: "alumno" });
+      // Crear usuario automáticamente si tiene usuario asignado
+      if (correo) {
+        const tempPassword = Math.random().toString(36).substring(2, 10);
+        try {
+          await db.insert("users", { 
+            nombre: `${nombres} ${apellidos}`, 
+            email: correo, 
+            password: tempPassword, 
+            role: "alumno",
+            created_at: fmt(new Date())
+          });
+        } catch (err) {
+          console.log("Usuario ya existe o error:", err);
+        }
       }
       // Registrar pago inicial si se indicó
       if (registrarPago && montoInscripcion && newStudent?.id) {
@@ -591,7 +629,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
         </Field>
         <Field label="Representante"><Input value={representante} onChange={e => setRepresentante(e.target.value)} placeholder="Representante" /></Field>
         <Field label="Teléfono"><Input value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="0991234567" /></Field>
-        <Field label="Correo" className="col-span-2"><Input value={correo} onChange={e => setCorreo(e.target.value)} placeholder="correo@mail.com" /></Field>
+        <Field label="Usuario (para login en app)" className="col-span-2"><Input value={correo} onChange={e => setCorreo(e.target.value)} placeholder="ej: juan.mendoza" /></Field>
         {!student && (
           <Field label="Contraseña de acceso alumno/padre" className="col-span-2">
             <Input type="password" value={userPass} onChange={e => setUserPass(e.target.value)} placeholder="Mínimo 6 caracteres (opcional)" />
@@ -740,7 +778,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
               <div><h2 className="text-2xl font-black text-white">{viewStudent.nombres} {viewStudent.apellidos}</h2><div className="flex gap-2 mt-1 flex-wrap"><BeltBadge cinturon={viewStudent.cinturon} /><CategoriaBadge categoria={viewStudent.categoria||getCategoria(viewStudent.fecha_nacimiento)} /><MembresiaTag membresiaId={viewStudent.membresia} /></div></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {[["Sede",viewStudent.sede],["Estado",viewStudent.estado],["Edad",`${viewStudent.edad} años`],["Nacimiento",viewStudent.fecha_nacimiento],["Representante",viewStudent.representante],["Teléfono",viewStudent.telefono],["Correo",viewStudent.correo],["Dirección",viewStudent.direccion],["Inscripción",viewStudent.fecha_inscripcion],["GAL", examenes&&examenes.some(ex=>ex.alumno_id===viewStudent.id&&ex.tipo?.includes("GAL"))?"✓ Sí":"✗ No"]].map(([k,v])=>(
+              {[["Sede",viewStudent.sede],["Estado",viewStudent.estado],["Edad",`${viewStudent.edad} años`],["Nacimiento",viewStudent.fecha_nacimiento],["Representante",viewStudent.representante],["Teléfono",viewStudent.telefono],["Usuario",viewStudent.correo],["Dirección",viewStudent.direccion],["Inscripción",viewStudent.fecha_inscripcion],["GAL", examenes&&examenes.some(ex=>ex.alumno_id===viewStudent.id&&ex.tipo?.includes("GAL"))?"✓ Sí":"✗ No"]].map(([k,v])=>(
                 <div key={k} className="bg-white/5 rounded-xl p-3"><p className="text-xs text-slate-500 mb-0.5">{k}</p><p className="text-sm font-semibold text-white">{v||"—"}</p></div>
               ))}
             </div>
