@@ -1244,39 +1244,32 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   // Retorna TODOS los estados aplicables (array)
   const getEstadosReal = (p) => {
     const estados = [];
-    
+
     if (p.estado_membresia === "Pausada") {
       estados.push("pausado");
       return estados;
     }
-    
+
     const pagado = parseFloat(p.monto_pagado||0);
     const total = parseFloat(p.monto||0);
-    
-    // PRIMERO: Evalúa vencimiento (si existe fecha)
-    let vencido = false;
-    if (p.fecha_vencimiento) {
-      vencido = p.fecha_vencimiento <= hoyPagos;
-      if (vencido) {
-        estados.push("vencido");
-      }
-    }
-    
-    // SEGUNDO: Evalúa si pagó completo
-    if (pagado >= total && total > 0) {
-      estados.push("al día");
+    const vencido = p.fecha_vencimiento && p.fecha_vencimiento <= hoyPagos;
+
+    if (vencido) {
+      // Venció → SOLO "vencido" (nunca "al día")
+      estados.push("vencido");
+      if (pagado > 0 && pagado < total) estados.push("parcial");
       return estados;
     }
-    
-    // TERCERO: Si no pagó completo
-    if (pagado > 0) {
-      // Pagó algo pero no completo
+
+    // No vencido
+    if (pagado >= total && total > 0) {
+      estados.push("al día");
+    } else if (pagado > 0) {
       estados.push("parcial");
-    } else if (pagado === 0) {
-      // No pagó nada → pendiente
+    } else {
       estados.push("pendiente");
     }
-    
+
     return estados;
   };
   
