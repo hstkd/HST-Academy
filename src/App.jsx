@@ -1263,7 +1263,6 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
     // SEGUNDO: Evalúa si pagó completo
     if (pagado >= total && total > 0) {
       estados.push("al día");
-      // Si pagó completo, no agrega más estados
       return estados;
     }
     
@@ -1271,15 +1270,12 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
     if (pagado > 0) {
       // Pagó algo pero no completo
       estados.push("parcial");
-    } else if (!vencido && p.fecha_vencimiento) {
-      // No pagó nada y no ha vencido
-      estados.push("pendiente");
-    } else if (!p.fecha_vencimiento) {
-      // Sin fecha de vencimiento y sin pago
+    } else if (pagado === 0) {
+      // No pagó nada → pendiente
       estados.push("pendiente");
     }
     
-    return estados.length > 0 ? estados : ["pendiente"];
+    return estados;
   };
   
   // Para compatibilidad, getEstadoReal retorna el principal
