@@ -1581,6 +1581,9 @@ const VentasPage = ({ ventas, reload, isAdmin }) => {
     const [carrito, setCarrito] = useState([]);
     const [catFilter, setCatFilter] = useState("todos");
     const [saving, setSaving] = useState(false);
+    const [cliente, setCliente] = useState("");
+    const [montoPagado, setMontoPagado] = useState("");
+    const [fechaVenta, setFechaVenta] = useState(fmt(today));
 
     const addToCart = (prod) => {
       setCarrito(prev => {
@@ -1592,11 +1595,23 @@ const VentasPage = ({ ventas, reload, isAdmin }) => {
 
     const removeFromCart = (id) => setCarrito(prev=>prev.map(i=>i.id===id?{...i,qty:Math.max(0,i.qty-1)}:i).filter(i=>i.qty>0));
     const total = carrito.reduce((a,i)=>a+i.precio*i.qty,0);
+    const pagado = parseFloat(montoPagado) || 0;
+    const estadoVenta = pagado <= 0 ? "credito" : pagado >= total ? "pagado" : "parcial";
+    const saldo = Math.max(0, total - pagado);
 
     const save = async () => {
       if (carrito.length===0) return;
       setSaving(true);
-      await db.insert("ventas",{ items:JSON.stringify(carrito), total, fecha:fmt(today), detalle:carrito.map(i=>`${i.qty}x ${i.nombre}`).join(", ") });
+      await db.insert("ventas", {
+        items: JSON.stringify(carrito),
+        total,
+        monto_pagado: pagado,
+        saldo_pendiente: saldo,
+        estado: estadoVenta,
+        cliente: cliente || "Sin nombre",
+        fecha: fechaVenta,
+        detalle: carrito.map(i=>`${i.qty}x ${i.nombre}`).join(", ")
+      });
       await reload();
       setSaving(false);
       onClose();
@@ -1607,6 +1622,12 @@ const VentasPage = ({ ventas, reload, isAdmin }) => {
     return (
       <Modal title="Nueva Venta" onClose={onClose} wide>
         <div className="space-y-4">
+          {/* Cliente y fecha */}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Cliente"><Input value={cliente} onChange={e=>setCliente(e.target.value)} placeholder="Nombre del cliente" /></Field>
+            <Field label="Fecha"><Input type="date" value={fechaVenta} onChange={e=>setFechaVenta(e.target.value)} /></Field>
+          </div>
+
           <div className="flex gap-2 flex-wrap">
             {[{id:"todos",label:"Todos"},{id:"bebidas",label:"🥤 Bebidas"},{id:"implementos",label:"🥋 Implementos"},{id:"uniformes",label:"👕 Uniformes"}].map(c=>(
               <button key={c.id} onClick={()=>setCatFilter(c.id)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${catFilter===c.id?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={catFilter===c.id?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>
@@ -1638,9 +1659,26 @@ const VentasPage = ({ ventas, reload, isAdmin }) => {
                   </div>
                 ))}
               </div>
-              <div className="border-t border-white/10 mt-3 pt-3 flex justify-between">
-                <span className="font-bold text-white">TOTAL</span>
-                <span className="text-2xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${total.toFixed(2)}</span>
+              <div className="border-t border-white/10 mt-3 pt-3">
+                <div className="flex justify-between mb-3">
+                  <span className="font-bold text-white">TOTAL</span>
+                  <span className="text-2xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${total.toFixed(2)}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Monto pagado ($)">
+                    <Input type="number" value={montoPagado} onChange={e=>setMontoPagado(e.target.value)} placeholder={total.toFixed(2)} step="0.01" />
+                  </Field>
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase font-semibold mb-2">Estado</p>
+                    <div className={`h-[42px] flex items-center justify-center rounded-xl text-xs font-bold border ${
+                      estadoVenta==="pagado" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
+                      estadoVenta==="parcial" ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
+                      "bg-slate-500/20 text-slate-400 border-slate-500/30"
+                    }`}>
+                      {estadoVenta==="pagado" ? "✓ Pagado" : estadoVenta==="parcial" ? `Parcial — debe $${saldo.toFixed(2)}` : "A crédito"}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1674,10 +1712,24 @@ const VentasPage = ({ ventas, reload, isAdmin }) => {
       <div className="space-y-3">
         {ventas.map(v=>(
           <div key={v.id} className="bg-white/3 border border-white/8 rounded-2xl p-4 hover:border-white/15">
-            <div className="flex items-center justify-between">
-              <div><p className="font-bold text-white text-sm">{v.detalle}</p><p className="text-xs text-slate-500 mt-0.5">{v.fecha}</p></div>
-              <div className="flex items-center gap-3">
-                <span className="text-xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${parseFloat(v.total).toFixed(2)}</span>
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="font-bold text-white text-sm">{v.cliente || "Sin nombre"}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{v.fecha} · {v.detalle}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <p className="text-lg font-black text-amber-400">${parseFloat(v.total||0).toFixed(2)}</p>
+                  {v.estado==="parcial" && <p className="text-xs text-amber-400">Debe: ${parseFloat(v.saldo_pendiente||0).toFixed(2)}</p>}
+                  {v.estado==="credito" && <p className="text-xs text-slate-400">A crédito</p>}
+                </div>
+                <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                  v.estado==="pagado" ? "bg-emerald-500/20 text-emerald-400" :
+                  v.estado==="parcial" ? "bg-amber-500/20 text-amber-400" :
+                  "bg-slate-500/20 text-slate-400"
+                }`}>
+                  {v.estado==="pagado" ? "Pagado" : v.estado==="parcial" ? "Parcial" : v.estado==="credito" ? "Crédito" : "Pagado"}
+                </span>
                 {isAdmin&&<button onClick={()=>onDelete(v.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-4 h-4" /></button>}
               </div>
             </div>
