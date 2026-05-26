@@ -1572,16 +1572,91 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   );
 };
 
-const VentasPage = ({ ventas, reload, isAdmin }) => {
-  const [showForm, setShowForm] = useState(false);
-  const totalHoy = ventas.filter(v=>v.fecha===fmt(today)).reduce((a,v)=>a+parseFloat(v.total||0),0);
-  const totalMes = ventas.filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.total||0),0);
+const AbonoVentaModal = ({ venta, reload, onClose }) => {
+  const [montoAbono, setMontoAbono] = useState("");
+  const [fechaAbono, setFechaAbono] = useState(fmt(today));
+  const [notas, setNotas] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const VentaForm = ({ onClose }) => {
+  const saldoActual = parseFloat(venta.saldo_pendiente || 0);
+  const abono = parseFloat(montoAbono) || 0;
+  const nuevoSaldo = Math.max(0, saldoActual - abono);
+  const nuevoMontoPagado = parseFloat(venta.monto_pagado || 0) + abono;
+  const nuevoEstado = nuevoSaldo <= 0 ? "pagado" : "parcial";
+
+  const save = async () => {
+    if (abono <= 0) return;
+    setSaving(true);
+    await db.update("ventas", venta.id, {
+      monto_pagado: nuevoMontoPagado,
+      saldo_pendiente: nuevoSaldo,
+      estado: nuevoEstado,
+    });
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={`Abono — ${venta.cliente}`} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="grid grid-cols-3 gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+          <div className="text-center">
+            <p className="text-xs text-slate-400">Total</p>
+            <p className="text-sm font-bold text-white">${parseFloat(venta.total||0).toFixed(2)}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-slate-400">Pagado</p>
+            <p className="text-sm font-bold text-emerald-400">${parseFloat(venta.monto_pagado||0).toFixed(2)}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-slate-400">Saldo</p>
+            <p className="text-sm font-bold text-red-400">${saldoActual.toFixed(2)}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Monto a abonar ($)">
+            <Input type="number" value={montoAbono} onChange={e=>setMontoAbono(e.target.value)} placeholder={saldoActual.toFixed(2)} step="0.01" />
+            <p className="text-xs text-slate-400 mt-1">Saldo: ${saldoActual.toFixed(2)}</p>
+          </Field>
+          <Field label="Fecha del abono">
+            <Input type="date" value={fechaAbono} onChange={e=>setFechaAbono(e.target.value)} />
+          </Field>
+        </div>
+
+        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+          <p className="text-xs text-slate-400 mb-1">Nuevo saldo pendiente</p>
+          <p className="text-lg font-black text-emerald-400">${nuevoSaldo.toFixed(2)}</p>
+          {nuevoSaldo <= 0 && <p className="text-xs text-emerald-400 mt-1">✓ Quedará totalmente pagado</p>}
+          {nuevoSaldo > 0 && abono > 0 && <p className="text-xs text-amber-400 mt-1">Aún falta: ${nuevoSaldo.toFixed(2)}</p>}
+        </div>
+
+        <Field label="Notas (opcional)">
+          <Input value={notas} onChange={e=>setNotas(e.target.value)} placeholder="Ej: Abono en efectivo..." />
+        </Field>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+        <button onClick={save} disabled={saving||abono<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar abono"}</button>
+      </div>
+    </Modal>
+  );
+};
+
+const VentasPage = ({ ventas, students, reload, isAdmin }) => {
+  const [showForm, setShowForm] = useState(false);
+  const [filter, setFilter] = useState("Todos");
+  const [abonoVenta, setAbonoVenta] = useState(null);
+  const totalHoy = ventas.filter(v=>v.fecha===fmt(today)).reduce((a,v)=>a+parseFloat(v.total||0),0);
+  const totalMes = ventas.filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0);
+
+  const VentaForm = ({ onClose, students }) => {
     const [carrito, setCarrito] = useState([]);
     const [catFilter, setCatFilter] = useState("todos");
     const [saving, setSaving] = useState(false);
     const [cliente, setCliente] = useState("");
+    const [alumnoId, setAlumnoId] = useState("");
     const [montoPagado, setMontoPagado] = useState("");
     const [fechaVenta, setFechaVenta] = useState(fmt(today));
 
@@ -1602,13 +1677,15 @@ const VentasPage = ({ ventas, reload, isAdmin }) => {
     const save = async () => {
       if (carrito.length===0) return;
       setSaving(true);
+      const alumnoSel = students.find(s=>s.id===alumnoId);
       await db.insert("ventas", {
         items: JSON.stringify(carrito),
         total,
         monto_pagado: pagado,
         saldo_pendiente: saldo,
         estado: estadoVenta,
-        cliente: cliente || "Sin nombre",
+        cliente: alumnoSel ? `${alumnoSel.nombres} ${alumnoSel.apellidos}` : (cliente || "Sin nombre"),
+        alumno_id: alumnoId || null,
         fecha: fechaVenta,
         detalle: carrito.map(i=>`${i.qty}x ${i.nombre}`).join(", ")
       });
@@ -1623,8 +1700,21 @@ const VentasPage = ({ ventas, reload, isAdmin }) => {
       <Modal title="Nueva Venta" onClose={onClose} wide>
         <div className="space-y-4">
           {/* Cliente y fecha */}
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Cliente"><Input value={cliente} onChange={e=>setCliente(e.target.value)} placeholder="Nombre del cliente" /></Field>
+          <div className="space-y-3">
+            <Field label="Alumno registrado (opcional)">
+              <select value={alumnoId} onChange={e=>{setAlumnoId(e.target.value); setCliente("");}}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50">
+                <option value="">— Cliente externo —</option>
+                {students.filter(s=>s.estado==="activo").sort((a,b)=>a.nombres.localeCompare(b.nombres)).map(s=>(
+                  <option key={s.id} value={s.id}>{s.nombres} {s.apellidos}</option>
+                ))}
+              </select>
+            </Field>
+            {!alumnoId && (
+              <Field label="Nombre cliente externo">
+                <Input value={cliente} onChange={e=>setCliente(e.target.value)} placeholder="Nombre del cliente" />
+              </Field>
+            )}
             <Field label="Fecha"><Input type="date" value={fechaVenta} onChange={e=>setFechaVenta(e.target.value)} /></Field>
           </div>
 
@@ -1709,8 +1799,19 @@ const VentasPage = ({ ventas, reload, isAdmin }) => {
           <StatCard title="Ventas Mes" value={`$${totalMes.toFixed(2)}`} icon="ventas" accent="amber" />
         </div>
       )}
+      {/* Filtros */}
+      <div className="flex gap-2 flex-wrap">
+        {["Todos","pagado","parcial","credito"].map(f=>(
+          <button key={f} onClick={()=>setFilter(f)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`}
+            style={filter===f?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>
+            {f==="Todos"?"Todos":f==="pagado"?"Pagado":f==="parcial"?"Parcial":"Crédito"}
+          </button>
+        ))}
+      </div>
+
       <div className="space-y-3">
-        {ventas.map(v=>(
+        {ventas.filter(v=> filter==="Todos" || (v.estado||"pagado")===filter).sort((a,b)=>b.fecha?.localeCompare(a.fecha)).map(v=>(
           <div key={v.id} className="bg-white/3 border border-white/8 rounded-2xl p-4 hover:border-white/15">
             <div className="flex items-center justify-between mb-2">
               <div>
@@ -1720,24 +1821,36 @@ const VentasPage = ({ ventas, reload, isAdmin }) => {
               <div className="flex items-center gap-2">
                 <div className="text-right">
                   <p className="text-lg font-black text-amber-400">${parseFloat(v.total||0).toFixed(2)}</p>
-                  {v.estado==="parcial" && <p className="text-xs text-amber-400">Debe: ${parseFloat(v.saldo_pendiente||0).toFixed(2)}</p>}
-                  {v.estado==="credito" && <p className="text-xs text-slate-400">A crédito</p>}
+                  {(v.estado==="parcial"||v.estado==="credito") && (
+                    <p className="text-xs text-red-400">Debe: ${parseFloat(v.saldo_pendiente||v.total||0).toFixed(2)}</p>
+                  )}
                 </div>
                 <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
                   v.estado==="pagado" ? "bg-emerald-500/20 text-emerald-400" :
                   v.estado==="parcial" ? "bg-amber-500/20 text-amber-400" :
-                  "bg-slate-500/20 text-slate-400"
+                  v.estado==="credito" ? "bg-slate-500/20 text-slate-400" :
+                  "bg-emerald-500/20 text-emerald-400"
                 }`}>
-                  {v.estado==="pagado" ? "Pagado" : v.estado==="parcial" ? "Parcial" : v.estado==="credito" ? "Crédito" : "Pagado"}
+                  {v.estado==="pagado"?"Pagado":v.estado==="parcial"?"Parcial":v.estado==="credito"?"Crédito":"Pagado"}
                 </span>
-                {isAdmin&&<button onClick={()=>onDelete(v.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-4 h-4" /></button>}
               </div>
+            </div>
+            {/* Botones */}
+            <div className="flex justify-between items-center mt-2">
+              {(v.estado==="parcial"||v.estado==="credito") && (
+                <button onClick={()=>setAbonoVenta(v)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30">
+                  + Abonar
+                </button>
+              )}
+              {v.estado==="pagado" && <div/>}
+              {isAdmin&&<button onClick={()=>onDelete(v.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-4 h-4" /></button>}
             </div>
           </div>
         ))}
         {ventas.length===0&&<div className="text-center py-12 text-slate-500">Sin ventas registradas aún</div>}
       </div>
-      {showForm&&<VentaForm onClose={()=>setShowForm(false)} />}
+      {showForm&&<VentaForm onClose={()=>setShowForm(false)} students={students} />}
+      {abonoVenta&&<AbonoVentaModal venta={abonoVenta} reload={reload} onClose={()=>setAbonoVenta(null)} />}
     </div>
   );
 };
@@ -2619,7 +2732,7 @@ export default function App() {
       case "dashboard":     return <DashboardPage students={students} pagos={pagos} historialPagos={historialPagos} asistencia={asistencia} ventas={ventas} eventos={eventos} examenes={examenes} />;
       case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} asistencia={asistencia} examenes={examenes} eventos={eventos} />;
       case "payments":      return <PaymentsPage students={students} pagos={pagos} historialPagos={historialPagos} reload={loadAll} isAdmin={isAdmin} />;
-      case "ventas":        return <VentasPage ventas={ventas} reload={loadAll} isAdmin={isAdmin} />;
+      case "ventas":        return <VentasPage ventas={ventas} students={students} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} />;
