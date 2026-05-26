@@ -113,10 +113,12 @@ const cinturonColor = {
 };
 
 const pagoEstadoConfig = {
-  pagado:   { bg:"bg-emerald-500/20", text:"text-emerald-400", border:"border-emerald-500/30", label:"Al día" },
-  parcial:  { bg:"bg-amber-500/20",   text:"text-amber-400",   border:"border-amber-500/30",   label:"Parcial" },
-  vencido:  { bg:"bg-red-500/20",     text:"text-red-400",     border:"border-red-500/30",     label:"Vencido" },
-  pendiente:{ bg:"bg-slate-500/20",   text:"text-slate-400",   border:"border-slate-500/30",   label:"Pendiente" },
+  "pagado":   { bg:"bg-emerald-500/20", text:"text-emerald-400", border:"border-emerald-500/30", label:"Al día" },
+  "al día":   { bg:"bg-emerald-500/20", text:"text-emerald-400", border:"border-emerald-500/30", label:"Al día" },
+  "parcial":  { bg:"bg-amber-500/20",   text:"text-amber-400",   border:"border-amber-500/30",   label:"Parcial" },
+  "vencido":  { bg:"bg-red-500/20",     text:"text-red-400",     border:"border-red-500/30",     label:"Vencido" },
+  "pendiente":{ bg:"bg-slate-500/20",   text:"text-slate-400",   border:"border-slate-500/30",   label:"Pendiente" },
+  "pausado":  { bg:"bg-purple-500/20",  text:"text-purple-400",  border:"border-purple-500/30",  label:"Pausado" },
 };
 
 const PRODUCTOS = [
