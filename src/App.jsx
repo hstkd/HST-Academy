@@ -1248,36 +1248,41 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
       return estados;
     }
     
-    if (!p.fecha_vencimiento) {
-      estados.push("pendiente");
-      return estados;
-    }
-    
     const pagado = parseFloat(p.monto_pagado||0);
     const total = parseFloat(p.monto||0);
-    const vencido = p.fecha_vencimiento <= hoyPagos;
     
-    // Si pagó completo → "al día" (independientemente de si venció)
+    // PRIMERO: Si pagó completo → "al día" (sin importar fecha_vencimiento)
     if (pagado >= total && total > 0) {
       estados.push("al día");
-      // Si además venció pero pagó, aún es "al día"
       return estados;
     }
     
-    // No pagó completo
-    if (vencido) {
-      // Venció y no pagó completo
-      estados.push("vencido");
-      if (pagado > 0) {
-        // Si pagó algo pero no completo → también "parcial"
-        estados.push("parcial");
+    // SEGUNDO: Si tiene fecha_vencimiento, evalúa vencimiento
+    if (p.fecha_vencimiento) {
+      const vencido = p.fecha_vencimiento <= hoyPagos;
+      
+      if (vencido) {
+        // Venció y no pagó completo
+        estados.push("vencido");
+        if (pagado > 0) {
+          // Si pagó algo pero no completo → también "parcial"
+          estados.push("parcial");
+        }
+      } else {
+        // No ha vencido aún
+        if (pagado === 0) {
+          estados.push("pendiente");
+        } else {
+          // Pagó algo pero no completo, y no venció
+          estados.push("parcial");
+        }
       }
     } else {
-      // No ha vencido aún
+      // SIN fecha_vencimiento y no pagó completo
       if (pagado === 0) {
         estados.push("pendiente");
       } else {
-        // Pagó algo pero no completo, y no venció
+        // Pagó algo pero sin fecha definida → parcial
         estados.push("parcial");
       }
     }
