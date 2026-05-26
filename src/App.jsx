@@ -1251,43 +1251,35 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
     const pagado = parseFloat(p.monto_pagado||0);
     const total = parseFloat(p.monto||0);
     
-    // PRIMERO: Si pagó completo → "al día" (sin importar fecha_vencimiento)
+    // PRIMERO: Evalúa vencimiento (si existe fecha)
+    let vencido = false;
+    if (p.fecha_vencimiento) {
+      vencido = p.fecha_vencimiento <= hoyPagos;
+      if (vencido) {
+        estados.push("vencido");
+      }
+    }
+    
+    // SEGUNDO: Evalúa si pagó completo
     if (pagado >= total && total > 0) {
       estados.push("al día");
+      // Si pagó completo, no agrega más estados
       return estados;
     }
     
-    // SEGUNDO: Si tiene fecha_vencimiento, evalúa vencimiento
-    if (p.fecha_vencimiento) {
-      const vencido = p.fecha_vencimiento <= hoyPagos;
-      
-      if (vencido) {
-        // Venció y no pagó completo
-        estados.push("vencido");
-        if (pagado > 0) {
-          // Si pagó algo pero no completo → también "parcial"
-          estados.push("parcial");
-        }
-      } else {
-        // No ha vencido aún
-        if (pagado === 0) {
-          estados.push("pendiente");
-        } else {
-          // Pagó algo pero no completo, y no venció
-          estados.push("parcial");
-        }
-      }
-    } else {
-      // SIN fecha_vencimiento y no pagó completo
-      if (pagado === 0) {
-        estados.push("pendiente");
-      } else {
-        // Pagó algo pero sin fecha definida → parcial
-        estados.push("parcial");
-      }
+    // TERCERO: Si no pagó completo
+    if (pagado > 0) {
+      // Pagó algo pero no completo
+      estados.push("parcial");
+    } else if (!vencido && p.fecha_vencimiento) {
+      // No pagó nada y no ha vencido
+      estados.push("pendiente");
+    } else if (!p.fecha_vencimiento) {
+      // Sin fecha de vencimiento y sin pago
+      estados.push("pendiente");
     }
     
-    return estados;
+    return estados.length > 0 ? estados : ["pendiente"];
   };
   
   // Para compatibilidad, getEstadoReal retorna el principal
