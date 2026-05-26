@@ -1592,6 +1592,14 @@ const AbonoVentaModal = ({ venta, reload, onClose }) => {
       saldo_pendiente: nuevoSaldo,
       estado: nuevoEstado,
     });
+    await db.insert("historial_ventas", {
+      venta_id: venta.id,
+      cliente: venta.cliente,
+      alumno_id: venta.alumno_id || null,
+      monto_abono: abono,
+      fecha_abono: fechaAbono,
+      notas: notas || "Abono",
+    });
     await reload();
     setSaving(false);
     onClose();
@@ -1644,7 +1652,7 @@ const AbonoVentaModal = ({ venta, reload, onClose }) => {
   );
 };
 
-const VentasPage = ({ ventas, students, reload, isAdmin }) => {
+const VentasPage = ({ ventas, historialVentas, students, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
   const [abonoVenta, setAbonoVenta] = useState(null);
@@ -1835,6 +1843,23 @@ const VentasPage = ({ ventas, students, reload, isAdmin }) => {
                 </span>
               </div>
             </div>
+            {/* Historial de abonos */}
+            {(() => {
+              const abonos = (historialVentas||[]).filter(h=>h.venta_id===v.id).sort((a,b)=>b.fecha_abono?.localeCompare(a.fecha_abono));
+              return abonos.length > 0 ? (
+                <div className="mt-2 pt-2 border-t border-white/10">
+                  <p className="text-xs text-slate-400 font-semibold mb-1">Abonos:</p>
+                  <div className="space-y-1">
+                    {abonos.map(ab=>(
+                      <div key={ab.id} className="flex justify-between text-xs">
+                        <span className="text-slate-400">{ab.fecha_abono}</span>
+                        <span className="text-emerald-400 font-bold">+${parseFloat(ab.monto_abono||0).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
             {/* Botones */}
             <div className="flex justify-between items-center mt-2">
               {(v.estado==="parcial"||v.estado==="credito") && (
@@ -2655,15 +2680,17 @@ export default function App() {
   const refreshRef = useRef(null);
 
   const [historialPagos, setHistorialPagos] = useState([]);
+  const [historialVentas, setHistorialVentas] = useState([]);
 
   const loadAll = useCallback(async () => {
-    const [s,p,a,e,v,ex,h] = await Promise.all([
-      db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"), db.get("historial_pagos"),
+    const [s,p,a,e,v,ex,h,hv] = await Promise.all([
+      db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"), db.get("historial_pagos"), db.get("historial_ventas"),
     ]);
     setStudents(Array.isArray(s)?s:[]);
     // Estado se calcula en tiempo real, no se guarda en BD
     setPagos(Array.isArray(p) ? p : []);
     setHistorialPagos(Array.isArray(h) ? h : []);
+    setHistorialVentas(Array.isArray(hv) ? hv : []);
     setAsistencia(Array.isArray(a)?a:[]);
     setEventos(Array.isArray(e)?e:[]);
     setVentas(Array.isArray(v)?v:[]);
@@ -2732,7 +2759,7 @@ export default function App() {
       case "dashboard":     return <DashboardPage students={students} pagos={pagos} historialPagos={historialPagos} asistencia={asistencia} ventas={ventas} eventos={eventos} examenes={examenes} />;
       case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} asistencia={asistencia} examenes={examenes} eventos={eventos} />;
       case "payments":      return <PaymentsPage students={students} pagos={pagos} historialPagos={historialPagos} reload={loadAll} isAdmin={isAdmin} />;
-      case "ventas":        return <VentasPage ventas={ventas} students={students} reload={loadAll} isAdmin={isAdmin} />;
+      case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} />;
