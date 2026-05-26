@@ -1250,12 +1250,13 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
       return estados;
     }
 
-    const pagado = parseFloat(p.monto_pagado||0);
-    const total = parseFloat(p.monto||0);
-    const vencido = p.fecha_vencimiento && p.fecha_vencimiento <= hoyPagos;
+    const pagado = parseFloat(p.monto_pagado || 0);
+    const total = parseFloat(p.monto || 0);
+    const hoy = fmt(new Date()); // Siempre fresco
+    const fv = p.fecha_vencimiento ? String(p.fecha_vencimiento).slice(0, 10) : null;
+    const vencido = fv && fv <= hoy;
 
     if (vencido) {
-      // Venció → SOLO "vencido" (nunca "al día")
       estados.push("vencido");
       if (pagado > 0 && pagado < total) estados.push("parcial");
       return estados;
@@ -1275,7 +1276,24 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   
   // Para compatibilidad, getEstadoReal retorna el principal
   const getEstadoReal = (p) => getEstadosReal(p)[0];
-  const pagosReal = pagos.map(p => {
+  // Solo mostrar el pago más reciente por alumno (evitar duplicados)
+  const pagosUnicosPorAlumno = pagos.reduce((acc, p) => {
+    const existing = acc.find(x => x.alumno_id === p.alumno_id);
+    if (!existing) {
+      acc.push(p);
+    } else {
+      // Quedar con el de fecha_vencimiento más reciente
+      const existingDate = existing.fecha_vencimiento || "0000-00-00";
+      const currentDate = p.fecha_vencimiento || "0000-00-00";
+      if (currentDate > existingDate) {
+        const idx = acc.indexOf(existing);
+        acc[idx] = p;
+      }
+    }
+    return acc;
+  }, []);
+
+  const pagosReal = pagosUnicosPorAlumno.map(p => {
     const estados = getEstadosReal(p);
     return { ...p, estado: estados[0], estados };
   });
