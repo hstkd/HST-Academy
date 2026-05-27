@@ -2382,60 +2382,126 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
 
 const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes }) => {
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-  // Por mes desde historial_pagos
-  const byMonth = meses.map((label,i)=>({ label, value:(historialPagos||[]).filter(h=>parseInt(h.fecha_pago?.slice(5,7))===i+1).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0) }));
-  const ventasByMonth = meses.map((label,i)=>({ label, value:(ventas||[]).filter(v=>parseInt(v.fecha?.slice(5,7))===i+1).reduce((a,v)=>a+parseFloat(v.total||0),0) }));
-  const totalAnual = byMonth.reduce((a,m)=>a+m.value,0);
-  const totalVentas = ventasByMonth.reduce((a,m)=>a+m.value,0);
-  // Ingresos de eventos (participantes pagados)
-  const totalEventos = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
-  // Ingresos de exámenes y GALs
-  const totalExamenes = (examenes||[]).reduce((a,ex)=>a+parseFloat(ex.monto_pagado||ex.monto||0),0);
-  const bySede = SEDES.map(sede=>({ sede, total:pagos.filter(p=>p.sede===sede).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
+
+  // Ingresos por fuente por mes
+  const mensualByMonth = meses.map((label,i)=>
+    (historialPagos||[]).filter(h=>parseInt(h.fecha_pago?.slice(5,7))===i+1).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0)
+  );
+  const ventasByMonth = meses.map((_,i)=>
+    (ventas||[]).filter(v=>parseInt(v.fecha?.slice(5,7))===i+1).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0)
+  );
+  const eventosByMonth = meses.map((_,i)=>
+    (eventos||[]).filter(e=>parseInt(e.fecha?.slice(5,7))===i+1).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0)
+  );
+  const examenesByMonth = meses.map((_,i)=>
+    (examenes||[]).filter(e=>parseInt(e.fecha?.slice(5,7))===i+1).reduce((a,e)=>a+parseFloat(e.monto_pagado||e.monto||0),0)
+  );
+
+  // Total combinado por mes (para el gráfico principal)
+  const totalByMonth = meses.map((label,i)=>({
+    label,
+    value: mensualByMonth[i] + ventasByMonth[i] + eventosByMonth[i] + examenesByMonth[i]
+  }));
+
+  // Totales anuales por fuente
+  const totalMensual  = mensualByMonth.reduce((a,v)=>a+v,0);
+  const totalVentas   = ventasByMonth.reduce((a,v)=>a+v,0);
+  const totalEventos  = eventosByMonth.reduce((a,v)=>a+v,0);
+  const totalExamenes = examenesByMonth.reduce((a,v)=>a+v,0);
+  const totalAnual    = totalMensual + totalVentas + totalEventos + totalExamenes;
+
+  // Por sede — suma todas las fuentes
+  const ingresosPorSede = SEDES.map(sede => {
+    const mensual  = pagos.filter(p=>p.sede===sede).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
+    const ventasS  = ventas.filter(v=>v.sede===sede).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0);
+    const examenS  = examenes.filter(e=>{
+      const al = e.alumno_id;
+      return true; // No hay sede en examenes, se incluye todo
+    }).reduce((_a,_e)=>_a,0);
+    return { sede, mensual, ventasS, total: mensual + ventasS };
+  });
+
+  // Sede desde pagos (tienen sede directamente)
+  const bySedeTotal = SEDES.map(sede => {
+    const m = (historialPagos||[]).filter(h=>{
+      const pago = pagos.find(p=>p.alumno_id===h.alumno_id);
+      return pago?.sede===sede;
+    }).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0);
+    const v = (ventas||[]).filter(v=>v.sede===sede).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0);
+    const ev = (eventos||[]).filter(e=>e.sede===sede).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
+    const ex = (examenes||[]).reduce((a,e)=>a+parseFloat(e.monto_pagado||e.monto||0),0)/SEDES.length; // distribuir equitativamente
+    return { sede, total: m + v + ev };
+  });
+
   return (
     <div className="space-y-6">
       <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>FINANZAS</h1>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Mensualidades" value={`$${totalAnual.toFixed(0)}`} icon="finance" accent="amber" />
-        <StatCard title="Ventas" value={`$${totalVentas.toFixed(0)}`} icon="ventas" accent="purple" />
-        <StatCard title="Eventos" value={`$${totalEventos.toFixed(0)}`} icon="calendar" accent="blue" />
-        <StatCard title="Total Año" value={`$${(totalAnual+totalVentas+totalEventos+totalExamenes).toFixed(0)}`} icon="finance" accent="emerald" />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>MENSUALIDADES POR MES</h3>
-          <MiniBarChart data={byMonth} color="#f59e0b" />
+
+      {/* Cuadros por fuente */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
+          <p className="text-xs text-amber-400 font-semibold uppercase">Mensualidades</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalMensual.toFixed(0)}</p>
         </div>
-        <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>VENTAS POR MES</h3>
-          <MiniBarChart data={ventasByMonth} color="#a855f7" />
+        <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4">
+          <p className="text-xs text-purple-400 font-semibold uppercase">Ventas</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalVentas.toFixed(0)}</p>
+        </div>
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4">
+          <p className="text-xs text-blue-400 font-semibold uppercase">Eventos</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalEventos.toFixed(0)}</p>
+        </div>
+        <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4">
+          <p className="text-xs text-orange-400 font-semibold uppercase">Exámenes / GAL</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalExamenes.toFixed(0)}</p>
         </div>
       </div>
+
+      {/* Total año */}
+      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5 flex justify-between items-center">
+        <div>
+          <p className="text-xs text-emerald-400 font-semibold uppercase">Total Ingresos Año</p>
+          <p className="text-4xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalAnual.toFixed(2)}</p>
+        </div>
+        <div className="text-right text-xs text-slate-400 space-y-0.5">
+          <p>Mensual: <span className="text-amber-400 font-bold">${totalMensual.toFixed(0)}</span></p>
+          <p>Ventas: <span className="text-purple-400 font-bold">${totalVentas.toFixed(0)}</span></p>
+          <p>Eventos: <span className="text-blue-400 font-bold">${totalEventos.toFixed(0)}</span></p>
+          <p>Exámenes: <span className="text-orange-400 font-bold">${totalExamenes.toFixed(0)}</span></p>
+        </div>
+      </div>
+
+      {/* Gráfico total ingresos por mes */}
       <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>POR SEDE</h3>
-        {bySede.map(({sede,total})=>(
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>TOTAL INGRESOS POR MES</h3>
+        <MiniBarChart data={totalByMonth} color="#10b981" />
+      </div>
+
+      {/* Por sede — total ingresos */}
+      <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>INGRESOS POR SEDE</h3>
+        {bySedeTotal.map(({sede,total})=>(
           <div key={sede} className="flex items-center justify-between p-3 bg-white/5 rounded-xl mb-2">
-            <span className="text-sm text-slate-300">📍 {sede}</span>
-            <span className="font-bold text-amber-400">${total.toFixed(2)}</span>
+            <span className="text-sm text-slate-300 font-semibold">📍 {sede}</span>
+            <span className="text-xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${total.toFixed(2)}</span>
           </div>
         ))}
       </div>
+
+      {/* Historial de pagos */}
       <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
         <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>HISTORIAL DE PAGOS</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-white/10">{["Alumno","Membresía","Monto","Pagado","Fecha","Estado"].map(h=><th key={h} className="text-left py-3 px-2 text-xs text-slate-500 font-semibold uppercase">{h}</th>)}</tr></thead>
-            <tbody>{pagos.map(p=>(
-              <tr key={p.id} className="border-b border-white/5 hover:bg-white/3">
-                <td className="py-3 px-2 text-white font-medium">{p.alumno_nombre}</td>
-                <td className="py-3 px-2 text-slate-400 text-xs">{p.tipo}</td>
-                <td className="py-3 px-2 text-slate-300">${parseFloat(p.monto).toFixed(2)}</td>
-                <td className="py-3 px-2 text-emerald-400 font-semibold">${parseFloat(p.monto_pagado).toFixed(2)}</td>
-                <td className="py-3 px-2 text-slate-400">{p.fecha_pago}</td>
-                <td className="py-3 px-2"><StatusBadge estado={p.estado} /></td>
-              </tr>
-            ))}</tbody>
-          </table>
+        <div className="space-y-2">
+          {(historialPagos||[]).sort((a,b)=>b.fecha_pago?.localeCompare(a.fecha_pago)).slice(0,20).map(h=>(
+            <div key={h.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+              <div>
+                <p className="text-sm font-semibold text-white">{h.alumno_nombre}</p>
+                <p className="text-xs text-slate-500">{h.tipo} · {h.fecha_pago}</p>
+              </div>
+              <span className="text-base font-black text-emerald-400">${parseFloat(h.monto_pagado||0).toFixed(2)}</span>
+            </div>
+          ))}
+          {(historialPagos||[]).length===0 && <p className="text-slate-500 text-sm text-center py-4">Sin historial aún</p>}
         </div>
       </div>
     </div>
