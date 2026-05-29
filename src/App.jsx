@@ -143,7 +143,7 @@ const PRODUCTOS = [
 
 const PERMISOS = {
   admin:    ["dashboard","students","payments","ventas","attendance","examenes","finance","events","users"],
-  profesor: ["attendance","students","payments","ventas","examenes"],
+  profesor: ["attendance","students","ventas","examenes"],
   alumno:   ["mi_asistencia","mis_pagos","mi_historial"],
 };
 
@@ -2437,9 +2437,143 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes }) => {
     return { sede, total: m + v + ev };
   });
 
+  const generarPDF = () => {
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) { alert("Cargando librería PDF, intenta en un momento..."); return; }
+    
+    const doc = new jsPDF();
+    const mesActual = new Date().toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase();
+    const hoy = fmt(new Date());
+    
+    // Header
+    doc.setFillColor(13, 20, 38);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('HS TAEKWONDO SYSTEM', 15, 18);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(156, 163, 175);
+    doc.text(`REPORTE MENSUAL — ${mesActual}`, 15, 30);
+    doc.text(`Generado: ${hoy}`, 150, 30);
+    
+    // Summary boxes
+    doc.setTextColor(30, 58, 123);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RESUMEN DE INGRESOS', 15, 55);
+    
+    const resumen = [
+      ['Mensualidades', `$${totalMensual.toFixed(2)}`],
+      ['Ventas', `$${totalVentas.toFixed(2)}`],
+      ['Eventos', `$${totalEventos.toFixed(2)}`],
+      ['Exámenes / GAL', `$${totalExamenes.toFixed(2)}`],
+      ['TOTAL', `$${totalAnual.toFixed(2)}`],
+    ];
+    
+    let y = 65;
+    resumen.forEach(([label, value], i) => {
+      const isTotal = i === resumen.length - 1;
+      if (isTotal) {
+        doc.setFillColor(30, 58, 123);
+        doc.rect(15, y - 5, 180, 10, 'F');
+        doc.setTextColor(255, 255, 255);
+      } else {
+        doc.setFillColor(i % 2 === 0 ? 245 : 255, i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255);
+        doc.rect(15, y - 5, 180, 10, 'F');
+        doc.setTextColor(30, 30, 30);
+      }
+      doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
+      doc.setFontSize(11);
+      doc.text(label, 20, y + 1);
+      doc.text(value, 170, y + 1, { align: 'right' });
+      y += 12;
+    });
+    
+    // Por sede
+    y += 8;
+    doc.setTextColor(30, 58, 123);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INGRESOS POR SEDE', 15, y);
+    y += 10;
+    
+    bySedeTotal.forEach(({ sede, total }, i) => {
+      doc.setFillColor(i % 2 === 0 ? 245 : 255, i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255);
+      doc.rect(15, y - 5, 180, 10, 'F');
+      doc.setTextColor(30, 30, 30);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text(sede, 20, y + 1);
+      doc.text(`$${total.toFixed(2)}`, 170, y + 1, { align: 'right' });
+      y += 12;
+    });
+    
+    // Historial de pagos del mes
+    y += 8;
+    doc.setTextColor(30, 58, 123);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('HISTORIAL DE PAGOS DEL MES', 15, y);
+    y += 10;
+    
+    // Header de tabla
+    doc.setFillColor(30, 58, 123);
+    doc.rect(15, y - 5, 180, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ALUMNO', 20, y + 1);
+    doc.text('TIPO', 90, y + 1);
+    doc.text('FECHA', 140, y + 1);
+    doc.text('MONTO', 185, y + 1, { align: 'right' });
+    y += 12;
+    
+    const pagosMes = (historialPagos||[])
+      .filter(h => h.fecha_pago?.slice(0,7) === fmt(new Date()).slice(0,7))
+      .sort((a,b) => b.fecha_pago?.localeCompare(a.fecha_pago));
+    
+    pagosMes.forEach((h, i) => {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.setFillColor(i % 2 === 0 ? 245 : 255, i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255);
+      doc.rect(15, y - 5, 180, 10, 'F');
+      doc.setTextColor(30, 30, 30);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text((h.alumno_nombre||'').substring(0, 25), 20, y + 1);
+      doc.text((h.tipo||'').substring(0, 20), 90, y + 1);
+      doc.text(h.fecha_pago||'', 140, y + 1);
+      doc.text(`$${parseFloat(h.monto_pagado||0).toFixed(2)}`, 185, y + 1, { align: 'right' });
+      y += 10;
+    });
+    
+    if (pagosMes.length === 0) {
+      doc.setTextColor(150, 150, 150);
+      doc.setFontSize(10);
+      doc.text('Sin pagos registrados este mes', 20, y);
+    }
+    
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`HS Taekwondo System — Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+    }
+    
+    doc.save(`Reporte_HST_${mesActual.replace(' ', '_')}.pdf`);
+  };
+
   return (
     <div className="space-y-6">
-      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>FINANZAS</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>FINANZAS</h1>
+        <button onClick={generarPDF} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)" }}>
+          📄 Reporte PDF
+        </button>
+      </div>
 
       {/* Cuadros por fuente */}
       <div className="grid grid-cols-2 gap-3">
@@ -2940,6 +3074,15 @@ const MisPagosPage = ({ currentUser, students, pagos }) => {
 
 export default function App() {
   const [user, setUser] = useState(null);
+  
+  // Load jsPDF on mount
+  useEffect(() => {
+    if (!window.jspdf) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      document.head.appendChild(script);
+    }
+  }, []);
   const [page, setPage] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [students, setStudents] = useState([]);
