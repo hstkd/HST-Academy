@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
+const LOGO_SRC = "https://i.imgur.com/tQZkiMl.png";
+
 const SUPABASE_URL = "https://khmqgetdhjidpboniuoj.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtobXFnZXRkaGppZHBib25pdW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTk0OTYsImV4cCI6MjA5NDk3NTQ5Nn0.jIZzqrQAnObmFHixbvRxBcYijw3qxCT0bxWaC99EL68";
 
@@ -81,7 +83,7 @@ const getCategoria = (fechaNac) => {
 
 const MEMBRESIAS = [
   { id: "basica",      nombre: "Básico",      sesiones: 8,   color: "#3b82f6" },
-  { id: "estandar",    nombre: "Estándar",    sesiones: 12,  color: "#f59e0b" },
+  { id: "estandar",    nombre: "Estándar",    sesiones: 12,  color: "#d4a017" },
   { id: "premium",     nombre: "Completo",    sesiones: 999, color: "#a855f7" },
   { id: "trimestral",  nombre: "Trimestral",  sesiones: 999, color: "#22c55e" },
   { id: "semestral",   nombre: "Semestral",   sesiones: 999, color: "#06b6d4" },
@@ -253,18 +255,18 @@ const MembresiaTag = ({ membresiaId }) => {
 };
 
 const RoleBadge = ({ role }) => {
-  const cfg = { admin:{color:"#f59e0b",label:"Admin"}, profesor:{color:"#3b82f6",label:"Profesor"}, alumno:{color:"#22c55e",label:"Alumno/Padre"} };
+  const cfg = { admin:{color:"#d4a017",label:"Admin"}, profesor:{color:"#3b82f6",label:"Profesor"}, alumno:{color:"#22c55e",label:"Alumno/Padre"} };
   const c = cfg[role]||cfg.alumno;
   return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background:`${c.color}22`, color:c.color }}>{c.label}</span>;
 };
 
 const CategoriaBadge = ({ categoria }) => {
-  const colors = { Infantil:"#22c55e", Cadete:"#3b82f6", Junior:"#f59e0b", Senior:"#ef4444" };
+  const colors = { Infantil:"#22c55e", Cadete:"#3b82f6", Junior:"#d4a017", Senior:"#ef4444" };
   const c = colors[categoria]||"#94a3b8";
   return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background:`${c}22`, color:c }}>{categoria}</span>;
 };
 
-const MiniBarChart = ({ data, color="#f59e0b" }) => {
+const MiniBarChart = ({ data, color="#d4a017" }) => {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
     <div className="flex items-end gap-1 h-16">
@@ -319,19 +321,21 @@ const LoginScreen = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background:"linear-gradient(135deg,#020617 0%,#0f172a 50%,#1e1b4b 100%)" }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background:"linear-gradient(135deg,#080d1a 0%,#0d1426 40%,#0a1535 100%)" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full opacity-10" style={{ background:"radial-gradient(circle,#f59e0b,transparent)" }} />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full opacity-10" style={{ background:"radial-gradient(circle,#3b82f6,transparent)" }} />
+        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full opacity-10" style={{ background:"radial-gradient(circle,#1e3a7b,transparent)" }} />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full opacity-10" style={{ background:"radial-gradient(circle,#6b7280,transparent)" }} />
       </div>
       <div className="relative w-full max-w-md p-8">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}><span className="text-3xl">🥋</span></div>
-          <h1 className="text-5xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>HENRY SIGCHOS</h1>
-          <p className="text-amber-400 font-semibold tracking-widest text-sm mt-1">TAEKWONDO ACADEMY</p>
+          <div className="inline-flex items-center justify-center w-28 h-28 rounded-2xl mb-5 bg-white shadow-2xl shadow-blue-900/30 p-2">
+            <img src={LOGO_SRC} alt="HST Logo" className="w-full h-full object-contain" />
+          </div>
+          <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.1em" }}>HS TAEKWONDO SYSTEM</h1>
+          <p className="font-medium tracking-widest text-xs mt-2" style={{ color:"#9ca3af" }}>SISTEMA DE GESTIÓN ACADÉMICA</p>
         </div>
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 shadow-2xl">
+        <div className="border rounded-3xl p-8 shadow-2xl" style={{ background:"rgba(13,20,38,0.95)", borderColor:"rgba(30,58,123,0.3)" }}>
           {mode==="login" && <>
             <h2 className="text-xl font-bold text-white mb-6">Iniciar Sesión</h2>
             {err&&<div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">{err}</div>}
@@ -339,15 +343,15 @@ const LoginScreen = ({ onLogin }) => {
               <Field label="Correo"><Input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@correo.com" onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></Field>
               <Field label="Contraseña"><Input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></Field>
             </div>
-            <button onClick={handleLogin} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{loading?"VERIFICANDO...":"INGRESAR AL SISTEMA"}</button>
-            <button onClick={()=>{setMode("forgot");setErr("");}} className="w-full mt-3 text-center text-sm text-slate-500 hover:text-amber-400 transition-colors">¿Olvidaste tu contraseña?</button>
+            <button onClick={handleLogin} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{loading?"VERIFICANDO...":"INGRESAR AL SISTEMA"}</button>
+            <button onClick={()=>{setMode("forgot");setErr("");}} className="w-full mt-3 text-center text-sm text-slate-500 hover:text-yellow-500 transition-colors">¿Olvidaste tu contraseña?</button>
           </>}
           {mode==="forgot" && <>
             <h2 className="text-xl font-bold text-white mb-2">Recuperar Contraseña</h2>
             <p className="text-slate-400 text-sm mb-6">Ingresa tu correo registrado.</p>
             {err&&<div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">{err}</div>}
             <Field label="Correo"><Input type="email" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="tu@correo.com" onKeyDown={e=>e.key==="Enter"&&handleForgot()} /></Field>
-            <button onClick={handleForgot} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{loading?"BUSCANDO...":"CONTINUAR"}</button>
+            <button onClick={handleForgot} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{loading?"BUSCANDO...":"CONTINUAR"}</button>
             <button onClick={()=>{setMode("login");setErr("");}} className="w-full mt-3 text-center text-sm text-slate-500 hover:text-amber-400 transition-colors">← Volver</button>
           </>}
           {mode==="change_pass" && <>
@@ -359,7 +363,7 @@ const LoginScreen = ({ onLogin }) => {
               <Field label="Nueva contraseña"><Input type="password" value={newPass} onChange={e=>setNewPass(e.target.value)} placeholder="Mínimo 6 caracteres" /></Field>
               <Field label="Confirmar"><Input type="password" value={confirmPass} onChange={e=>setConfirmPass(e.target.value)} placeholder="Repite la contraseña" onKeyDown={e=>e.key==="Enter"&&handleChangePass()} /></Field>
             </div>
-            <button onClick={handleChangePass} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{loading?"GUARDANDO...":"CAMBIAR CONTRASEÑA"}</button>
+            <button onClick={handleChangePass} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{loading?"GUARDANDO...":"CAMBIAR CONTRASEÑA"}</button>
             <button onClick={()=>{setMode("login");setErr("");}} className="w-full mt-3 text-center text-sm text-slate-500 hover:text-amber-400 transition-colors">← Volver</button>
           </>}
         </div>
@@ -401,7 +405,7 @@ const ChangePasswordModal = ({ currentUser, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Cambiar"}</button>
+        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Cambiar"}</button>
       </div>
     </Modal>
   );
@@ -483,7 +487,7 @@ const DashboardPage = ({ students, pagos, historialPagos, asistencia, ventas, ev
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>INGRESOS POR MENSUALIDADES</h3>
-          <MiniBarChart data={chartData} color="#f59e0b" />
+          <MiniBarChart data={chartData} color="#d4a017" />
         </div>
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>CINTURONES</h3>
@@ -777,13 +781,13 @@ const StudentFormModal = ({ student, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving ? "Guardando..." : student ? "Guardar Cambios" : "Crear Alumno"}</button>
+        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background: "linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving ? "Guardando..." : student ? "Guardar Cambios" : "Crear Alumno"}</button>
       </div>
 
       {/* Modal de Credenciales Temporales */}
       {showCredentials && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 max-w-md w-full">
+          <div className="border border-white/10 rounded-2xl p-6 max-w-md w-full" style={{ background:"#0d1426" }}>
             <p className="text-xs text-amber-400 font-bold mb-2">⚠️ CREDENCIALES TEMPORALES</p>
             <h3 className="text-lg font-black text-white mb-4">Nuevo Usuario Creado</h3>
             
@@ -818,7 +822,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
                 onClick={confirmAndSave} 
                 disabled={saving}
                 className="flex-1 py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" 
-                style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}
+                style={{ background: "linear-gradient(135deg,#d4a017,#b8860b)" }}
               >
                 {saving ? "Guardando..." : "Confirmar y Guardar"}
               </button>
@@ -853,7 +857,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>ALUMNOS</h1><p className="text-slate-400 text-sm">{filtered.length} de {students.length}</p></div>
-        <button onClick={()=>{ setEditStudent(null); setShowForm(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Alumno</button>
+        <button onClick={()=>{ setEditStudent(null); setShowForm(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Alumno</button>
       </div>
       <div className="flex gap-3 flex-wrap">
         <div className="flex-1 min-w-48 relative">
@@ -868,7 +872,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
           <div key={s.id} className="group bg-white/3 border border-white/8 rounded-2xl p-5 hover:border-amber-400/30 hover:bg-white/5 transition-all">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
                 <div><p className="font-bold text-white text-sm">{s.nombres} {s.apellidos}</p><p className="text-xs text-slate-500">{s.edad} años · {s.sede}</p></div>
               </div>
               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.estado==="activo"?"bg-emerald-500/20 text-emerald-400":"bg-slate-500/20 text-slate-400"}`}>{s.estado}</span>
@@ -890,7 +894,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
         <Modal title="Perfil del Alumno" onClose={()=>setViewStudent(null)} wide>
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{viewStudent.nombres[0]}{viewStudent.apellidos[0]}</div>
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{viewStudent.nombres[0]}{viewStudent.apellidos[0]}</div>
               <div><h2 className="text-2xl font-black text-white">{viewStudent.nombres} {viewStudent.apellidos}</h2><div className="flex gap-2 mt-1 flex-wrap"><BeltBadge cinturon={viewStudent.cinturon} /><CategoriaBadge categoria={viewStudent.categoria||getCategoria(viewStudent.fecha_nacimiento)} /><MembresiaTag membresiaId={viewStudent.membresia} /></div></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -1028,7 +1032,7 @@ const CompletarModal = ({ pago, historialPagos, reload, onClose }) => {
 
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||montoIngreso<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Completar pago"}</button>
+        <button onClick={save} disabled={saving||montoIngreso<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Completar pago"}</button>
       </div>
     </Modal>
   );
@@ -1076,7 +1080,7 @@ const PausarModal = ({ pago, reload, onClose }) => {
 
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Pausar membresía"}</button>
+        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Pausar membresía"}</button>
       </div>
     </Modal>
   );
@@ -1149,7 +1153,7 @@ const ReanudirModal = ({ pago, students, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||!montoTotal} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Reanudar membresía"}</button>
+        <button onClick={save} disabled={saving||!montoTotal} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Reanudar membresía"}</button>
       </div>
     </Modal>
   );
@@ -1226,7 +1230,7 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||!montoTotal} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar Renovación"}</button>
+        <button onClick={save} disabled={saving||!montoTotal} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar Renovación"}</button>
       </div>
     </Modal>
   );
@@ -1427,7 +1431,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
         </div>
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar Pago"}</button>
+          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar Pago"}</button>
         </div>
       </Modal>
     );
@@ -1443,7 +1447,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>PAGOS</h1><p className="text-slate-400 text-sm">{pagos.length} registros</p></div>
-        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}><Icon name="plus" className="w-4 h-4" /> Registrar Pago</button>
+        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}><Icon name="plus" className="w-4 h-4" /> Registrar Pago</button>
       </div>
       {isAdmin&&(
         <div className="grid grid-cols-3 gap-4">
@@ -1454,7 +1458,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
       )}
       <div className="flex gap-2 flex-wrap">
         {["Todos","al día","parcial","vencido","pendiente","pausado"].map(f=>(
-          <button key={f} onClick={()=>setFilter(f)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={filter===f?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>
+          <button key={f} onClick={()=>setFilter(f)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={filter===f?{background:"linear-gradient(135deg,#d4a017,#b8860b)"}:{}}>
             {f==="Todos"?"Todos":f==="al día"?"Al día":f==="pausado"?"Pausado":f.charAt(0).toUpperCase()+f.slice(1)}
           </button>
         ))}
@@ -1466,7 +1470,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
             <div key={`nopago-${s.id}`} className="bg-slate-500/10 border border-slate-500/20 rounded-2xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[#020617] font-black text-sm" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[#020617] font-black text-sm" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
                   <div><p className="font-bold text-white text-sm">{s.nombres} {s.apellidos}</p><p className="text-xs text-slate-500">Sin pago registrado · {s.sede}</p></div>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-xs font-bold border bg-slate-500/20 text-slate-400 border-slate-500/30">Pendiente</span>
@@ -1482,7 +1486,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
             <div key={p.id} className="bg-white/3 border border-white/8 rounded-2xl p-4 hover:border-white/15 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[#020617] font-black text-sm" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{p.alumno_nombre?.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[#020617] font-black text-sm" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{p.alumno_nombre?.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
                   <div><p className="font-bold text-white text-sm">{p.alumno_nombre}</p><p className="text-xs text-slate-500">{p.tipo} · {p.sede} · {p.fecha_pago}</p></div>
                 </div>
                 <div className="text-right">
@@ -1498,7 +1502,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                   {dias<0?`Vencido hace ${Math.abs(dias)} día(s)`:`${dias} día(s) restantes`}
                 </span>
               </div>
-              {p.estado!=="pagado"&&<div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background:p.estado==="vencido"?"#ef4444":"#f59e0b" }} /></div>}
+              {p.estado!=="pagado"&&<div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background:p.estado==="vencido"?"#ef4444":"#d4a017" }} /></div>}
               <div className="flex justify-between items-center mt-3 flex-wrap gap-2">
                 {/* Estado Pausado */}
                 {p.estado_membresia === "Pausada" && (
@@ -1646,7 +1650,7 @@ const AbonoVentaModal = ({ venta, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||abono<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar abono"}</button>
+        <button onClick={save} disabled={saving||abono<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar abono"}</button>
       </div>
     </Modal>
   );
@@ -1728,7 +1732,7 @@ const VentasPage = ({ ventas, historialVentas, students, reload, isAdmin }) => {
 
           <div className="flex gap-2 flex-wrap">
             {[{id:"todos",label:"Todos"},{id:"bebidas",label:"🥤 Bebidas"},{id:"implementos",label:"🥋 Implementos"},{id:"uniformes",label:"👕 Uniformes"}].map(c=>(
-              <button key={c.id} onClick={()=>setCatFilter(c.id)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${catFilter===c.id?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={catFilter===c.id?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>
+              <button key={c.id} onClick={()=>setCatFilter(c.id)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${catFilter===c.id?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={catFilter===c.id?{background:"linear-gradient(135deg,#d4a017,#b8860b)"}:{}}>
                 {c.label}
               </button>
             ))}
@@ -1783,7 +1787,7 @@ const VentasPage = ({ ventas, historialVentas, students, reload, isAdmin }) => {
         </div>
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-          <button onClick={save} disabled={saving||carrito.length===0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar Venta"}</button>
+          <button onClick={save} disabled={saving||carrito.length===0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar Venta"}</button>
         </div>
       </Modal>
     );
@@ -1799,7 +1803,7 @@ const VentasPage = ({ ventas, historialVentas, students, reload, isAdmin }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>VENTAS</h1><p className="text-slate-400 text-sm">Bebidas e implementos</p></div>
-        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}><Icon name="plus" className="w-4 h-4" /> Nueva Venta</button>
+        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}><Icon name="plus" className="w-4 h-4" /> Nueva Venta</button>
       </div>
       {isAdmin&&(
         <div className="grid grid-cols-2 gap-4">
@@ -1812,7 +1816,7 @@ const VentasPage = ({ ventas, historialVentas, students, reload, isAdmin }) => {
         {["Todos","pagado","parcial","credito"].map(f=>(
           <button key={f} onClick={()=>setFilter(f)}
             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`}
-            style={filter===f?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>
+            style={filter===f?{background:"linear-gradient(135deg,#d4a017,#b8860b)"}:{}}>
             {f==="Todos"?"Todos":f==="pagado"?"Pagado":f==="parcial"?"Parcial":"Crédito"}
           </button>
         ))}
@@ -2001,7 +2005,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
             <div key={s.id} className={`rounded-2xl border transition-all ${presente ? "bg-emerald-500/10 border-emerald-500/30" : "bg-white/3 border-white/8"}`}>
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={()=>setExpanded(e=>e===s.id?null:s.id)}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
                     {s.nombres[0]}{s.apellidos[0]}
                   </div>
                   <div>
@@ -2091,7 +2095,7 @@ const AbonoExamenModal = ({ examen, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||abono<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Registrar abono"}</button>
+        <button onClick={save} disabled={saving||abono<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar abono"}</button>
       </div>
     </Modal>
   );
@@ -2193,7 +2197,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
       {/* TABS */}
       <div className="flex gap-2">
         {[{id:"ascenso",label:"🥋 Ascenso de Cinturón"},{id:"gal",label:"📋 Emisión GAL"},{id:"historial",label:"📊 Historial"}].map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab===t.id?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={tab===t.id?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>{t.label}</button>
+          <button key={t.id} onClick={()=>setTab(t.id)} className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab===t.id?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={tab===t.id?{background:"linear-gradient(135deg,#d4a017,#b8860b)"}:{}}>{t.label}</button>
         ))}
       </div>
 
@@ -2248,7 +2252,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
                 </div>
               </Field>
             </div>
-            <button onClick={upgrade} disabled={saving||!selectedId} className="w-full py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>
+            <button onClick={upgrade} disabled={saving||!selectedId} className="w-full py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
               {saving ? "Guardando..." : "Registrar Ascenso"}
             </button>
           </div>
@@ -2257,7 +2261,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
           {students.filter(s=>s.estado==="activo").map(s=>(
             <div key={s.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-2xl">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
                 <div><p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p><div className="flex gap-1 mt-0.5"><CategoriaBadge categoria={s.categoria||getCategoria(s.fecha_nacimiento)} /><span className="text-xs text-slate-500">· {s.sede}</span></div></div>
               </div>
               <BeltBadge cinturon={s.cinturon} />
@@ -2304,7 +2308,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
                 </div>
               </Field>
             </div>
-            <button onClick={registrarGal} disabled={savingGal||!galAlumnoId} className="w-full py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>
+            <button onClick={registrarGal} disabled={savingGal||!galAlumnoId} className="w-full py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
               {savingGal ? "Registrando..." : "Registrar GAL"}
             </button>
           </div>
@@ -2567,13 +2571,13 @@ const EventoDetail = ({ evento, students, reload, onClose }) => {
             </Field>
             <Field label="Valor ($)"><Input type="number" value={valor} onChange={e => setValor(e.target.value)} placeholder="0.00" /></Field>
           </div>
-          <button onClick={addParticipante} disabled={savingP || !alumnoId} className="mt-3 px-4 py-2 rounded-xl text-[#020617] text-xs font-bold disabled:opacity-50" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{savingP ? "Añadiendo..." : "Añadir al evento"}</button>
+          <button onClick={addParticipante} disabled={savingP || !alumnoId} className="mt-3 px-4 py-2 rounded-xl text-[#020617] text-xs font-bold disabled:opacity-50" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{savingP ? "Añadiendo..." : "Añadir al evento"}</button>
         </div>
         <div className="space-y-2">
           {participantes.map(p => (
             <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border ${p.pagado ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/3 border-white/8"}`}>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{p.nombre.split(" ").map(n => n[0]).join("").slice(0, 2)}</div>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{p.nombre.split(" ").map(n => n[0]).join("").slice(0, 2)}</div>
                 <div><p className="text-sm font-semibold text-white">{p.nombre}</p><p className="text-xs text-amber-400 font-bold">${parseFloat(p.valor || 0).toFixed(2)}</p></div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -2621,7 +2625,7 @@ const EventsPage = ({ eventos, students, reload }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>EVENTOS</h1>
-        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Evento</button>
+        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Evento</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {eventos.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(e=>{ const days=Math.ceil((new Date(e.fecha)-today)/86400000); const parts=(() => { try { return JSON.parse(e.participantes||"[]"); } catch { return []; } })(); return (
@@ -2660,7 +2664,7 @@ const EventsPage = ({ eventos, students, reload }) => {
           </div>
           <div className="flex gap-3 mt-6">
             <button onClick={()=>setShowForm(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-            <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":"Crear Evento"}</button>
+            <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Crear Evento"}</button>
           </div>
         </Modal>
       )}
@@ -2714,7 +2718,7 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
           <Field label={user?"Nueva contraseña (vacío = no cambiar)":"Contraseña"}><Input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" /></Field>
           <Field label="Rol">
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {[{id:"admin",label:"Admin",desc:"Todo el sistema",color:"#f59e0b"},{id:"profesor",label:"Profesor",desc:"Asistencia + Pagos",color:"#3b82f6"},{id:"alumno",label:"Alumno/Padre",desc:"Solo sus datos",color:"#22c55e"}].map(r=>(
+              {[{id:"admin",label:"Admin",desc:"Todo el sistema",color:"#d4a017"},{id:"profesor",label:"Profesor",desc:"Asistencia + Pagos",color:"#3b82f6"},{id:"alumno",label:"Alumno/Padre",desc:"Solo sus datos",color:"#22c55e"}].map(r=>(
                 <button key={r.id} type="button" onClick={()=>setRole(r.id)}
                   className="p-3 rounded-xl border text-center transition-all"
                   style={{ background:role===r.id?`${r.color}25`:"rgba(255,255,255,0.03)", borderColor:role===r.id?r.color:"rgba(255,255,255,0.1)" }}>
@@ -2727,7 +2731,7 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
         </div>
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{saving?"Guardando...":user?"Guardar":"Crear Usuario"}</button>
+          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":user?"Guardar":"Crear Usuario"}</button>
         </div>
       </Modal>
     );
@@ -2737,10 +2741,10 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>USUARIOS</h1><p className="text-slate-400 text-sm">{allUsers.length} usuarios</p></div>
-        <button onClick={()=>{ setEditUser(null); setShowForm(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Usuario</button>
+        <button onClick={()=>{ setEditUser(null); setShowForm(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Usuario</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[{role:"admin",color:"#f59e0b",label:"Admin",perms:["Todo el sistema"]},{role:"profesor",color:"#3b82f6",label:"Profesor",perms:["Asistencia","Alumnos","Registrar pagos","Ventas"]},{role:"alumno",color:"#22c55e",label:"Alumno/Padre",perms:["Ver su asistencia","Ver sus pagos"]}].map(r=>(
+        {[{role:"admin",color:"#d4a017",label:"Admin",perms:["Todo el sistema"]},{role:"profesor",color:"#3b82f6",label:"Profesor",perms:["Asistencia","Alumnos","Registrar pagos","Ventas"]},{role:"alumno",color:"#22c55e",label:"Alumno/Padre",perms:["Ver su asistencia","Ver sus pagos"]}].map(r=>(
           <div key={r.role} className="rounded-2xl border p-4" style={{ background:`${r.color}10`, borderColor:`${r.color}30` }}>
             <p className="font-bold text-sm mb-2" style={{ color:r.color }}>{r.label}</p>
             <ul className="space-y-1">{r.perms.map(p=><li key={p} className="text-xs text-slate-400 flex items-center gap-1.5"><Icon name="check" className="w-3 h-3 text-emerald-400" />{p}</li>)}</ul>
@@ -2752,7 +2756,7 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
         {allUsers.map(u=>(
           <div key={u.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-2xl hover:border-white/15">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black" style={{ background:u.id===currentUser.id?"linear-gradient(135deg,#f59e0b,#d97706)":"rgba(255,255,255,0.08)", color:u.id===currentUser.id?"#020617":"#fff" }}>{u.nombre?.[0]||"U"}</div>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black" style={{ background:u.id===currentUser.id?"linear-gradient(135deg,#d4a017,#b8860b)":"rgba(255,255,255,0.08)", color:u.id===currentUser.id?"#020617":"#fff" }}>{u.nombre?.[0]||"U"}</div>
               <div>
                 <div className="flex items-center gap-2"><p className="font-bold text-white text-sm">{u.nombre}</p>{u.id===currentUser.id&&<span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-bold">Tú</span>}</div>
                 <p className="text-xs text-slate-500">{u.email}</p>
@@ -2794,7 +2798,7 @@ const MiAsistenciaPage = ({ currentUser, students, asistencia }) => {
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <div className="bg-white/3 border border-amber-400/20 rounded-3xl p-6 text-center">
-        <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-[#020617] mx-auto mb-3" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>{alumno.nombres[0]}{alumno.apellidos[0]}</div>
+        <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-[#020617] mx-auto mb-3" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{alumno.nombres[0]}{alumno.apellidos[0]}</div>
         <h2 className="text-2xl font-black text-white">{alumno.nombres} {alumno.apellidos}</h2>
         <div className="flex justify-center gap-2 mt-2 flex-wrap"><BeltBadge cinturon={alumno.cinturon} /><CategoriaBadge categoria={alumno.categoria||getCategoria(alumno.fecha_nacimiento)} /><MembresiaTag membresiaId={alumno.membresia} /></div>
       </div>
@@ -3021,7 +3025,7 @@ export default function App() {
     const dias = Math.ceil((vencMs - hoyMs) / 86400000);
     return dias <= 5;
   }).length;
-  const roleColors = { admin:"#f59e0b", profesor:"#3b82f6", alumno:"#22c55e" };
+  const roleColors = { admin:"#d4a017", profesor:"#3b82f6", alumno:"#22c55e" };
 
   const renderPage = () => {
     if (loading) return <Spinner />;
@@ -3043,20 +3047,23 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background:"#020617", fontFamily:"'DM Sans',sans-serif" }}>
+    <div className="min-h-screen flex" style={{ background:"#080d1a", fontFamily:"'DM Sans',sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 flex flex-col border-r border-white/8 transition-transform duration-300 ${sidebarOpen?"translate-x-0":"-translate-x-full lg:translate-x-0"}`} style={{ background:"#080f1f" }}>
-        <div className="p-6 border-b border-white/8">
+      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 flex flex-col border-r transition-transform duration-300 ${sidebarOpen?"translate-x-0":"-translate-x-full lg:translate-x-0"}`} style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.3)" }}>
+        <div className="p-5 border-b" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)" }}>🥋</div>
-            <div><p className="font-black text-white text-sm" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>HENRY SIGCHOS</p><p className="text-amber-400 text-[10px] font-semibold tracking-widest">TAEKWONDO</p></div>
+            <img src={LOGO_SRC} alt="Logo" className="w-12 h-12 rounded-xl object-contain bg-white p-1.5 shadow-lg" />
+            <div>
+              <p className="font-black text-white text-xs tracking-widest" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.15em" }}>HS TAEKWONDO</p>
+              <p className="text-[10px] font-semibold tracking-widest" style={{ color:"#9ca3af" }}>SYSTEM</p>
+            </div>
           </div>
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map(item=>(
             <button key={item.id} onClick={()=>{ setPage(item.id); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${page===item.id?"text-[#020617]":"text-slate-400 hover:text-white hover:bg-white/5"}`}
-              style={page===item.id?{background:"linear-gradient(135deg,#f59e0b,#d97706)"}:{}}>
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${page===item.id?"text-white":"text-slate-400 hover:text-white hover:bg-white/5"}`}
+              style={page===item.id?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{}}>
               <Icon name={item.icon} className="w-5 h-5 flex-shrink-0" />{item.label}
               {item.id==="payments"&&alerts>0&&<span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{alerts}</span>}
             </button>
@@ -3067,7 +3074,7 @@ export default function App() {
             <Icon name="lock" className="w-4 h-4" /> Cambiar contraseña
           </button>
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{ background:`${roleColors[user.role]||"#f59e0b"}30`, color:roleColors[user.role]||"#f59e0b" }}>{user.nombre?.[0]||"U"}</div>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{ background:`${roleColors[user.role]||"#d4a017"}30`, color:roleColors[user.role]||"#d4a017" }}>{user.nombre?.[0]||"U"}</div>
             <div className="flex-1 min-w-0"><p className="text-xs font-bold text-white truncate">{user.nombre}</p><RoleBadge role={user.role} /></div>
             <button onClick={()=>{ clearInterval(refreshRef.current); setUser(null); }} className="text-slate-500 hover:text-red-400 transition-colors"><Icon name="logout" className="w-4 h-4" /></button>
           </div>
@@ -3075,9 +3082,12 @@ export default function App() {
       </aside>
       {sidebarOpen&&<div className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={()=>setSidebarOpen(false)} />}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center justify-between px-6 py-4 border-b border-white/8 lg:hidden" style={{ background:"#080f1f" }}>
+        <header className="flex items-center justify-between px-6 py-4 border-b lg:hidden" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.3)" }}>
           <button onClick={()=>setSidebarOpen(true)} className="text-slate-400 hover:text-white"><Icon name="menu" /></button>
-          <p className="font-black text-white text-sm" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>HST ACADEMY</p>
+          <div className="flex items-center gap-2">
+            <img src={LOGO_SRC} alt="Logo" className="w-7 h-7 rounded-lg object-contain bg-white p-0.5" />
+            <p className="font-black text-white text-xs tracking-widest" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>HS TAEKWONDO SYSTEM</p>
+          </div>
           <div className="w-8" />
         </header>
         <main className="flex-1 overflow-y-auto p-6 lg:p-8">{renderPage()}</main>
@@ -3086,3 +3096,5 @@ export default function App() {
     </div>
   );
 }
+
+export default App;
