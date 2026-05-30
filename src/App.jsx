@@ -890,56 +890,199 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
         ))}
       </div>
       {showForm && <StudentFormModal student={editStudent} reload={reload} onClose={()=>{ setShowForm(false); setEditStudent(null); }} />}
-      {viewStudent && (
-        <Modal title="Perfil del Alumno" onClose={()=>setViewStudent(null)} wide>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{viewStudent.nombres[0]}{viewStudent.apellidos[0]}</div>
-              <div><h2 className="text-2xl font-black text-white">{viewStudent.nombres} {viewStudent.apellidos}</h2><div className="flex gap-2 mt-1 flex-wrap"><BeltBadge cinturon={viewStudent.cinturon} /><CategoriaBadge categoria={viewStudent.categoria||getCategoria(viewStudent.fecha_nacimiento)} /><MembresiaTag membresiaId={viewStudent.membresia} /></div></div>
+      {viewStudent && (() => {
+        // Datos del alumno
+        const vId = viewStudent.id;
+        const vAsist = asistencia.filter(a=>a.alumno_id===vId).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+        const vPresentes = vAsist.filter(a=>a.presente).length;
+        const vExamenes = examenes.filter(e=>e.alumno_id===vId).sort((a,b)=>b.fecha?.localeCompare(a.fecha));
+        const vPago = pagos.find(p=>p.alumno_id===vId);
+        const vHistPagos = (historialPagos||[]).filter(h=>h.alumno_id===vId).sort((a,b)=>b.fecha_pago?.localeCompare(a.fecha_pago));
+        const vVentas = ventas.filter(v=>v.alumno_id===vId).sort((a,b)=>b.fecha?.localeCompare(a.fecha));
+        const vGal = vExamenes.some(e=>e.tipo?.includes("GAL"));
+        const hoyStr = fmt(new Date());
+        const vencido = vPago?.fecha_vencimiento && vPago.fecha_vencimiento <= hoyStr;
+        const asistMes = vAsist.filter(a=>a.fecha?.slice(0,7)===hoyStr.slice(0,7)&&a.presente).length;
+
+        return (
+        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background:"#080d1a" }}>
+          {/* Header */}
+          <div className="sticky top-0 z-10 border-b px-4 py-3 flex items-center gap-3" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.3)" }}>
+            <button onClick={()=>setViewStudent(null)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10">
+              ←
+            </button>
+            <div className="flex-1">
+              <p className="font-black text-white text-sm">{viewStudent.nombres} {viewStudent.apellidos}</p>
+              <p className="text-xs text-slate-500">{viewStudent.cinturon} · {viewStudent.sede}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {[["Sede",viewStudent.sede],["Estado",viewStudent.estado],["Edad",`${viewStudent.edad} años`],["Nacimiento",viewStudent.fecha_nacimiento],["Representante",viewStudent.representante],["Teléfono",viewStudent.telefono],["Usuario",viewStudent.correo],["Dirección",viewStudent.direccion],["Inscripción",viewStudent.fecha_inscripcion],["GAL", examenes&&examenes.some(ex=>ex.alumno_id===viewStudent.id&&ex.tipo?.includes("GAL"))?"✓ Sí":"✗ No"]].map(([k,v])=>(
-                <div key={k} className="bg-white/5 rounded-xl p-3"><p className="text-xs text-slate-500 mb-0.5">{k}</p><p className="text-sm font-semibold text-white">{v||"—"}</p></div>
-              ))}
-            </div>
-            {viewStudent.observaciones&&<div className="bg-white/5 rounded-xl p-3"><p className="text-xs text-slate-500 mb-1">Observaciones</p><p className="text-sm text-slate-300">{viewStudent.observaciones}</p></div>}
-            {/* Historial de asistencia */}
-            {asistencia && (() => {
-              const miAsist = asistencia.filter(a=>a.alumno_id===viewStudent.id).sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,10);
-              const presentes = miAsist.filter(a=>a.presente).length;
-              return miAsist.length>0 ? (
-                <div className="bg-white/5 rounded-xl p-3">
-                  <p className="text-xs text-slate-500 mb-2 font-semibold uppercase">Últimas asistencias ({presentes}/{miAsist.length} presentes)</p>
-                  <div className="space-y-1 max-h-40 overflow-y-auto">
-                    {miAsist.map(a=>(
-                      <div key={a.id} className={`flex justify-between p-2 rounded-lg text-xs ${a.presente?"bg-emerald-500/10 text-emerald-400":"bg-red-500/10 text-red-400"}`}>
-                        <span>{a.fecha}</span><span>{a.presente?"✓ Presente":"✗ Ausente"}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null;
-            })()}
-            {/* Historial de ascensos */}
-            {examenes && (() => {
-              const misEx = examenes.filter(e=>e.alumno_id===viewStudent.id).sort((a,b)=>b.fecha?.localeCompare(a.fecha));
-              return misEx.length>0 ? (
-                <div className="bg-white/5 rounded-xl p-3">
-                  <p className="text-xs text-slate-500 mb-2 font-semibold uppercase">Historial de exámenes</p>
-                  <div className="space-y-1 max-h-32 overflow-y-auto">
-                    {misEx.map(ex=>(
-                      <div key={ex.id} className="flex justify-between p-2 rounded-lg bg-amber-500/10 text-xs">
-                        <span className="text-amber-400">{ex.tipo}</span>
-                        <span className="text-slate-400">{ex.fecha} · ${parseFloat(ex.monto||0).toFixed(0)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null;
-            })()}
+            <button onClick={()=>{ setViewStudent(null); setEditStudent(viewStudent); setShowForm(true); }}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-white/10 text-slate-300 hover:bg-white/10">
+              ✏️ Editar
+            </button>
           </div>
-        </Modal>
-      )}
+
+          <div className="p-4 space-y-4 max-w-2xl mx-auto pb-10">
+            {/* Avatar + stats rápidos */}
+            <div className="flex items-center gap-4 p-4 rounded-2xl border" style={{ background:"rgba(13,20,38,0.8)", borderColor:"rgba(30,58,123,0.3)" }}>
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-[#020617] flex-shrink-0"
+                style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+                {viewStudent.nombres[0]}{viewStudent.apellidos[0]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-black text-white">{viewStudent.nombres} {viewStudent.apellidos}</h2>
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  <BeltBadge cinturon={viewStudent.cinturon} />
+                  <CategoriaBadge categoria={viewStudent.categoria||getCategoria(viewStudent.fecha_nacimiento)} />
+                  <MembresiaTag membresiaId={viewStudent.membresia} />
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${viewStudent.estado==="activo"?"bg-emerald-500/20 text-emerald-400":"bg-slate-500/20 text-slate-400"}`}>
+                    {viewStudent.estado}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats rápidos */}
+            <div className="grid grid-cols-4 gap-2">
+              <div className="rounded-2xl p-3 text-center border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.2)" }}>
+                <p className="text-xl font-black text-emerald-400">{vPresentes}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Asistencias</p>
+              </div>
+              <div className="rounded-2xl p-3 text-center border" style={{ background:"rgba(212,160,23,0.1)", borderColor:"rgba(212,160,23,0.2)" }}>
+                <p className="text-xl font-black text-yellow-400">{vExamenes.filter(e=>e.tipo?.includes("Ascenso")).length}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Ascensos</p>
+              </div>
+              <div className="rounded-2xl p-3 text-center border" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+                <p className="text-xl font-black text-blue-400">{asistMes}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Este mes</p>
+              </div>
+              <div className="rounded-2xl p-3 text-center border" style={{ background:vGal?"rgba(168,85,247,0.1)":"rgba(100,116,139,0.1)", borderColor:vGal?"rgba(168,85,247,0.2)":"rgba(100,116,139,0.2)" }}>
+                <p className={`text-xl font-black ${vGal?"text-purple-400":"text-slate-500"}`}>{vGal?"✓":"✗"}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">GAL</p>
+              </div>
+            </div>
+
+            {/* Datos personales */}
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+                <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Datos Personales</p>
+              </div>
+              <div className="grid grid-cols-2 gap-px" style={{ background:"rgba(30,58,123,0.1)" }}>
+                {[["Representante",viewStudent.representante],["Teléfono",viewStudent.telefono],["Usuario",viewStudent.correo],["Dirección",viewStudent.direccion],["Edad",`${viewStudent.edad} años`],["Nacimiento",viewStudent.fecha_nacimiento],["Inscripción",viewStudent.fecha_inscripcion],["Sede",viewStudent.sede]].map(([k,v])=>(
+                  <div key={k} className="p-3" style={{ background:"#0d1426" }}>
+                    <p className="text-[10px] text-slate-500 uppercase">{k}</p>
+                    <p className="text-sm font-semibold text-white mt-0.5">{v||"—"}</p>
+                  </div>
+                ))}
+              </div>
+              {viewStudent.observaciones && (
+                <div className="p-3 border-t" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.2)" }}>
+                  <p className="text-[10px] text-slate-500 uppercase mb-1">Observaciones</p>
+                  <p className="text-sm text-slate-300">{viewStudent.observaciones}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Pago actual */}
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+                <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Membresía Actual</p>
+              </div>
+              {vPago ? (
+                <div className="p-4" style={{ background:"#0d1426" }}>
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="font-bold text-white">{vPago.tipo}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Vence: {vPago.fecha_vencimiento}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-black text-white">${parseFloat(vPago.monto_pagado||0).toFixed(2)}<span className="text-xs text-slate-500">/${parseFloat(vPago.monto||0).toFixed(2)}</span></p>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${vencido?"bg-red-500/20 text-red-400":"bg-emerald-500/20 text-emerald-400"}`}>
+                        {vencido?"Vencido":"Al día"}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Historial de pagos */}
+                  {vHistPagos.length > 0 && (
+                    <div className="space-y-1 mt-3 pt-3 border-t" style={{ borderColor:"rgba(30,58,123,0.2)" }}>
+                      <p className="text-[10px] text-slate-500 uppercase mb-2">Historial de pagos</p>
+                      {vHistPagos.map(h=>(
+                        <div key={h.id} className="flex justify-between text-xs p-2 rounded-lg" style={{ background:"rgba(255,255,255,0.03)" }}>
+                          <span className="text-slate-400">{h.fecha_pago} · {h.tipo}</span>
+                          <span className="text-emerald-400 font-bold">${parseFloat(h.monto_pagado||0).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 text-center text-slate-500 text-sm" style={{ background:"#0d1426" }}>Sin pago registrado</div>
+              )}
+            </div>
+
+            {/* Asistencia */}
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+              <div className="px-4 py-3 border-b flex justify-between items-center" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+                <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Asistencia</p>
+                <p className="text-xs text-slate-400">{vPresentes} totales</p>
+              </div>
+              <div className="p-3 space-y-1 max-h-48 overflow-y-auto" style={{ background:"#0d1426" }}>
+                {vAsist.slice(0,20).map(a=>(
+                  <div key={a.id} className={`flex justify-between p-2 rounded-lg text-xs ${a.presente?"bg-emerald-500/10 text-emerald-400":"bg-red-500/10 text-red-400"}`}>
+                    <span>{a.fecha}</span><span>{a.presente?"✓ Presente":"✗ Falta"}</span>
+                  </div>
+                ))}
+                {vAsist.length===0 && <p className="text-slate-500 text-sm text-center py-4">Sin registros</p>}
+              </div>
+            </div>
+
+            {/* Exámenes */}
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+                <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Exámenes y GAL</p>
+              </div>
+              <div className="p-3 space-y-2" style={{ background:"#0d1426" }}>
+                {vExamenes.map(ex=>(
+                  <div key={ex.id} className="flex justify-between p-3 rounded-xl text-xs border" style={{ background:"rgba(212,160,23,0.05)", borderColor:"rgba(212,160,23,0.15)" }}>
+                    <div>
+                      <p className="font-bold text-amber-400">{ex.tipo}</p>
+                      <p className="text-slate-500 mt-0.5">{ex.fecha}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-white">${parseFloat(ex.monto_pagado||ex.monto||0).toFixed(2)}</p>
+                      {parseFloat(ex.saldo_pendiente||0)>0 && <p className="text-red-400">Debe: ${parseFloat(ex.saldo_pendiente).toFixed(2)}</p>}
+                    </div>
+                  </div>
+                ))}
+                {vExamenes.length===0 && <p className="text-slate-500 text-sm text-center py-4">Sin exámenes registrados</p>}
+              </div>
+            </div>
+
+            {/* Compras/Ventas */}
+            {vVentas.length > 0 && (
+              <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+                <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+                  <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Compras</p>
+                </div>
+                <div className="p-3 space-y-2" style={{ background:"#0d1426" }}>
+                  {vVentas.map(v=>(
+                    <div key={v.id} className="flex justify-between p-3 rounded-xl text-xs border" style={{ background:"rgba(168,85,247,0.05)", borderColor:"rgba(168,85,247,0.15)" }}>
+                      <div>
+                        <p className="font-bold text-purple-400">{v.detalle?.substring(0,35)}</p>
+                        <p className="text-slate-500 mt-0.5">{v.fecha}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-white">${parseFloat(v.total||0).toFixed(2)}</p>
+                        {parseFloat(v.saldo_pendiente||0)>0 && <p className="text-red-400">Debe: ${parseFloat(v.saldo_pendiente).toFixed(2)}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        );
+      })()}
     </div>
   );
 };
