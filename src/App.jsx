@@ -142,7 +142,7 @@ const PRODUCTOS = [
 ];
 
 const PERMISOS = {
-  admin:    ["dashboard","students","payments","ventas","attendance","examenes","finance","events","users"],
+  admin:    ["dashboard","students","payments","ventas","attendance","examenes","finance","events","users","inventario"],
   profesor: ["attendance","students","ventas","examenes"],
   alumno:   ["mi_asistencia","mis_pagos","mi_historial"],
 };
@@ -1799,14 +1799,14 @@ const AbonoVentaModal = ({ venta, reload, onClose }) => {
   );
 };
 
-const VentasPage = ({ ventas, historialVentas, students, reload, isAdmin }) => {
+const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
   const [abonoVenta, setAbonoVenta] = useState(null);
   const totalHoy = ventas.filter(v=>v.fecha===fmt(today)).reduce((a,v)=>a+parseFloat(v.total||0),0);
   const totalMes = ventas.filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0);
 
-  const VentaForm = ({ onClose, students }) => {
+  const VentaForm = ({ onClose, students, inventario }) => {
     const [carrito, setCarrito] = useState([]);
     const [catFilter, setCatFilter] = useState("todos");
     const [saving, setSaving] = useState(false);
@@ -1844,6 +1844,15 @@ const VentasPage = ({ ventas, historialVentas, students, reload, isAdmin }) => {
         fecha: fechaVenta,
         detalle: carrito.map(i=>`${i.qty}x ${i.nombre}`).join(", ")
       });
+      // Descontar del inventario automáticamente
+      if (inventario && inventario.length > 0) {
+        for (const item of carrito) {
+          const invItem = inventario.find(inv => inv.nombre.toLowerCase() === item.nombre.toLowerCase());
+          if (invItem && invItem.stock > 0) {
+            await db.update("inventario", invItem.id, { stock: Math.max(0, invItem.stock - item.qty) });
+          }
+        }
+      }
       await reload();
       setSaving(false);
       onClose();
@@ -2021,7 +2030,7 @@ const VentasPage = ({ ventas, historialVentas, students, reload, isAdmin }) => {
         ))}
         {ventas.length===0&&<div className="text-center py-12 text-slate-500">Sin ventas registradas aún</div>}
       </div>
-      {showForm&&<VentaForm onClose={()=>setShowForm(false)} students={students} />}
+      {showForm&&<VentaForm onClose={()=>setShowForm(false)} students={students} inventario={inventario} />}
       {abonoVenta&&<AbonoVentaModal venta={abonoVenta} reload={reload} onClose={()=>setAbonoVenta(null)} />}
     </div>
   );
@@ -3475,6 +3484,174 @@ const GlobalSearchModal = ({ students, pagos, examenes, ventas, setPage, onClose
   );
 };
 
+const InventarioPage = ({ inventario, reload, isAdmin }) => {
+  const [showForm, setShowForm] = useState(false);
+  const [editItem, setEditItem] = useState(null);
+  const [filterCat, setFilterCat] = useState("Todos");
+
+  const cats = ["Todos", "bebidas", "implementos", "uniformes", "otros"];
+  const filtered = inventario.filter(i => filterCat === "Todos" || i.categoria === filterCat)
+    .sort((a,b) => a.nombre.localeCompare(b.nombre));
+
+  const stockBajo = inventario.filter(i => i.stock <= i.stock_minimo && i.stock_minimo > 0);
+
+  const deleteItem = async (id) => {
+    if (!confirm("¿Eliminar este producto?")) return;
+    await db.delete("inventario", id);
+    await reload();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>INVENTARIO</h1>
+        {isAdmin && <button onClick={()=>{ setEditItem(null); setShowForm(true); }}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-[#020617]"
+          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+          + Producto
+        </button>}
+      </div>
+
+      {/* Alertas stock bajo */}
+      {stockBajo.length > 0 && (
+        <div className="p-4 rounded-2xl border border-red-500/30 bg-red-500/10">
+          <p className="text-sm font-bold text-red-400 mb-2">⚠️ Stock bajo en {stockBajo.length} producto(s):</p>
+          <div className="flex flex-wrap gap-2">
+            {stockBajo.map(i => (
+              <span key={i.id} className="px-2 py-1 rounded-lg bg-red-500/20 text-red-300 text-xs font-semibold">
+                {i.nombre}: {i.stock} unid.
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.2)" }}>
+          <p className="text-2xl font-black text-blue-400">{inventario.length}</p>
+          <p className="text-xs text-slate-400 mt-1">Productos</p>
+        </div>
+        <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.2)" }}>
+          <p className="text-2xl font-black text-emerald-400">{inventario.reduce((a,i)=>a+i.stock,0)}</p>
+          <p className="text-xs text-slate-400 mt-1">Unidades totales</p>
+        </div>
+        <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(212,160,23,0.1)", borderColor:"rgba(212,160,23,0.2)" }}>
+          <p className="text-2xl font-black text-yellow-400">${inventario.reduce((a,i)=>a+(i.stock*i.precio_venta),0).toFixed(0)}</p>
+          <p className="text-xs text-slate-400 mt-1">Valor stock</p>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex gap-2 flex-wrap">
+        {cats.map(cat => (
+          <button key={cat} onClick={()=>setFilterCat(cat)}
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all capitalize"
+            style={filterCat===cat?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"rgba(255,255,255,0.05)",color:"#64748b"}}>
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Lista */}
+      <div className="space-y-2">
+        {filtered.map(item => {
+          const stockBajoItem = item.stock <= item.stock_minimo && item.stock_minimo > 0;
+          return (
+            <div key={item.id} className="p-4 rounded-2xl border" style={{ background:"#0d1426", borderColor:stockBajoItem?"rgba(239,68,68,0.3)":"rgba(30,58,123,0.25)" }}>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold text-white text-sm">{item.nombre}</p>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold capitalize" style={{ background:"rgba(30,58,123,0.3)", color:"#93c5fd" }}>{item.categoria}</span>
+                    {stockBajoItem && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-400">⚠️ Stock bajo</span>}
+                  </div>
+                  {item.descripcion && <p className="text-xs text-slate-500 mt-0.5">{item.descripcion}</p>}
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="text-right">
+                    <p className="text-lg font-black text-white">{item.stock} <span className="text-xs text-slate-500 font-normal">unid.</span></p>
+                    <p className="text-xs text-yellow-400 font-semibold">${parseFloat(item.precio_venta||0).toFixed(2)}</p>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-1">
+                      <button onClick={()=>{ setEditItem(item); setShowForm(true); }}
+                        className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center text-xs">✏️</button>
+                      <button onClick={()=>deleteItem(item.id)}
+                        className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 flex items-center justify-center">
+                        <Icon name="trash" className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && <div className="text-center py-12 text-slate-500 text-sm">Sin productos registrados</div>}
+      </div>
+
+      {showForm && <InventarioForm item={editItem} reload={reload} onClose={()=>{ setShowForm(false); setEditItem(null); }} />}
+    </div>
+  );
+};
+
+const InventarioForm = ({ item, reload, onClose }) => {
+  const [nombre, setNombre] = useState(item?.nombre || "");
+  const [categoria, setCategoria] = useState(item?.categoria || "implementos");
+  const [precioVenta, setPrecioVenta] = useState(item?.precio_venta || "");
+  const [stock, setStock] = useState(item?.stock || "");
+  const [stockMinimo, setStockMinimo] = useState(item?.stock_minimo || 5);
+  const [descripcion, setDescripcion] = useState(item?.descripcion || "");
+  const [stockExtra, setStockExtra] = useState(""); // Para agregar stock sin reemplazar
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!nombre) return;
+    setSaving(true);
+    const stockFinal = item ? (parseInt(item.stock||0) + parseInt(stockExtra||0)) : parseInt(stock||0);
+    const data = { nombre, categoria, precio_venta: parseFloat(precioVenta)||0, stock: stockFinal, stock_minimo: parseInt(stockMinimo)||0, descripcion };
+    if (item) await db.update("inventario", item.id, data);
+    else await db.insert("inventario", data);
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={item ? `Editar — ${item.nombre}` : "Nuevo Producto"} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Nombre" className="col-span-2"><Input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Dobok tradicional" /></Field>
+          <Field label="Categoría">
+            <select value={categoria} onChange={e=>setCategoria(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none">
+              {["bebidas","implementos","uniformes","otros"].map(c=><option key={c} value={c} className="bg-slate-800">{c}</option>)}
+            </select>
+          </Field>
+          <Field label="Precio venta ($)"><Input type="number" value={precioVenta} onChange={e=>setPrecioVenta(e.target.value)} placeholder="0.00" /></Field>
+          {item ? (
+            <>
+              <div className="col-span-2 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.3)" }}>
+                <p className="text-xs text-slate-400 mb-1">Stock actual: <span className="font-bold text-white">{item.stock} unidades</span></p>
+                <Field label="Agregar stock (+)"><Input type="number" value={stockExtra} onChange={e=>setStockExtra(e.target.value)} placeholder="0" /></Field>
+                {stockExtra && <p className="text-xs text-emerald-400 mt-1">Nuevo total: {parseInt(item.stock||0) + parseInt(stockExtra||0)} unidades</p>}
+              </div>
+            </>
+          ) : (
+            <Field label="Stock inicial"><Input type="number" value={stock} onChange={e=>setStock(e.target.value)} placeholder="0" /></Field>
+          )}
+          <Field label="Stock mínimo (alerta)"><Input type="number" value={stockMinimo} onChange={e=>setStockMinimo(e.target.value)} placeholder="5" /></Field>
+          <Field label="Descripción (opcional)" className="col-span-2"><Input value={descripcion} onChange={e=>setDescripcion(e.target.value)} placeholder="Descripción del producto" /></Field>
+        </div>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+        <button onClick={save} disabled={saving||!nombre} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":item?"Guardar cambios":"Agregar producto"}</button>
+      </div>
+    </Modal>
+  );
+};
+
 export default function App() {
   const [user, setUser] = useState(null);
   
@@ -3503,16 +3680,18 @@ export default function App() {
 
   const [historialPagos, setHistorialPagos] = useState([]);
   const [historialVentas, setHistorialVentas] = useState([]);
+  const [inventario, setInventario] = useState([]);
 
   const loadAll = useCallback(async () => {
-    const [s,p,a,e,v,ex,h,hv] = await Promise.all([
-      db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"), db.get("historial_pagos"), db.get("historial_ventas"),
+    const [s,p,a,e,v,ex,h,hv,inv] = await Promise.all([
+      db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"), db.get("historial_pagos"), db.get("historial_ventas"), db.get("inventario"),
     ]);
     setStudents(Array.isArray(s)?s:[]);
     // Estado se calcula en tiempo real, no se guarda en BD
     setPagos(Array.isArray(p) ? p : []);
     setHistorialPagos(Array.isArray(h) ? h : []);
     setHistorialVentas(Array.isArray(hv) ? hv : []);
+    setInventario(Array.isArray(inv) ? inv : []);
     setAsistencia(Array.isArray(a)?a:[]);
     setEventos(Array.isArray(e)?e:[]);
     setVentas(Array.isArray(v)?v:[]);
@@ -3556,6 +3735,7 @@ export default function App() {
     { id:"examenes",      label:"Exámenes",     icon:"examenes"     },
     { id:"finance",       label:"Finanzas",     icon:"finance"      },
     { id:"events",        label:"Eventos",      icon:"calendar"     },
+    { id:"inventario",    label:"Inventario",   icon:"ventas"       },
     { id:"users",         label:"Usuarios",     icon:"users"        },
     { id:"mi_asistencia", label:"Mi Asistencia",icon:"mi_asistencia"},
     { id:"mis_pagos",     label:"Mis Pagos",    icon:"mis_pagos"    },
@@ -3581,10 +3761,11 @@ export default function App() {
       case "dashboard":     return <DashboardPage students={students} pagos={pagos} historialPagos={historialPagos} asistencia={asistencia} ventas={ventas} eventos={eventos} examenes={examenes} />;
       case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} asistencia={asistencia} examenes={examenes} eventos={eventos} pagos={pagos} historialPagos={historialPagos} ventas={ventas} />;
       case "payments":      return <PaymentsPage students={students} pagos={pagos} historialPagos={historialPagos} reload={loadAll} isAdmin={isAdmin} />;
-      case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} reload={loadAll} isAdmin={isAdmin} />;
+      case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} />;
+      case "inventario":    return <InventarioPage inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "events":        return <EventsPage eventos={eventos} students={students} reload={loadAll} />;
       case "users":         return <UsersPage currentUser={user} setCurrentUser={setUser} allUsers={allUsers} reloadUsers={reloadUsers} />;
       case "mi_asistencia": return <MiAsistenciaPage currentUser={user} students={students} asistencia={asistencia} />;
