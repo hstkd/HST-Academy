@@ -2033,6 +2033,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
   const [saving, setSaving] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [expanded, setExpanded] = useState(null);
+  const [tab, setTab] = useState("marcar"); // "marcar" | "stats"
 
   const fs = students.filter(s=>s.estado==="activo"&&(sede==="Todas"||s.sede===sede));
 
@@ -2099,12 +2100,139 @@ const AttendancePage = ({ students, asistencia, reload }) => {
 
   const filtrados = fs.filter(s=>`${s.nombres} ${s.apellidos}`.toLowerCase().includes(busqueda.toLowerCase()));
 
+  // ── Stats calculations ─────────────────────────────────────────────────────
+  const hoyStats = fmt(new Date());
+  const mesActual = hoyStats.slice(0, 7);
+  const allStudents = students.filter(s=>s.estado==="activo"&&(sede==="Todas"||s.sede===sede));
+
+  const statsAlumnos = allStudents.map(s => {
+    const sAsist = asistencia.filter(a=>a.alumno_id===s.id&&a.presente);
+    const totalDias = [...new Set(asistencia.map(a=>a.fecha))].length || 1;
+    const totalPresentes = sAsist.length;
+    const estesMes = sAsist.filter(a=>a.fecha?.slice(0,7)===mesActual).length;
+    const pct = totalDias > 0 ? Math.round((totalPresentes/totalDias)*100) : 0;
+    
+    // Racha actual (días consecutivos presentes)
+    const fechasPresente = new Set(sAsist.map(a=>a.fecha));
+    let racha = 0;
+    let d = new Date();
+    while (true) {
+      const fd = fmt(d);
+      if (fechasPresente.has(fd)) { racha++; d.setDate(d.getDate()-1); }
+      else break;
+      if (racha > 365) break;
+    }
+    
+    // Última asistencia
+    const ultima = sAsist.sort((a,b)=>b.fecha.localeCompare(a.fecha))[0]?.fecha;
+    
+    return { student:s, totalPresentes, estesMes, pct, racha, ultima };
+  }).sort((a,b) => b.totalPresentes - a.totalPresentes);
+
   return (
     <div className="space-y-6">
       <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>
         ASISTENCIA {saving&&<span className="text-sm text-amber-400 ml-2 font-normal">Guardando...</span>}
       </h1>
 
+      {/* Tabs */}
+      <div className="flex gap-2">
+        {[["marcar","✓ Marcar"],["stats","📊 Estadísticas"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)}
+            className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+            style={tab===id?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"rgba(255,255,255,0.05)",color:"#64748b"}}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtros sede */}
+      {tab==="stats" && (
+        <div className="flex gap-2">
+          {["Todas",...SEDES].map(s=>(
+            <button key={s} onClick={()=>setSede(s)}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+              style={sede===s?{background:"rgba(30,58,123,0.4)",color:"white",border:"1px solid rgba(30,58,123,0.5)"}:{background:"rgba(255,255,255,0.05)",color:"#64748b",border:"1px solid transparent"}}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab==="stats" && (
+        <div className="space-y-4">
+          {/* Resumen general */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.2)" }}>
+              <p className="text-2xl font-black text-emerald-400">{statsAlumnos.reduce((a,s)=>a+s.estesMes,0)}</p>
+              <p className="text-xs text-slate-400 mt-1">Asistencias este mes</p>
+            </div>
+            <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.2)" }}>
+              <p className="text-2xl font-black text-blue-400">{statsAlumnos.length}</p>
+              <p className="text-xs text-slate-400 mt-1">Alumnos activos</p>
+            </div>
+            <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(212,160,23,0.1)", borderColor:"rgba(212,160,23,0.2)" }}>
+              <p className="text-2xl font-black text-yellow-400">
+                {statsAlumnos.length > 0 ? Math.round(statsAlumnos.reduce((a,s)=>a+s.estesMes,0)/statsAlumnos.length) : 0}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">Promedio por alumno</p>
+            </div>
+          </div>
+
+          {/* Ranking por alumno */}
+          <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+            <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+              <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Ranking de Asistencia</p>
+            </div>
+            <div className="divide-y divide-white/5">
+              {statsAlumnos.map((st, i) => (
+                <div key={st.student.id} className="p-4" style={{ background: i%2===0?"#0d1426":"#0a1020" }}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0 ${i===0?"bg-yellow-500 text-black":i===1?"bg-slate-400 text-black":i===2?"bg-amber-700 text-white":"bg-white/10 text-slate-400"}`}>
+                      {i+1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-white text-sm truncate">{st.student.nombres} {st.student.apellidos}</p>
+                      <p className="text-xs text-slate-500">{st.student.cinturon} · {st.student.sede}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-black text-white text-sm">{st.totalPresentes} <span className="text-slate-500 font-normal text-xs">totales</span></p>
+                      <p className="text-xs text-emerald-400">{st.estesMes} este mes</p>
+                    </div>
+                  </div>
+                  {/* Barra de progreso */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width:`${Math.min(100,st.pct)}%`, background:"linear-gradient(90deg,#1e3a7b,#3b82f6)" }} />
+                    </div>
+                    <span className="text-xs text-slate-500 w-8 text-right">{st.pct}%</span>
+                  </div>
+                  {/* Racha y última asistencia */}
+                  <div className="flex gap-3 mt-2">
+                    {st.racha > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background:"rgba(16,185,129,0.15)", color:"#10b981" }}>
+                        🔥 Racha: {st.racha} días
+                      </span>
+                    )}
+                    {st.ultima && (
+                      <span className="text-xs text-slate-500">Última: {st.ultima}</span>
+                    )}
+                    {!st.ultima && (
+                      <span className="text-xs text-red-400">Sin asistencias</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {statsAlumnos.length===0 && (
+                <div className="p-8 text-center text-slate-500 text-sm">Sin alumnos activos</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab==="marcar" && (
+      <div className="space-y-4">
       {/* Filtros */}
       <div className="flex gap-3 flex-wrap items-center">
         <Input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={{ width:"auto" }} />
@@ -2185,6 +2313,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
           );
         })}
       </div>
+      )}
     </div>
   );
 };
