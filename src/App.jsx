@@ -3072,6 +3072,136 @@ const MisPagosPage = ({ currentUser, students, pagos }) => {
   );
 };
 
+const GlobalSearchModal = ({ students, pagos, examenes, ventas, setPage, onClose }) => {
+  const [q, setQ] = useState("");
+  const inputRef = React.useRef(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const results = q.trim().length < 2 ? [] : (() => {
+    const ql = q.toLowerCase();
+    const items = [];
+
+    // Alumnos
+    students.filter(s =>
+      `${s.nombres} ${s.apellidos}`.toLowerCase().includes(ql) ||
+      s.telefono?.includes(ql) ||
+      s.correo?.toLowerCase().includes(ql)
+    ).slice(0,5).forEach(s => items.push({
+      tipo: "alumno",
+      icon: "👤",
+      titulo: `${s.nombres} ${s.apellidos}`,
+      sub: `${s.cinturon} · ${s.sede} · ${s.estado}`,
+      color: s.estado === "activo" ? "#10b981" : "#6b7280",
+      action: () => { setPage("students"); onClose(); }
+    }));
+
+    // Pagos
+    pagos.filter(p =>
+      p.alumno_nombre?.toLowerCase().includes(ql)
+    ).slice(0,3).forEach(p => items.push({
+      tipo: "pago",
+      icon: "💳",
+      titulo: p.alumno_nombre,
+      sub: `${p.tipo} · Vence: ${p.fecha_vencimiento}`,
+      color: "#d4a017",
+      action: () => { setPage("payments"); onClose(); }
+    }));
+
+    // Exámenes
+    examenes.filter(e =>
+      e.alumno_nombre?.toLowerCase().includes(ql)
+    ).slice(0,3).forEach(e => items.push({
+      tipo: "examen",
+      icon: "🏆",
+      titulo: e.alumno_nombre,
+      sub: `${e.tipo} · ${e.fecha}`,
+      color: "#f59e0b",
+      action: () => { setPage("examenes"); onClose(); }
+    }));
+
+    // Ventas
+    ventas.filter(v =>
+      v.cliente?.toLowerCase().includes(ql)
+    ).slice(0,3).forEach(v => items.push({
+      tipo: "venta",
+      icon: "🛍️",
+      titulo: v.cliente || "Sin nombre",
+      sub: `${v.detalle?.substring(0,40)} · $${parseFloat(v.total||0).toFixed(2)}`,
+      color: "#a855f7",
+      action: () => { setPage("ventas"); onClose(); }
+    }));
+
+    return items;
+  })();
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background:"rgba(8,13,26,0.97)" }}>
+      {/* Search input */}
+      <div className="p-4 border-b" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 flex items-center gap-3 px-4 py-3 rounded-2xl border" style={{ background:"rgba(13,20,38,0.8)", borderColor:"rgba(30,58,123,0.4)" }}>
+            <Icon name="search" className="w-5 h-5 text-slate-400 flex-shrink-0" />
+            <input
+              ref={inputRef}
+              value={q}
+              onChange={e=>setQ(e.target.value)}
+              placeholder="Buscar alumno, pago, examen, venta..."
+              className="flex-1 bg-transparent text-white text-sm placeholder-slate-500 focus:outline-none"
+              autoComplete="off"
+            />
+            {q && <button onClick={()=>setQ("")} className="text-slate-500 hover:text-white">✕</button>}
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-sm font-medium px-3 py-2 rounded-xl border border-white/10">
+            Cancelar
+          </button>
+        </div>
+      </div>
+
+      {/* Results */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {q.length < 2 && (
+          <div className="text-center py-16">
+            <p className="text-4xl mb-4">🔍</p>
+            <p className="text-slate-400 text-sm">Escribe al menos 2 caracteres para buscar</p>
+            <p className="text-slate-600 text-xs mt-2">Alumnos, pagos, exámenes, ventas</p>
+          </div>
+        )}
+
+        {q.length >= 2 && results.length === 0 && (
+          <div className="text-center py-16">
+            <p className="text-4xl mb-4">😕</p>
+            <p className="text-slate-400 text-sm">Sin resultados para "{q}"</p>
+          </div>
+        )}
+
+        {results.length > 0 && (
+          <div className="space-y-2">
+            {results.map((r, i) => (
+              <button key={i} onClick={r.action}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border text-left transition-all hover:border-blue-500/40 active:scale-98"
+                style={{ background:"rgba(13,20,38,0.8)", borderColor:"rgba(30,58,123,0.2)" }}>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                  style={{ background:"rgba(30,58,123,0.2)" }}>
+                  {r.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-white text-sm truncate">{r.titulo}</p>
+                  <p className="text-xs text-slate-400 mt-0.5 truncate">{r.sub}</p>
+                </div>
+                <span className="text-xs px-2 py-1 rounded-lg font-semibold flex-shrink-0"
+                  style={{ background:`${r.color}20`, color:r.color }}>
+                  {r.tipo}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [user, setUser] = useState(null);
   
@@ -3085,6 +3215,8 @@ export default function App() {
   }, []);
   const [page, setPage] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const [students, setStudents] = useState([]);
   const [pagos, setPagos] = useState([]);
   const [asistencia, setAsistencia] = useState([]);
@@ -3231,11 +3363,14 @@ export default function App() {
             <img src={LOGO_SRC} alt="Logo" className="w-7 h-7 rounded-lg object-contain bg-white p-0.5" />
             <p className="font-black text-white text-xs tracking-widest" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>HS TAEKWONDO SYSTEM</p>
           </div>
-          <div className="w-8" />
+          <button onClick={()=>setShowSearch(s=>!s)} className="text-slate-400 hover:text-white p-1">
+            <Icon name="search" className="w-5 h-5" />
+          </button>
         </header>
         <main className="flex-1 overflow-y-auto p-6 lg:p-8">{renderPage()}</main>
       </div>
       {showChangePass&&<ChangePasswordModal currentUser={user} onClose={()=>setShowChangePass(false)} />}
+      {showSearch&&<GlobalSearchModal students={students} pagos={pagos} examenes={examenes} ventas={ventas} setPage={setPage} onClose={()=>setShowSearch(false)} />}
     </div>
   );
 }
