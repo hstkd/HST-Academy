@@ -834,7 +834,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
   );
 };
 
-const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos }) => {
+const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos, pagos, historialPagos, ventas }) => {
   const [search, setSearch] = useState("");
   const [filterSede, setFilterSede] = useState("Todas");
   const [filterEstado, setFilterEstado] = useState("Todos");
@@ -3449,7 +3449,7 @@ export default function App() {
     if (loading) return <Spinner />;
     switch(page) {
       case "dashboard":     return <DashboardPage students={students} pagos={pagos} historialPagos={historialPagos} asistencia={asistencia} ventas={ventas} eventos={eventos} examenes={examenes} />;
-      case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} asistencia={asistencia} examenes={examenes} eventos={eventos} />;
+      case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} asistencia={asistencia} examenes={examenes} eventos={eventos} pagos={pagos} historialPagos={historialPagos} ventas={ventas} />;
       case "payments":      return <PaymentsPage students={students} pagos={pagos} historialPagos={historialPagos} reload={loadAll} isAdmin={isAdmin} />;
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
