@@ -2312,7 +2312,8 @@ const AttendancePage = ({ students, asistencia, reload }) => {
             </div>
           );
         })}
-        </div>
+      </div>
+      </div>
       )}
     </div>
   );
