@@ -3074,7 +3074,7 @@ const MisPagosPage = ({ currentUser, students, pagos }) => {
 
 const GlobalSearchModal = ({ students, pagos, examenes, ventas, setPage, onClose }) => {
   const [q, setQ] = useState("");
-  const inputRef = React.useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
