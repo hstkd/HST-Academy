@@ -42,7 +42,11 @@ const db = {
 };
 
 const today = new Date();
-const fmt = (d) => d.toISOString().slice(0, 10);
+// Ecuador is UTC-5 — always use local date, not UTC
+const fmt = (d) => {
+  const local = new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
+  return local.toISOString().slice(0, 10);
+};
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 
 // Calcula fecha de vencimiento según membresía y fecha base
@@ -420,7 +424,7 @@ const DashboardPage = ({ students, pagos, historialPagos, asistencia, ventas, ev
   ).length;
   // Sumar todos los abonos del mes desde historial_pagos
   const ingresosMes = (historialPagos||[]).filter(h=>h.fecha_pago?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0);
-  const ventasMes = (ventas||[]).filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.total||0),0);
+  const ventasMes = (ventas||[]).filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0);
   const eventosMes = (eventos||[]).reduce((a,e)=>{ try { const parts=JSON.parse(e.participantes||"[]"); return a+parts.filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0);
   const examenesTotal = (examenes||[]).filter(ex=>ex.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,ex)=>a+parseFloat(ex.monto_pagado||ex.monto||0),0);
   const hoyPresentes = asistencia.filter(a=>a.fecha===fmt(today)&&a.presente).length;
@@ -1803,7 +1807,7 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
   const [abonoVenta, setAbonoVenta] = useState(null);
-  const totalHoy = ventas.filter(v=>v.fecha===fmt(today)).reduce((a,v)=>a+parseFloat(v.total||0),0);
+  const totalHoy = ventas.filter(v=>v.fecha===fmt(today)).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0);
   const totalMes = ventas.filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0);
 
   const VentaForm = ({ onClose, students, inventario }) => {
