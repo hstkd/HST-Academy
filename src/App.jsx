@@ -284,6 +284,82 @@ const MiniBarChart = ({ data, color="#d4a017" }) => {
   );
 };
 
+// ── Selector de alumno con buscador ────────────────────────────────────────────
+const AlumnoSelector = ({ students, value, onChange, placeholder="Buscar alumno...", disabled=false, extraOption=null }) => {
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const selected = students.find(s=>s.id===value);
+  const filtered = students.filter(s=>
+    `${s.nombres} ${s.apellidos}`.toLowerCase().includes(q.toLowerCase()) ||
+    s.cinturon?.toLowerCase().includes(q.toLowerCase())
+  ).slice(0, 20);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const select = (id) => { onChange(id); setOpen(false); setQ(""); };
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button type="button" onClick={()=>{ if(!disabled) setOpen(o=>!o); }}
+        className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border text-sm text-left transition-all"
+        style={{ background:"rgba(255,255,255,0.05)", borderColor: open?"rgba(30,58,123,0.6)":"rgba(255,255,255,0.1)", color: selected?"white":"#64748b" }}>
+        <span className="truncate">
+          {selected ? `${selected.nombres} ${selected.apellidos}` : placeholder}
+        </span>
+        <span className="text-slate-500 ml-2">{open?"▲":"▼"}</span>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-50 w-full mt-1 rounded-xl border shadow-2xl overflow-hidden"
+          style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.4)", maxHeight:"260px" }}>
+          {/* Search input */}
+          <div className="p-2 border-b" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background:"rgba(255,255,255,0.05)" }}>
+              <Icon name="search" className="w-4 h-4 text-slate-500 flex-shrink-0" />
+              <input autoFocus value={q} onChange={e=>setQ(e.target.value)}
+                placeholder="Escribir nombre..."
+                className="flex-1 bg-transparent text-white text-sm placeholder-slate-500 focus:outline-none" />
+              {q && <button onClick={()=>setQ("")} className="text-slate-500 hover:text-white text-xs">✕</button>}
+            </div>
+          </div>
+          {/* Options */}
+          <div className="overflow-y-auto" style={{ maxHeight:"200px" }}>
+            {extraOption && (
+              <button type="button" onClick={()=>select("")}
+                className="w-full px-4 py-2.5 text-left text-sm text-slate-400 hover:bg-white/5 border-b"
+                style={{ borderColor:"rgba(30,58,123,0.2)" }}>
+                {extraOption}
+              </button>
+            )}
+            {filtered.map(s=>(
+              <button type="button" key={s.id} onClick={()=>select(s.id)}
+                className="w-full px-4 py-2.5 text-left text-sm transition-all hover:bg-blue-900/30"
+                style={{ background: value===s.id?"rgba(30,58,123,0.3)":"transparent" }}>
+                <p className={`font-semibold ${value===s.id?"text-white":"text-slate-200"}`}>
+                  {s.nombres} {s.apellidos}
+                </p>
+                <p className="text-xs text-slate-500">{s.cinturon} · {s.sede}</p>
+              </button>
+            ))}
+            {filtered.length===0 && (
+              <p className="text-center text-slate-500 text-xs py-4">Sin resultados</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const LoginScreen = ({ onLogin }) => {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -1532,9 +1608,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
       <Modal title="Registrar Pago" onClose={onClose} wide>
         <div className="space-y-5">
           <Field label="Alumno">
-            <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={alumnoId} onChange={e=>setAlumnoId(e.target.value)}>
-              {active.map(s=><option key={s.id} value={s.id}>{s.nombres} {s.apellidos}</option>)}
-            </select>
+            <AlumnoSelector students={active} value={alumnoId} onChange={setAlumnoId} placeholder="Buscar alumno..." />
           </Field>
           <Field label="Membresía">
             <div className="grid grid-cols-3 gap-3 mt-1">
@@ -1870,13 +1944,13 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
           {/* Cliente y fecha */}
           <div className="space-y-3">
             <Field label="Alumno registrado (opcional)">
-              <select value={alumnoId} onChange={e=>{setAlumnoId(e.target.value); setCliente("");}}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50">
-                <option value="">— Cliente externo —</option>
-                {students.filter(s=>s.estado==="activo").sort((a,b)=>a.nombres.localeCompare(b.nombres)).map(s=>(
-                  <option key={s.id} value={s.id}>{s.nombres} {s.apellidos}</option>
-                ))}
-              </select>
+              <AlumnoSelector
+                students={students.filter(s=>s.estado==="activo")}
+                value={alumnoId}
+                onChange={v=>{ setAlumnoId(v); setCliente(""); }}
+                placeholder="— Cliente externo —"
+                extraOption="— Cliente externo —"
+              />
             </Field>
             {!alumnoId && (
               <Field label="Nombre cliente externo">
@@ -2503,10 +2577,12 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field label="Alumno">
-                <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={selectedId} onChange={e=>handleSelectStudent(e.target.value)}>
-                  <option value="">Seleccionar...</option>
-                  {students.filter(s=>s.estado==="activo").map(s=><option key={s.id} value={s.id}>{s.nombres} {s.apellidos} — {s.cinturon}</option>)}
-                </select>
+                <AlumnoSelector
+                  students={students.filter(s=>s.estado==="activo")}
+                  value={selectedId}
+                  onChange={handleSelectStudent}
+                  placeholder="Buscar alumno..."
+                />
               </Field>
               <Field label="Nuevo Cinturón">
                 <Select options={CINTURONES} value={newBelt} onChange={e=>setNewBelt(e.target.value)} />
@@ -2565,13 +2641,12 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
           </div>
           <div className="space-y-4">
             <Field label="Alumno">
-              <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={galAlumnoId} onChange={e=>setGalAlumnoId(e.target.value)}>
-                <option value="">Seleccionar alumno...</option>
-                {students.filter(s=>s.estado==="activo").map(s=>{
-                  const tieneGal = examenes.some(ex=>ex.alumno_id===s.id&&ex.tipo?.includes("GAL"));
-                  return <option key={s.id} value={s.id} disabled={tieneGal}>{s.nombres} {s.apellidos}{tieneGal?" — ✓ Ya tiene GAL":""}</option>;
-                })}
-              </select>
+              <AlumnoSelector
+                students={students.filter(s=>s.estado==="activo" && !examenes.some(ex=>ex.alumno_id===s.id&&ex.tipo?.includes("GAL")))}
+                value={galAlumnoId}
+                onChange={setGalAlumnoId}
+                placeholder="Buscar alumno sin GAL..."
+              />
             </Field>
             {/* Pago del GAL */}
             <div className="grid grid-cols-3 gap-3 p-4 bg-white/3 border border-white/8 rounded-xl">
@@ -2984,10 +3059,12 @@ const EventoDetail = ({ evento, students, reload, onClose }) => {
           <p className="text-xs text-slate-400 font-semibold uppercase mb-3">Añadir Alumno</p>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Alumno">
-              <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={alumnoId} onChange={e => setAlumnoId(e.target.value)}>
-                <option value="">Seleccionar...</option>
-                {students.filter(s => s.estado === "activo" && !participantes.find(p => p.id === s.id)).map(s => <option key={s.id} value={s.id}>{s.nombres} {s.apellidos}</option>)}
-              </select>
+              <AlumnoSelector
+                students={students.filter(s=>s.estado==="activo" && !participantes.find(p=>p.id===s.id))}
+                value={alumnoId}
+                onChange={setAlumnoId}
+                placeholder="Buscar alumno..."
+              />
             </Field>
             <Field label="Valor ($)"><Input type="number" value={valor} onChange={e => setValor(e.target.value)} placeholder="0.00" /></Field>
           </div>
