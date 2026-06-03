@@ -158,7 +158,7 @@ const PRODUCTOS = [
 ];
 
 const PERMISOS = {
-  admin:    ["dashboard","students","payments","ventas","attendance","examenes","finance","events","users","inventario"],
+  admin:    ["dashboard","students","payments","ventas","attendance","examenes","finance","events","users","inventario","gastos"],
   profesor: ["attendance","students","ventas","examenes"],
   alumno:   ["mi_asistencia","mis_pagos","mi_historial"],
 };
@@ -2770,7 +2770,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
   );
 };
 
-const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes }) => {
+const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos }) => {
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
   // Ingresos por fuente por mes
@@ -2799,6 +2799,18 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes }) => {
   const totalEventos  = eventosByMonth.reduce((a,v)=>a+v,0);
   const totalExamenes = examenesByMonth.reduce((a,v)=>a+v,0);
   const totalAnual    = totalMensual + totalVentas + totalEventos + totalExamenes;
+
+  // Gastos del año
+  const gastosFijos    = (gastos||[]).filter(g=>g.tipo==="fijo").reduce((a,g)=>a+parseFloat(g.monto||0),0);
+  const gastosVariables= (gastos||[]).filter(g=>g.tipo==="variable").reduce((a,g)=>a+parseFloat(g.monto||0),0);
+  const totalGastos    = gastosFijos + gastosVariables;
+  const utilidad       = totalAnual - totalGastos;
+  const mesFin = fmt(new Date()).slice(0,7);
+  const gastosMes      = (gastos||[]).filter(g=>g.fecha?.slice(0,7)===mesFin).reduce((a,g)=>a+parseFloat(g.monto||0),0);
+  const ingresosMes    = (historialPagos||[]).filter(h=>h.fecha_pago?.slice(0,7)===mesFin).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0)
+    + (ventas||[]).filter(v=>v.fecha?.slice(0,7)===mesFin).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0)
+    + (examenes||[]).filter(e=>e.fecha?.slice(0,7)===mesFin).reduce((a,e)=>a+parseFloat(e.monto_pagado||e.monto||0),0);
+  const utilidadMes    = ingresosMes - gastosMes;
 
   // Por sede — suma todas las fuentes
   const ingresosPorSede = SEDES.map(sede => {
@@ -2981,17 +2993,47 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes }) => {
         </div>
       </div>
 
-      {/* Total año */}
-      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5 flex justify-between items-center">
-        <div>
-          <p className="text-xs text-emerald-400 font-semibold uppercase">Total Ingresos Año</p>
-          <p className="text-4xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalAnual.toFixed(2)}</p>
+      {/* Total mes actual — Ingresos vs Gastos vs Utilidad */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-2xl p-4 border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.2)" }}>
+          <p className="text-xs text-emerald-400 font-semibold uppercase">Ingresos Mes</p>
+          <p className="text-2xl font-black text-white mt-1">${ingresosMes.toFixed(2)}</p>
         </div>
-        <div className="text-right text-xs text-slate-400 space-y-0.5">
-          <p>Mensual: <span className="text-amber-400 font-bold">${totalMensual.toFixed(0)}</span></p>
-          <p>Ventas: <span className="text-purple-400 font-bold">${totalVentas.toFixed(0)}</span></p>
-          <p>Eventos: <span className="text-blue-400 font-bold">${totalEventos.toFixed(0)}</span></p>
-          <p>Exámenes: <span className="text-orange-400 font-bold">${totalExamenes.toFixed(0)}</span></p>
+        <div className="rounded-2xl p-4 border" style={{ background:"rgba(239,68,68,0.1)", borderColor:"rgba(239,68,68,0.2)" }}>
+          <p className="text-xs text-red-400 font-semibold uppercase">Gastos Mes</p>
+          <p className="text-2xl font-black text-white mt-1">${gastosMes.toFixed(2)}</p>
+        </div>
+        <div className="rounded-2xl p-4 border" style={{ background:utilidadMes>=0?"rgba(16,185,129,0.15)":"rgba(239,68,68,0.15)", borderColor:utilidadMes>=0?"rgba(16,185,129,0.3)":"rgba(239,68,68,0.3)" }}>
+          <p className={`text-xs font-semibold uppercase ${utilidadMes>=0?"text-emerald-400":"text-red-400"}`}>Utilidad Mes</p>
+          <p className={`text-2xl font-black mt-1 ${utilidadMes>=0?"text-emerald-400":"text-red-400"}`}>{utilidadMes>=0?"+":""}{utilidadMes.toFixed(2)}</p>
+        </div>
+      </div>
+
+      {/* Total año */}
+      <div className="rounded-2xl p-5 border" style={{ background:"rgba(13,20,38,0.9)", borderColor:"rgba(30,58,123,0.3)" }}>
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <p className="text-xs text-slate-400 font-semibold uppercase">Total Ingresos Año</p>
+            <p className="text-4xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalAnual.toFixed(2)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-slate-400 font-semibold uppercase">Utilidad Año</p>
+            <p className={`text-2xl font-black mt-1 ${utilidad>=0?"text-emerald-400":"text-red-400"}`}>{utilidad>=0?"+":""}{utilidad.toFixed(2)}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs border-t pt-3" style={{ borderColor:"rgba(30,58,123,0.2)" }}>
+          <div>
+            <p className="text-slate-500 mb-1">Ingresos</p>
+            <p>Mensualidades: <span className="text-amber-400 font-bold">${totalMensual.toFixed(0)}</span></p>
+            <p>Ventas: <span className="text-purple-400 font-bold">${totalVentas.toFixed(0)}</span></p>
+            <p>Eventos: <span className="text-blue-400 font-bold">${totalEventos.toFixed(0)}</span></p>
+            <p>Exámenes: <span className="text-orange-400 font-bold">${totalExamenes.toFixed(0)}</span></p>
+          </div>
+          <div>
+            <p className="text-slate-500 mb-1">Gastos</p>
+            <p>Fijos: <span className="text-red-400 font-bold">-${gastosFijos.toFixed(0)}</span></p>
+            <p>Variables: <span className="text-red-300 font-bold">-${gastosVariables.toFixed(0)}</span></p>
+          </div>
         </div>
       </div>
 
@@ -3758,6 +3800,253 @@ const InventarioForm = ({ item, reload, onClose }) => {
   );
 };
 
+const CATEGORIAS_GASTO = {
+  arriendo:   { label:"Arriendo",    icon:"🏢", color:"#3b82f6", tipo:"fijo" },
+  servicio:   { label:"Servicios",   icon:"💡", color:"#8b5cf6", tipo:"fijo" },
+  sueldo:     { label:"Sueldos",     icon:"👤", color:"#10b981", tipo:"fijo" },
+  variable:   { label:"Variable",    icon:"📦", color:"#f59e0b", tipo:"variable" },
+};
+
+const GastosPage = ({ gastos, reload, isAdmin }) => {
+  const [showForm, setShowForm] = useState(false);
+  const [editGasto, setEditGasto] = useState(null);
+  const [filterTipo, setFilterTipo] = useState("Todos");
+  const [filterSede, setFilterSede] = useState("Todas");
+  const [filterMes, setFilterMes] = useState(fmt(new Date()).slice(0,7));
+
+  const mesActual = fmt(new Date()).slice(0,7);
+  const gastosFiltrados = gastos.filter(g => {
+    if (filterTipo !== "Todos" && g.tipo !== filterTipo) return false;
+    if (filterSede !== "Todas" && g.sede !== filterSede) return false;
+    if (filterMes && g.fecha?.slice(0,7) !== filterMes) return false;
+    return true;
+  }).sort((a,b) => b.fecha?.localeCompare(a.fecha));
+
+  const totalFijos = gastos.filter(g=>g.tipo==="fijo"&&g.fecha?.slice(0,7)===filterMes).reduce((a,g)=>a+parseFloat(g.monto||0),0);
+  const totalVariables = gastos.filter(g=>g.tipo==="variable"&&g.fecha?.slice(0,7)===filterMes).reduce((a,g)=>a+parseFloat(g.monto||0),0);
+  const totalMes = totalFijos + totalVariables;
+
+  // Por sede
+  const porSede = SEDES.map(sede => ({
+    sede,
+    total: gastos.filter(g=>g.sede===sede&&g.fecha?.slice(0,7)===filterMes).reduce((a,g)=>a+parseFloat(g.monto||0),0)
+  }));
+
+  const deleteGasto = async (id) => {
+    if (!confirm("¿Eliminar este gasto?")) return;
+    await db.delete("gastos", id);
+    await reload();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>GASTOS</h1>
+        {isAdmin && <button onClick={()=>{ setEditGasto(null); setShowForm(true); }}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-[#020617]"
+          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+          + Registrar
+        </button>}
+      </div>
+
+      {/* Filtros */}
+      <div className="flex gap-2 flex-wrap items-center">
+        <input type="month" value={filterMes} onChange={e=>setFilterMes(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50" />
+        {["Todos","fijo","variable"].map(t=>(
+          <button key={t} onClick={()=>setFilterTipo(t)}
+            className="px-3 py-2 rounded-xl text-xs font-semibold transition-all capitalize"
+            style={filterTipo===t?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"rgba(255,255,255,0.05)",color:"#64748b"}}>
+            {t==="Todos"?"Todos":t==="fijo"?"Fijos":"Variables"}
+          </button>
+        ))}
+        {["Todas",...SEDES].map(s=>(
+          <button key={s} onClick={()=>setFilterSede(s)}
+            className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+            style={filterSede===s?{background:"rgba(30,58,123,0.4)",color:"white",border:"1px solid rgba(30,58,123,0.5)"}:{background:"rgba(255,255,255,0.05)",color:"#64748b",border:"1px solid transparent"}}>
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {/* Stats del mes */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-2xl p-4 border" style={{ background:"rgba(59,130,246,0.1)", borderColor:"rgba(59,130,246,0.2)" }}>
+          <p className="text-xs text-blue-400 font-semibold uppercase">Gastos Fijos</p>
+          <p className="text-2xl font-black text-white mt-1">${totalFijos.toFixed(2)}</p>
+        </div>
+        <div className="rounded-2xl p-4 border" style={{ background:"rgba(245,158,11,0.1)", borderColor:"rgba(245,158,11,0.2)" }}>
+          <p className="text-xs text-amber-400 font-semibold uppercase">Variables</p>
+          <p className="text-2xl font-black text-white mt-1">${totalVariables.toFixed(2)}</p>
+        </div>
+        <div className="rounded-2xl p-4 border" style={{ background:"rgba(239,68,68,0.1)", borderColor:"rgba(239,68,68,0.2)" }}>
+          <p className="text-xs text-red-400 font-semibold uppercase">Total Mes</p>
+          <p className="text-2xl font-black text-white mt-1">${totalMes.toFixed(2)}</p>
+        </div>
+      </div>
+
+      {/* Por sede */}
+      <div className="grid grid-cols-2 gap-3">
+        {porSede.map(({sede,total})=>(
+          <div key={sede} className="rounded-2xl p-3 border" style={{ background:"rgba(13,20,38,0.8)", borderColor:"rgba(30,58,123,0.25)" }}>
+            <p className="text-xs text-slate-400">📍 {sede}</p>
+            <p className="text-lg font-black text-white mt-1">${total.toFixed(2)}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Lista de gastos */}
+      <div className="space-y-2">
+        {/* Fijos primero */}
+        {["fijo","variable"].filter(t=>filterTipo==="Todos"||filterTipo===t).map(tipo=>{
+          const items = gastosFiltrados.filter(g=>g.tipo===tipo);
+          if (items.length===0) return null;
+          return (
+            <div key={tipo}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color:tipo==="fijo"?"#3b82f6":"#f59e0b" }}>
+                {tipo==="fijo"?"📌 Gastos Fijos":"📦 Gastos Variables"}
+              </p>
+              {items.map(g=>{
+                const cat = CATEGORIAS_GASTO[g.categoria] || CATEGORIAS_GASTO.variable;
+                return (
+                  <div key={g.id} className="flex items-center justify-between p-4 rounded-2xl border mb-2" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.25)" }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                        style={{ background:`${cat.color}20` }}>
+                        {cat.icon}
+                      </div>
+                      <div>
+                        <p className="font-bold text-white text-sm">{g.nombre}</p>
+                        <p className="text-xs text-slate-500">{cat.label} · {g.sede} · {g.fecha}</p>
+                        {g.descripcion && <p className="text-xs text-slate-600 mt-0.5">{g.descripcion}</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <p className="text-lg font-black text-red-400">-${parseFloat(g.monto||0).toFixed(2)}</p>
+                      {isAdmin && (
+                        <div className="flex gap-1">
+                          <button onClick={()=>{ setEditGasto(g); setShowForm(true); }}
+                            className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 text-xs flex items-center justify-center">✏️</button>
+                          <button onClick={()=>deleteGasto(g.id)}
+                            className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center">
+                            <Icon name="trash" className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+        {gastosFiltrados.length===0 && (
+          <div className="text-center py-12 text-slate-500 text-sm">Sin gastos registrados para este período</div>
+        )}
+      </div>
+
+      {showForm && <GastoForm gasto={editGasto} reload={reload} onClose={()=>{ setShowForm(false); setEditGasto(null); }} />}
+    </div>
+  );
+};
+
+const GastoForm = ({ gasto, reload, onClose }) => {
+  const [tipo, setTipo] = useState(gasto?.tipo || "fijo");
+  const [categoria, setCategoria] = useState(gasto?.categoria || "arriendo");
+  const [nombre, setNombre] = useState(gasto?.nombre || "");
+  const [monto, setMonto] = useState(gasto?.monto || "");
+  const [fecha, setFecha] = useState(gasto?.fecha || fmt(new Date()));
+  const [sede, setSede] = useState(gasto?.sede || SEDES[0]);
+  const [descripcion, setDescripcion] = useState(gasto?.descripcion || "");
+  const [recurrente, setRecurrente] = useState(gasto?.recurrente || false);
+  const [saving, setSaving] = useState(false);
+
+  const categoriasDisponibles = Object.entries(CATEGORIAS_GASTO).filter(([,v])=>
+    tipo==="fijo" ? v.tipo==="fijo" : v.tipo==="variable"
+  );
+
+  useEffect(()=>{
+    if (tipo==="fijo" && !["arriendo","servicio","sueldo"].includes(categoria)) setCategoria("arriendo");
+    if (tipo==="variable") setCategoria("variable");
+  },[tipo]);
+
+  const save = async () => {
+    if (!nombre || !monto) return;
+    setSaving(true);
+    const data = { tipo, categoria, nombre, monto:parseFloat(monto), fecha, sede, descripcion, recurrente };
+    if (gasto) await db.update("gastos", gasto.id, data);
+    else await db.insert("gastos", data);
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={gasto ? "Editar gasto" : "Registrar gasto"} onClose={onClose}>
+      <div className="space-y-4">
+        {/* Tipo */}
+        <div className="grid grid-cols-2 gap-2">
+          {[["fijo","📌 Fijo"],["variable","📦 Variable"]].map(([id,label])=>(
+            <button key={id} type="button" onClick={()=>setTipo(id)}
+              className="py-3 rounded-xl border text-sm font-bold transition-all"
+              style={tipo===id?{background:"rgba(30,58,123,0.3)",borderColor:"rgba(30,58,123,0.6)",color:"white"}:{background:"rgba(255,255,255,0.03)",borderColor:"rgba(255,255,255,0.1)",color:"#64748b"}}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Categoría */}
+        <Field label="Categoría">
+          <div className="grid grid-cols-2 gap-2">
+            {categoriasDisponibles.map(([id,cat])=>(
+              <button key={id} type="button" onClick={()=>setCategoria(id)}
+                className="py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-2"
+                style={categoria===id?{background:`${cat.color}25`,borderColor:cat.color,color:cat.color}:{background:"rgba(255,255,255,0.03)",borderColor:"rgba(255,255,255,0.1)",color:"#64748b"}}>
+                <span>{cat.icon}</span>{cat.label}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Descripción / Nombre" className="col-span-2">
+            <Input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Arriendo local Cumbayá, Compra bebidas..." />
+          </Field>
+          <Field label="Monto ($)">
+            <Input type="number" value={monto} onChange={e=>setMonto(e.target.value)} placeholder="0.00" step="0.01" />
+          </Field>
+          <Field label="Fecha">
+            <Input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} />
+          </Field>
+          <Field label="Sede">
+            <select value={sede} onChange={e=>setSede(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none">
+              {SEDES.map(s=><option key={s} value={s} className="bg-slate-800">{s}</option>)}
+            </select>
+          </Field>
+          <Field label="¿Recurrente?">
+            <button type="button" onClick={()=>setRecurrente(r=>!r)}
+              className="w-full h-[42px] rounded-xl border text-sm font-semibold transition-all"
+              style={recurrente?{background:"rgba(16,185,129,0.2)",borderColor:"rgba(16,185,129,0.4)",color:"#10b981"}:{background:"rgba(255,255,255,0.05)",borderColor:"rgba(255,255,255,0.1)",color:"#64748b"}}>
+              {recurrente?"✓ Sí, mensual":"No"}
+            </button>
+          </Field>
+          <Field label="Notas (opcional)" className="col-span-2">
+            <Input value={descripcion} onChange={e=>setDescripcion(e.target.value)} placeholder="Notas adicionales..." />
+          </Field>
+        </div>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+        <button onClick={save} disabled={saving||!nombre||!monto} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60"
+          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+          {saving?"Guardando...":gasto?"Guardar cambios":"Registrar gasto"}
+        </button>
+      </div>
+    </Modal>
+  );
+};
+
 export default function App() {
   const [user, setUser] = useState(null);
   
@@ -3787,10 +4076,11 @@ export default function App() {
   const [historialPagos, setHistorialPagos] = useState([]);
   const [historialVentas, setHistorialVentas] = useState([]);
   const [inventario, setInventario] = useState([]);
+  const [gastos, setGastos] = useState([]);
 
   const loadAll = useCallback(async () => {
-    const [s,p,a,e,v,ex,h,hv,inv] = await Promise.all([
-      db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"), db.get("historial_pagos"), db.get("historial_ventas"), db.get("inventario"),
+    const [s,p,a,e,v,ex,h,hv,inv,g] = await Promise.all([
+      db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"), db.get("historial_pagos"), db.get("historial_ventas"), db.get("inventario"), db.get("gastos"),
     ]);
     setStudents(Array.isArray(s)?s:[]);
     // Estado se calcula en tiempo real, no se guarda en BD
@@ -3798,6 +4088,7 @@ export default function App() {
     setHistorialPagos(Array.isArray(h) ? h : []);
     setHistorialVentas(Array.isArray(hv) ? hv : []);
     setInventario(Array.isArray(inv) ? inv : []);
+    setGastos(Array.isArray(g) ? g : []);
     setAsistencia(Array.isArray(a)?a:[]);
     setEventos(Array.isArray(e)?e:[]);
     setVentas(Array.isArray(v)?v:[]);
@@ -3842,6 +4133,7 @@ export default function App() {
     { id:"finance",       label:"Finanzas",     icon:"finance"      },
     { id:"events",        label:"Eventos",      icon:"calendar"     },
     { id:"inventario",    label:"Inventario",   icon:"ventas"       },
+    { id:"gastos",        label:"Gastos",       icon:"finance"      },
     { id:"users",         label:"Usuarios",     icon:"users"        },
     { id:"mi_asistencia", label:"Mi Asistencia",icon:"mi_asistencia"},
     { id:"mis_pagos",     label:"Mis Pagos",    icon:"mis_pagos"    },
@@ -3870,8 +4162,9 @@ export default function App() {
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} />;
-      case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} />;
+      case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} />;
       case "inventario":    return <InventarioPage inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
+      case "gastos":        return <GastosPage gastos={gastos} reload={loadAll} isAdmin={isAdmin} />;
       case "events":        return <EventsPage eventos={eventos} students={students} reload={loadAll} />;
       case "users":         return <UsersPage currentUser={user} setCurrentUser={setUser} allUsers={allUsers} reloadUsers={reloadUsers} />;
       case "mi_asistencia": return <MiAsistenciaPage currentUser={user} students={students} asistencia={asistencia} />;
