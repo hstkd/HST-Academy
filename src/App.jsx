@@ -49,7 +49,8 @@ const fmt = (d) => {
 };
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 
-// Calcula fecha de vencimiento según membresía y fecha base
+// Calcula NUEVA fecha de vencimiento desde la fecha de vencimiento ACTUAL (no desde fecha de pago)
+// Si no hay vencimiento previo, usa fechaBase (fecha inscripción/pago inicial)
 const calcVencimiento = (fechaBase, membresiaId) => {
   if (!fechaBase) return fmt(addDays(today, 30));
   const base = new Date(fechaBase + "T12:00:00");
@@ -57,8 +58,19 @@ const calcVencimiento = (fechaBase, membresiaId) => {
   if (membresiaId === "trimestral") v.setMonth(v.getMonth() + 3);
   else if (membresiaId === "semestral") v.setMonth(v.getMonth() + 6);
   else if (membresiaId === "anual") v.setFullYear(v.getFullYear() + 1);
-  else v.setMonth(v.getMonth() + 1); // mensual: básica, estándar, completo
+  else v.setMonth(v.getMonth() + 1);
   return fmt(v);
+};
+
+// Calcula nueva fecha de vencimiento desde el vencimiento ANTERIOR
+// Regla: siempre extender desde fecha_vencimiento actual, no desde fecha de pago
+const calcNuevoVencimiento = (fechaVencActual, membresiaId) => {
+  // Si tiene vencimiento previo, extender desde ahí
+  if (fechaVencActual) {
+    return calcVencimiento(fechaVencActual, membresiaId);
+  }
+  // Si no hay vencimiento previo (primer pago), usar hoy
+  return calcVencimiento(fmt(new Date()), membresiaId);
 };
 
 const calcEdad = (fechaNac) => {
@@ -1390,7 +1402,8 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
   const [notas, setNotas] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const fechaVenc = calcVencimiento(fechaPago, tipoPago);
+  // REGLA: vencimiento se extiende desde fecha_vencimiento anterior, NO desde fecha de pago
+  const nuevaFechaVenc = calcNuevoVencimiento(pago.fecha_vencimiento, tipoPago);
   const total = parseFloat(montoTotal)||0;
   const pagado = parseFloat(montoPagado)||0;
   const memb = MEMBRESIAS.find(m=>m.id===tipoPago);
@@ -1398,20 +1411,18 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
   const save = async () => {
     if (!montoTotal) return;
     setSaving(true);
-    // Actualizar pago existente
     await db.update("pagos", pago.id, {
       monto: total,
       monto_pagado: pagado,
-      fecha_vencimiento: fechaVenc,
+      fecha_vencimiento: nuevaFechaVenc,
       tipo: memb?.nombre || tipoPago,
     });
-    // Guardar renovación en historial
     await db.insert("historial_pagos", {
       alumno_id: pago.alumno_id,
       alumno_nombre: pago.alumno_nombre,
       monto_pagado: pagado,
       fecha_pago: fechaPago,
-      nueva_fecha_vencimiento: fechaVenc,
+      nueva_fecha_vencimiento: nuevaFechaVenc,
       tipo: memb?.nombre || tipoPago,
       observaciones: notas || "Renovación de membresía",
     });
@@ -1422,11 +1433,18 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
 
   return (
     <Modal title={`Renovar — ${pago.alumno_nombre}`} onClose={onClose} wide>
-      <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-        ⚠️ Pago vencido el {pago.fecha_vencimiento}. Registra la renovación para poner al día.
+      {/* Ciclo actual → nuevo ciclo */}
+      <div className="mb-4 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.3)" }}>
+        <p className="text-xs text-slate-400 mb-2">📅 Ciclo de membresía</p>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-red-400 font-bold">{pago.fecha_vencimiento || "Sin fecha"}</span>
+          <span className="text-slate-500">→</span>
+          <span className="text-emerald-400 font-bold">{nuevaFechaVenc}</span>
+        </div>
+        <p className="text-xs text-slate-500 mt-1">El vencimiento se extiende desde el ciclo anterior, no desde la fecha de pago.</p>
       </div>
       <div className="space-y-5">
-        <Field label="Nueva Membresía">
+        <Field label="Membresía">
           <div className="grid grid-cols-3 gap-2">
             {MEMBRESIAS.map(m=>(
               <button key={m.id} type="button" onClick={()=>setTipoPago(m.id)}
@@ -1440,12 +1458,12 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
         <div className="grid grid-cols-2 gap-4">
           <Field label="Monto Total ($)"><Input type="number" value={montoTotal} onChange={e=>setMontoTotal(e.target.value)} placeholder="0.00" /></Field>
           <Field label="Monto Pagado ($)"><Input type="number" value={montoPagado} onChange={e=>setMontoPagado(e.target.value)} placeholder="0.00" /></Field>
-          <Field label="Fecha de Pago">
+          <Field label="Fecha de Pago (referencia)">
             <Input type="date" value={fechaPago} onChange={e=>setFechaPago(e.target.value)} />
           </Field>
-          <Field label="Nueva fecha de vencimiento">
-            <div className="flex items-center h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
-              <span className="text-emerald-400 text-sm font-bold">{fechaVenc}</span>
+          <Field label="Nuevo vencimiento">
+            <div className="flex items-center h-[42px] px-4 rounded-xl border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.3)" }}>
+              <span className="text-emerald-400 text-sm font-bold">{nuevaFechaVenc}</span>
             </div>
           </Field>
         </div>
@@ -1556,20 +1574,21 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
       // Verificar si ya existe pago para este alumno
       const pagoExistente = pagos.find(p => p.alumno_id === alumnoId);
       if (pagoExistente) {
-        // Actualizar pago existente
+        // REGLA: nueva fecha vencimiento = fecha_vencimiento_actual + duración plan
+        // No usar fechaPago como base para el cálculo
+        const nuevaFechaVenc = calcNuevoVencimiento(pagoExistente.fecha_vencimiento, tipoPago);
         await db.update("pagos", pagoExistente.id, {
           monto: total,
           monto_pagado: pagado,
-          fecha_vencimiento: fechaVenc,
+          fecha_vencimiento: nuevaFechaVenc,
           tipo: memb?.nombre || tipoPago,
         });
-        // Guardar en historial
         await db.insert("historial_pagos", {
           alumno_id: alumnoId,
           alumno_nombre: `${alumno?.nombres} ${alumno?.apellidos}`,
           monto_pagado: pagado,
           fecha_pago: fechaPago,
-          nueva_fecha_vencimiento: fechaVenc,
+          nueva_fecha_vencimiento: nuevaFechaVenc,
           tipo: memb?.nombre || tipoPago,
           observaciones: notas,
         });
@@ -1634,17 +1653,23 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                 setFechaVenc(calcVencimiento(e.target.value, tipoPago));
               }} />
             </Field>
-            <Field label="Vence automáticamente">
-              <div className="flex items-center gap-2 h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
-                <span className={`text-sm font-bold ${fechaVenc && fechaVenc < fmt(today) ? "text-red-400" : "text-emerald-400"}`}>
-                  {fechaVenc || "Selecciona fecha de pago"}
-                </span>
-                {fechaVenc && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${fechaVenc < fmt(today) ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"}`}>
-                    {fechaVenc < fmt(today) ? "Vencido" : `en ${Math.ceil((new Date(fechaVenc + "T12:00:00") - today) / 86400000)} días`}
-                  </span>
-                )}
-              </div>
+            <Field label="Nuevo vencimiento (automático)">
+              {(() => {
+                const pagoExist = pagos.find(p=>p.alumno_id===alumnoId);
+                const baseVenc = pagoExist?.fecha_vencimiento;
+                const nuevoVenc = baseVenc ? calcNuevoVencimiento(baseVenc, tipoPago) : fechaVenc;
+                return (
+                  <div className="space-y-1">
+                    {baseVenc && (
+                      <p className="text-xs text-slate-500">Vence actualmente: <span className="text-white font-semibold">{baseVenc}</span></p>
+                    )}
+                    <div className="flex items-center gap-2 h-[42px] px-4 rounded-xl border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.3)" }}>
+                      <span className="text-emerald-400 text-sm font-bold">{nuevoVenc || "Selecciona membresía"}</span>
+                    </div>
+                    {baseVenc && <p className="text-xs text-slate-500">Se extiende desde el vencimiento anterior, no desde la fecha de pago.</p>}
+                  </div>
+                );
+              })()}
             </Field>
           </div>
           {montoTotal&&<div className={`p-3 rounded-xl text-sm font-bold border ${deuda>0?"bg-red-500/10 border-red-500/30 text-red-400":"bg-emerald-500/10 border-emerald-500/30 text-emerald-400"}`}>Deuda: ${deuda.toFixed(2)} {deuda===0&&"✓ Pagado completo"}</div>}
