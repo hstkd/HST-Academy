@@ -1593,26 +1593,27 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
           observaciones: notas,
         });
       } else {
-        // Nuevo pago (primer registro)
+        // Nuevo pago (primer registro) — vencimiento desde fecha_inscripcion del alumno
+        const baseParaVenc = alumno?.fecha_inscripcion || fechaPago;
+        const vencimientoInicial = calcVencimiento(baseParaVenc, tipoPago);
         await db.insert("pagos", {
           alumno_id: alumnoId,
           alumno_nombre: `${alumno?.nombres} ${alumno?.apellidos}`,
           monto: total,
           monto_pagado: pagado,
           fecha_pago: fechaPago,
-          fecha_vencimiento: fechaVenc,
+          fecha_vencimiento: vencimientoInicial,
           tipo: memb?.nombre || tipoPago,
           sede: alumno?.sede || "Quito",
           notas,
         });
-        // También en historial si pagó
         if (pagado > 0) {
           await db.insert("historial_pagos", {
             alumno_id: alumnoId,
             alumno_nombre: `${alumno?.nombres} ${alumno?.apellidos}`,
             monto_pagado: pagado,
             fecha_pago: fechaPago,
-            nueva_fecha_vencimiento: fechaVenc,
+            nueva_fecha_vencimiento: vencimientoInicial,
             tipo: memb?.nombre || tipoPago,
             observaciones: notas || "Pago inicial",
           });
@@ -1653,20 +1654,34 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                 setFechaVenc(calcVencimiento(e.target.value, tipoPago));
               }} />
             </Field>
-            <Field label="Nuevo vencimiento (automático)">
+            <Field label="Vencimiento (automático)">
               {(() => {
                 const pagoExist = pagos.find(p=>p.alumno_id===alumnoId);
-                const baseVenc = pagoExist?.fecha_vencimiento;
-                const nuevoVenc = baseVenc ? calcNuevoVencimiento(baseVenc, tipoPago) : fechaVenc;
-                return (
-                  <div className="space-y-1">
-                    {baseVenc && (
-                      <p className="text-xs text-slate-500">Vence actualmente: <span className="text-white font-semibold">{baseVenc}</span></p>
-                    )}
-                    <div className="flex items-center gap-2 h-[42px] px-4 rounded-xl border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.3)" }}>
-                      <span className="text-emerald-400 text-sm font-bold">{nuevoVenc || "Selecciona membresía"}</span>
+                const alumnoSel = students.find(s=>s.id===alumnoId);
+                if (pagoExist?.fecha_vencimiento) {
+                  const nuevoVenc = calcNuevoVencimiento(pagoExist.fecha_vencimiento, tipoPago);
+                  return (
+                    <div className="space-y-1">
+                      <p className="text-xs text-slate-500">Vence actualmente: <span className="text-white font-semibold">{pagoExist.fecha_vencimiento}</span> → Nuevo:</p>
+                      <div className="flex items-center h-[42px] px-4 rounded-xl border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.3)" }}>
+                        <span className="text-emerald-400 text-sm font-bold">{nuevoVenc}</span>
+                      </div>
                     </div>
-                    {baseVenc && <p className="text-xs text-slate-500">Se extiende desde el vencimiento anterior, no desde la fecha de pago.</p>}
+                  );
+                } else if (alumnoSel?.fecha_inscripcion) {
+                  const vencInicial = calcVencimiento(alumnoSel.fecha_inscripcion, tipoPago);
+                  return (
+                    <div className="space-y-1">
+                      <p className="text-xs text-slate-500">Desde inscripción: <span className="text-white font-semibold">{alumnoSel.fecha_inscripcion}</span></p>
+                      <div className="flex items-center h-[42px] px-4 rounded-xl border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.3)" }}>
+                        <span className="text-emerald-400 text-sm font-bold">{vencInicial}</span>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex items-center h-[42px] px-4 rounded-xl border" style={{ background:"rgba(255,255,255,0.05)", borderColor:"rgba(255,255,255,0.1)" }}>
+                    <span className="text-slate-500 text-sm">Selecciona un alumno</span>
                   </div>
                 );
               })()}
@@ -1961,7 +1976,20 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
       onClose();
     };
 
-    const productos = catFilter==="todos"?PRODUCTOS:PRODUCTOS.filter(p=>p.cat===catFilter);
+    // Combinar productos hardcodeados + inventario registrado
+    const productosInventario = (inventario||[]).map(i=>({
+      id: i.id,
+      nombre: i.nombre,
+      precio: parseFloat(i.precio_venta||0),
+      cat: i.categoria || "otros",
+      stock: i.stock,
+      fromInventario: true,
+    }));
+    // Merge: inventario override productos hardcodeados si tienen el mismo nombre
+    const nombresInv = productosInventario.map(p=>p.nombre.toLowerCase());
+    const prodBase = PRODUCTOS.filter(p=>!nombresInv.includes(p.nombre.toLowerCase()));
+    const todosProductos = [...prodBase, ...productosInventario];
+    const productos = catFilter==="todos" ? todosProductos : todosProductos.filter(p=>p.cat===catFilter);
 
     return (
       <Modal title="Nueva Venta" onClose={onClose} wide>
@@ -1994,8 +2022,14 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
           </div>
           <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
             {productos.map(p=>(
-              <button key={p.id} onClick={()=>addToCart(p)} className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-amber-400/30 transition-all text-left">
-                <div><p className="text-sm font-semibold text-white">{p.nombre}</p><p className="text-xs text-amber-400 font-bold">${p.precio.toFixed(2)}</p></div>
+              <button key={p.id} onClick={()=>addToCart(p)}
+                disabled={p.fromInventario && p.stock <= 0}
+                className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-amber-400/30 transition-all text-left disabled:opacity-40">
+                <div>
+                  <p className="text-sm font-semibold text-white">{p.nombre}</p>
+                  <p className="text-xs text-amber-400 font-bold">${p.precio.toFixed(2)}</p>
+                  {p.fromInventario && <p className={`text-[10px] ${p.stock<=0?"text-red-400":p.stock<=3?"text-amber-400":"text-slate-500"}`}>{p.stock<=0?"Sin stock":`Stock: ${p.stock}`}</p>}
+                </div>
                 <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center"><Icon name="plus" className="w-4 h-4" /></div>
               </button>
             ))}
