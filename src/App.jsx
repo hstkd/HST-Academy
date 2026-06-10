@@ -12,17 +12,25 @@ const HEADERS = {
   Prefer: "return=representation",
 };
 
+// club_id global — se setea al login
+let CURRENT_CLUB_ID = null;
+const GLOBAL_TABLES = ["clubs","suscripciones","users"];
+
 const db = {
   get: async (table, filters = "") => {
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?order=created_at.desc${filters}`, { headers: HEADERS });
+      const clubFilter = (!GLOBAL_TABLES.includes(table) && CURRENT_CLUB_ID)
+        ? `&club_id=eq.${CURRENT_CLUB_ID}` : "";
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?order=created_at.desc${clubFilter}${filters}`, { headers: HEADERS });
       if (!r.ok) return [];
       return r.json();
     } catch { return []; }
   },
   insert: async (table, data) => {
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, { method: "POST", headers: HEADERS, body: JSON.stringify(data) });
+      const payload = (!GLOBAL_TABLES.includes(table) && CURRENT_CLUB_ID)
+        ? { ...data, club_id: CURRENT_CLUB_ID } : data;
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, { method: "POST", headers: { ...HEADERS, "Prefer":"return=representation" }, body: JSON.stringify(payload) });
       if (!r.ok) return null;
       const res = await r.json();
       return Array.isArray(res) ? res[0] : res;
@@ -158,6 +166,7 @@ const PRODUCTOS = [
 ];
 
 const PERMISOS = {
+  superadmin: ["superadmin"],
   admin:    ["dashboard","students","payments","ventas","attendance","examenes","finance","events","users","inventario","gastos"],
   profesor: ["attendance","students","ventas","examenes"],
   alumno:   ["mi_asistencia","mis_pagos","mi_historial"],
@@ -372,6 +381,272 @@ const AlumnoSelector = ({ students, value, onChange, placeholder="Buscar alumno.
   );
 };
 
+// ── RegisterClub — pantalla de registro para nuevas academias ─────────────────
+const RegisterClub = ({ onBack }) => {
+  const [nombre, setNombre] = useState("");
+  const [ciudad, setCiudad] = useState("");
+  const [ownerNombre, setOwnerNombre] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [plan, setPlan] = useState("basico");
+  const [saving, setSaving] = useState(false);
+  const [ok, setOk] = useState("");
+  const [err, setErr] = useState("");
+
+  const save = async () => {
+    if (!nombre||!email||!password||!ownerNombre) { setErr("Completa todos los campos obligatorios"); return; }
+    setSaving(true); setErr("");
+    // Verificar email único
+    const existing = await db.get("users", `&email=eq.${encodeURIComponent(email)}`);
+    if (existing?.length > 0) { setErr("Este correo ya está registrado"); setSaving(false); return; }
+    const trialHasta = new Date();
+    trialHasta.setDate(trialHasta.getDate() + 15);
+    const trialStr = trialHasta.toISOString().slice(0,10);
+    // Crear club
+    const club = await db.insert("clubs", {
+      nombre, ciudad, telefono, email,
+      plan, estado:"trial",
+      trial_hasta: trialStr,
+    });
+    if (!club?.id) { setErr("Error al crear la academia. Intenta nuevamente."); setSaving(false); return; }
+    // Crear usuario admin del club
+    await db.insert("users", {
+      nombre: ownerNombre, email, password,
+      role: "admin", club_id: club.id,
+    });
+    // Actualizar owner_id del club
+    await db.update("clubs", club.id, { owner_id: club.id });
+    setOk(`¡Academia registrada! Tienes 15 días de prueba gratuita hasta el ${trialStr}. Ya puedes iniciar sesión.`);
+    setSaving(false);
+  };
+
+  if (ok) return (
+    <div className="text-center space-y-4">
+      <div className="text-5xl">🎉</div>
+      <h2 className="text-xl font-black text-white">¡Registro exitoso!</h2>
+      <p className="text-emerald-400 text-sm">{ok}</p>
+      <button onClick={onBack} className="w-full py-3 rounded-xl font-bold text-[#020617]"
+        style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+        Iniciar sesión
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-xl font-black text-white">Registrar Academia</h2>
+        <p className="text-slate-400 text-xs mt-1">15 días gratis · Sin tarjeta de crédito</p>
+      </div>
+      {err && <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">{err}</div>}
+      <div className="space-y-3">
+        <Field label="Nombre de la academia *"><Input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Academia Taekwondo XYZ" /></Field>
+        <Field label="Tu nombre completo *"><Input value={ownerNombre} onChange={e=>setOwnerNombre(e.target.value)} placeholder="Nombre del administrador" /></Field>
+        <Field label="Ciudad"><Input value={ciudad} onChange={e=>setCiudad(e.target.value)} placeholder="Quito, Guayaquil..." /></Field>
+        <Field label="Teléfono WhatsApp"><Input value={telefono} onChange={e=>setTelefono(e.target.value)} placeholder="+593..." /></Field>
+        <Field label="Correo (para login) *"><Input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@correo.com" /></Field>
+        <Field label="Contraseña *"><Input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" /></Field>
+        <Field label="Plan">
+          <div className="grid grid-cols-2 gap-2">
+            {[["basico","Básico
+$30/mes
+Hasta 30 alumnos"],["pro","Pro
+$50/mes
+Alumnos ilimitados"]].map(([id,desc])=>(
+              <button key={id} type="button" onClick={()=>setPlan(id)}
+                className="p-3 rounded-xl border text-center transition-all"
+                style={plan===id?{background:"rgba(30,58,123,0.3)",borderColor:"rgba(30,58,123,0.6)"}:{background:"rgba(255,255,255,0.03)",borderColor:"rgba(255,255,255,0.1)"}}>
+                {desc.split("
+").map((line,i)=>(
+                  <p key={i} className={`${i===0?"font-black text-white text-sm":i===1?"text-yellow-400 font-bold text-xs":"text-slate-400 text-[10px]"}`}>{line}</p>
+                ))}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-slate-500 mt-1">Selecciona tu plan — activarás el pago al terminar el período de prueba.</p>
+        </Field>
+      </div>
+      <button onClick={save} disabled={saving} className="w-full py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60"
+        style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+        {saving?"Registrando...":"Crear cuenta gratis"}
+      </button>
+      <button onClick={onBack} className="w-full text-center text-sm text-slate-500 hover:text-slate-300">← Volver al login</button>
+    </div>
+  );
+};
+
+// ── SuperAdminPage — panel de control de todas las academias ──────────────────
+const SuperAdminPage = ({ currentUser, reload }) => {
+  const [clubs, setClubs] = useState([]);
+  const [suscripciones, setSuscripciones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedClub, setSelectedClub] = useState(null);
+  const [showSuscForm, setShowSuscForm] = useState(false);
+
+  useEffect(()=>{
+    const load = async () => {
+      const [c, s] = await Promise.all([db.get("clubs"), db.get("suscripciones")]);
+      setClubs(Array.isArray(c)?c:[]);
+      setSuscripciones(Array.isArray(s)?s:[]);
+      setLoading(false);
+    };
+    load();
+  },[]);
+
+  const reloadAll = async () => {
+    const [c,s] = await Promise.all([db.get("clubs"), db.get("suscripciones")]);
+    setClubs(Array.isArray(c)?c:[]);
+    setSuscripciones(Array.isArray(s)?s:[]);
+  };
+
+  const toggleEstado = async (club) => {
+    const nuevoEstado = club.estado === "activo" ? "suspendido" : "activo";
+    await db.update("clubs", club.id, { estado: nuevoEstado });
+    await reloadAll();
+  };
+
+  const hoy = new Date().toISOString().slice(0,10);
+  const activos   = clubs.filter(c=>c.estado==="activo").length;
+  const trial     = clubs.filter(c=>c.estado==="trial").length;
+  const suspendidos = clubs.filter(c=>c.estado==="suspendido").length;
+  const mrr = clubs.filter(c=>c.estado==="activo").reduce((a,c)=>a+(c.plan==="pro"?50:30),0);
+
+  return (
+    <div className="space-y-6 p-4 max-w-2xl mx-auto">
+      <div>
+        <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>SUPER ADMIN</h1>
+        <p className="text-slate-500 text-sm">Panel de control — HS Taekwondo System</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl p-4 border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.2)" }}>
+          <p className="text-xs text-emerald-400 font-semibold uppercase">MRR Estimado</p>
+          <p className="text-3xl font-black text-white">${mrr}</p>
+          <p className="text-xs text-slate-500 mt-1">{activos} academias activas</p>
+        </div>
+        <div className="rounded-2xl p-4 border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.2)" }}>
+          <p className="text-xs text-blue-400 font-semibold uppercase">Total Academias</p>
+          <p className="text-3xl font-black text-white">{clubs.length}</p>
+          <p className="text-xs text-slate-500 mt-1">{trial} en prueba · {suspendidos} suspendidas</p>
+        </div>
+      </div>
+
+      {/* Lista de clubes */}
+      <div className="space-y-3">
+        {loading && <p className="text-slate-500 text-center py-8">Cargando...</p>}
+        {clubs.sort((a,b)=>b.created_at?.localeCompare(a.created_at)).map(club=>{
+          const suscClub = suscripciones.filter(s=>s.club_id===club.id).sort((a,b)=>b.created_at?.localeCompare(a.created_at));
+          const ultimaSusc = suscClub[0];
+          return (
+            <div key={club.id} className="p-4 rounded-2xl border" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.25)" }}>
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="font-black text-white">{club.nombre}</p>
+                  <p className="text-xs text-slate-500">{club.ciudad} · {club.email}</p>
+                  <p className="text-xs text-slate-500">{club.telefono}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                    club.estado==="activo"?"bg-emerald-500/20 text-emerald-400":
+                    club.estado==="trial"?"bg-blue-500/20 text-blue-400":
+                    "bg-red-500/20 text-red-400"}`}>
+                    {club.estado==="trial"?`Trial hasta ${club.trial_hasta}`:club.estado}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400">
+                    {club.plan==="pro"?"Pro $50":"Básico $30"}
+                  </span>
+                </div>
+              </div>
+
+              {ultimaSusc && (
+                <p className="text-xs text-slate-500 mb-2">Último pago: {ultimaSusc.fecha_pago} · Vence: {ultimaSusc.fecha_vencimiento}</p>
+              )}
+
+              <div className="flex gap-2 flex-wrap">
+                <button onClick={()=>{ setSelectedClub(club); setShowSuscForm(true); }}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold">
+                  💳 Registrar pago
+                </button>
+                <button onClick={()=>toggleEstado(club)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${club.estado==="suspendido"?"bg-emerald-500/20 text-emerald-400":"bg-red-500/20 text-red-400"}`}>
+                  {club.estado==="suspendido"?"▶ Activar":"⏸ Suspender"}
+                </button>
+                <select value={club.plan} onChange={async e=>{ await db.update("clubs",club.id,{plan:e.target.value}); reloadAll(); }}
+                  className="px-2 py-1 rounded-lg bg-white/5 text-white text-xs border border-white/10">
+                  <option value="basico" className="bg-slate-800">Básico $30</option>
+                  <option value="pro" className="bg-slate-800">Pro $50</option>
+                </select>
+              </div>
+            </div>
+          );
+        })}
+        {!loading && clubs.length===0 && (
+          <p className="text-center text-slate-500 py-8">Sin academias registradas aún</p>
+        )}
+      </div>
+
+      {/* Modal registrar pago suscripción */}
+      {showSuscForm && selectedClub && (
+        <SuscripcionForm club={selectedClub} reload={reloadAll} onClose={()=>{ setShowSuscForm(false); setSelectedClub(null); }} />
+      )}
+    </div>
+  );
+};
+
+const SuscripcionForm = ({ club, reload, onClose }) => {
+  const [monto, setMonto] = useState(club.plan==="pro"?"50":"30");
+  const [fechaPago, setFechaPago] = useState(new Date().toISOString().slice(0,10));
+  const [notas, setNotas] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const vencimiento = new Date(fechaPago+"T12:00:00");
+  vencimiento.setMonth(vencimiento.getMonth()+1);
+  const fechaVenc = vencimiento.toISOString().slice(0,10);
+
+  const save = async () => {
+    setSaving(true);
+    await db.insert("suscripciones", {
+      club_id: club.id,
+      plan: club.plan,
+      monto: parseFloat(monto),
+      fecha_pago: fechaPago,
+      fecha_vencimiento: fechaVenc,
+      estado: "activo",
+      notas,
+    });
+    // Activar club
+    await db.update("clubs", club.id, { estado:"activo" });
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={`Pago — ${club.nombre}`} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.3)" }}>
+          <p className="text-xs text-slate-400">Plan: <span className="text-white font-bold">{club.plan==="pro"?"Pro $50/mes":"Básico $30/mes"}</span></p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Monto ($)"><Input type="number" value={monto} onChange={e=>setMonto(e.target.value)} /></Field>
+          <Field label="Fecha de pago"><Input type="date" value={fechaPago} onChange={e=>setFechaPago(e.target.value)} /></Field>
+        </div>
+        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+          <p className="text-xs text-slate-400">Próximo vencimiento: <span className="text-emerald-400 font-bold">{fechaVenc}</span></p>
+        </div>
+        <Field label="Notas"><Input value={notas} onChange={e=>setNotas(e.target.value)} placeholder="Transferencia, referencia..." /></Field>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cancelar</button>
+        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60"
+          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar pago"}</button>
+      </div>
+    </Modal>
+  );
+};
+
 const LoginScreen = ({ onLogin }) => {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -388,7 +663,20 @@ const LoginScreen = ({ onLogin }) => {
     if (!email||!password) { setErr("Completa todos los campos"); return; }
     setLoading(true); setErr("");
     const users = await db.get("users",`&email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(password)}`);
-    if (users&&users.length>0) onLogin(users[0]);
+    if (users&&users.length>0) {
+      const u = users[0];
+      if (u.role === "superadmin") { onLogin(u); return; }
+      if (u.club_id) {
+        const clubs = await db.get("clubs",`&id=eq.${u.club_id}`);
+        const club = clubs?.[0];
+        if (club) {
+          const hoy = new Date().toISOString().slice(0,10);
+          if (club.estado === "suspendido") { setErr("Tu academia está suspendida. Contacta a HS Taekwondo System."); setLoading(false); return; }
+          if (club.estado === "trial" && club.trial_hasta < hoy) { setErr("Tu período de prueba venció. Contacta a HS Taekwondo System para activar."); setLoading(false); return; }
+        }
+      }
+      onLogin(u);
+    }
     else { setErr("Correo o contraseña incorrectos"); setLoading(false); }
   };
 
@@ -436,8 +724,16 @@ const LoginScreen = ({ onLogin }) => {
               <Field label="Contraseña"><Input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></Field>
             </div>
             <button onClick={handleLogin} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{loading?"VERIFICANDO...":"INGRESAR AL SISTEMA"}</button>
+            <div className="mt-4 pt-4 border-t" style={{ borderColor:"rgba(30,58,123,0.2)" }}>
+              <button onClick={()=>{setMode("register");setErr("");}}
+                className="w-full py-3 rounded-xl border text-sm font-semibold transition-all"
+                style={{ borderColor:"rgba(30,58,123,0.4)", color:"#93c5fd", background:"rgba(30,58,123,0.1)" }}>
+                🏫 Registrar mi academia — Prueba gratis 15 días
+              </button>
+            </div>
             <button onClick={()=>{setMode("forgot");setErr("");}} className="w-full mt-3 text-center text-sm text-slate-500 hover:text-yellow-500 transition-colors">¿Olvidaste tu contraseña?</button>
           </>}
+          {mode==="register" && <RegisterClub onBack={()=>{setMode("login");setErr("");}} />}
           {mode==="forgot" && <>
             <h2 className="text-xl font-bold text-white mb-2">Recuperar Contraseña</h2>
             <p className="text-slate-400 text-sm mb-6">Ingresa tu correo registrado.</p>
@@ -4148,8 +4444,14 @@ export default function App() {
   }, [user]);
 
   const handleLogin = u => {
+    CURRENT_CLUB_ID = u.club_id || null;
     setUser(u);
-    setPage((PERMISOS[u.role]||[])[0]);
+    if (u.role === "superadmin") {
+      CURRENT_CLUB_ID = null;
+      setPage("superadmin");
+    } else {
+      setPage((PERMISOS[u.role]||[])[0]);
+    }
   };
 
   if (!user) return <LoginScreen onLogin={handleLogin} />;
@@ -4190,6 +4492,7 @@ export default function App() {
   const renderPage = () => {
     if (loading) return <Spinner />;
     switch(page) {
+      case "superadmin":    return <SuperAdminPage currentUser={user} reload={loadAll} />;
       case "dashboard":     return <DashboardPage students={students} pagos={pagos} historialPagos={historialPagos} asistencia={asistencia} ventas={ventas} eventos={eventos} examenes={examenes} />;
       case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} asistencia={asistencia} examenes={examenes} eventos={eventos} pagos={pagos} historialPagos={historialPagos} ventas={ventas} />;
       case "payments":      return <PaymentsPage students={students} pagos={pagos} historialPagos={historialPagos} reload={loadAll} isAdmin={isAdmin} />;
