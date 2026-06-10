@@ -449,7 +449,7 @@ const RegisterClub = ({ onBack }) => {
         <Field label="Contraseña *"><Input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" /></Field>
         <Field label="Plan">
           <div className="grid grid-cols-2 gap-2">
-            {{[
+            {[
                 {id:"basico", titulo:"Básico", precio:"$30/mes", desc:"Hasta 30 alumnos"},
                 {id:"pro",    titulo:"Pro",    precio:"$50/mes", desc:"Alumnos ilimitados"},
               ].map(({id,titulo,precio,desc})=>(
