@@ -449,18 +449,18 @@ const RegisterClub = ({ onBack }) => {
         <Field label="Contraseña *"><Input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" /></Field>
         <Field label="Plan">
           <div className="grid grid-cols-2 gap-2">
-            {[["basico","Básico
-$30/mes
-Hasta 30 alumnos"],["pro","Pro
-$50/mes
-Alumnos ilimitados"]].map(([id,desc])=>(
+            {{[
+                {id:"basico", titulo:"Básico", precio:"$30/mes", desc:"Hasta 30 alumnos"},
+                {id:"pro",    titulo:"Pro",    precio:"$50/mes", desc:"Alumnos ilimitados"},
+              ].map(({id,titulo,precio,desc})=>(
               <button key={id} type="button" onClick={()=>setPlan(id)}
                 className="p-3 rounded-xl border text-center transition-all"
                 style={plan===id?{background:"rgba(30,58,123,0.3)",borderColor:"rgba(30,58,123,0.6)"}:{background:"rgba(255,255,255,0.03)",borderColor:"rgba(255,255,255,0.1)"}}>
-                {desc.split("
-").map((line,i)=>(
-                  <p key={i} className={`${i===0?"font-black text-white text-sm":i===1?"text-yellow-400 font-bold text-xs":"text-slate-400 text-[10px]"}`}>{line}</p>
-                ))}
+                <p className="font-black text-white text-sm">{titulo}</p>
+                <p className="text-yellow-400 font-bold text-xs">{precio}</p>
+                <p className="text-slate-400 text-[10px]">{desc}</p>
+              </button>
+            ))}
               </button>
             ))}
           </div>
