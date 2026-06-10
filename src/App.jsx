@@ -167,7 +167,7 @@ const PRODUCTOS = [
 
 const PERMISOS = {
   superadmin: ["superadmin"],
-  admin:    ["dashboard","students","payments","ventas","attendance","examenes","finance","events","users","inventario","gastos"],
+  admin:    ["dashboard","students","payments","ventas","attendance","examenes","finance","events","users","inventario","gastos","configuracion"],
   profesor: ["attendance","students","ventas","examenes"],
   alumno:   ["mi_asistencia","mis_pagos","mi_historial"],
 };
@@ -2814,7 +2814,7 @@ const AbonoExamenModal = ({ examen, reload, onClose }) => {
   );
 };
 
-const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
+const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamenes, configGal }) => {
   const [selectedId, setSelectedId] = useState("");
   const [newBelt, setNewBelt] = useState(CINTURONES[0]);
   const [saving, setSaving] = useState(false);
@@ -2829,7 +2829,15 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
   const [abonoExamen, setAbonoExamen] = useState(null);
 
   const selectedStudent = students.find(s => s.id === selectedId);
-  const costoInfo = selectedStudent ? COSTOS_ASCENSO[selectedStudent.cinturon] : null;
+  const costoInfo = selectedStudent ? (() => {
+    // Usar config de la academia si existe
+    if (configExamenes && configExamenes.length > 0) {
+      const cfg = configExamenes.find(cfg => cfg.cinturon_desde === selectedStudent.cinturon);
+      if (cfg) return { siguiente: cfg.cinturon_hasta, costo: parseFloat(cfg.costo||0) };
+    }
+    // Sino usar hardcoded
+    return COSTOS_ASCENSO[selectedStudent.cinturon] || null;
+  })() : null;
 
   const handleSelectStudent = (id) => {
     setSelectedId(id);
@@ -2875,14 +2883,15 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes }) => {
     }
     setSavingGal(true);
     const al = students.find(s => s.id === galAlumnoId);
+    const costoGal = configGal && configGal.length > 0 ? parseFloat(configGal[0].costo||13) : 13;
     const pagado = parseFloat(galPagado) || 0;
-    const saldo = Math.max(0, 13 - pagado);
-    const estadoPago = pagado >= 13 ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
+    const saldo = Math.max(0, costoGal - pagado);
+    const estadoPago = pagado >= costoGal ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
     await db.insert("examenes", {
       alumno_id: galAlumnoId,
       alumno_nombre: `${al?.nombres} ${al?.apellidos}`,
       tipo: "GAL",
-      monto: 13,
+      monto: costoGal,
       monto_pagado: pagado,
       saldo_pendiente: saldo,
       estado_pago: estadoPago,
@@ -4375,6 +4384,253 @@ const GastoForm = ({ gasto, reload, onClose }) => {
   );
 };
 
+const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, reload }) => {
+  const [tab, setTab] = useState("examenes");
+  const [saving, setSaving] = useState(false);
+
+  // ── Exámenes config ──
+  const [editExamen, setEditExamen] = useState(null);
+  const [showExamenForm, setShowExamenForm] = useState(false);
+
+  // ── GAL config ──
+  const galCosto = configGal?.[0]?.costo || 13;
+  const [newGalCosto, setNewGalCosto] = useState(galCosto);
+
+  const saveGal = async () => {
+    setSaving(true);
+    if (configGal && configGal.length > 0) {
+      await db.update("config_gal", configGal[0].id, { costo: parseFloat(newGalCosto) });
+    } else {
+      await db.insert("config_gal", { costo: parseFloat(newGalCosto) });
+    }
+    await reload();
+    setSaving(false);
+  };
+
+  const deleteExamen = async (id) => {
+    if (!confirm("¿Eliminar este precio?")) return;
+    await db.delete("config_examenes", id);
+    await reload();
+  };
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>CONFIGURACIÓN</h1>
+
+      {/* Tabs */}
+      <div className="flex gap-2 flex-wrap">
+        {[["examenes","🏆 Exámenes"],["gal","📄 GAL"],["membresias","💳 Membresías"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)}
+            className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+            style={tab===id?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"rgba(255,255,255,0.05)",color:"#64748b"}}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Exámenes */}
+      {tab==="examenes" && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-slate-400">Configura el costo de cada ascenso de cinturón</p>
+            <button onClick={()=>{ setEditExamen(null); setShowExamenForm(true); }}
+              className="px-4 py-2 rounded-xl text-sm font-bold text-[#020617]"
+              style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+              + Agregar
+            </button>
+          </div>
+
+          {/* Tabla de precios */}
+          <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+            <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+              <div className="grid grid-cols-4 text-xs font-bold text-blue-300 uppercase">
+                <span>Desde</span><span>Hasta</span><span>Costo</span><span></span>
+              </div>
+            </div>
+            {configExamenes.length > 0 ? configExamenes.map(cfg=>(
+              <div key={cfg.id} className="grid grid-cols-4 items-center px-4 py-3 border-b" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.15)" }}>
+                <span className="text-sm text-white">{cfg.cinturon_desde}</span>
+                <span className="text-sm text-white">{cfg.cinturon_hasta}</span>
+                <span className="text-sm font-bold text-yellow-400">${parseFloat(cfg.costo||0).toFixed(2)}</span>
+                <div className="flex gap-1 justify-end">
+                  <button onClick={()=>{ setEditExamen(cfg); setShowExamenForm(true); }} className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 text-xs flex items-center justify-center">✏️</button>
+                  <button onClick={()=>deleteExamen(cfg.id)} className="w-7 h-7 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center"><Icon name="trash" className="w-3 h-3" /></button>
+                </div>
+              </div>
+            )) : (
+              <div className="p-6 text-center" style={{ background:"#0d1426" }}>
+                <p className="text-slate-500 text-sm">Sin precios configurados</p>
+                <p className="text-slate-600 text-xs mt-1">Se usarán los precios por defecto del sistema</p>
+              </div>
+            )}
+          </div>
+
+          {showExamenForm && (
+            <ExamenPrecioForm item={editExamen} reload={reload} onClose={()=>{ setShowExamenForm(false); setEditExamen(null); }} />
+          )}
+        </div>
+      )}
+
+      {/* GAL */}
+      {tab==="gal" && (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">Define el costo de emisión del GAL para tu academia</p>
+          <div className="p-5 rounded-2xl border" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.3)" }}>
+            <Field label="Costo del GAL ($)">
+              <Input type="number" value={newGalCosto} onChange={e=>setNewGalCosto(e.target.value)} placeholder="13.00" step="0.01" />
+            </Field>
+            <div className="mt-4 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.2)" }}>
+              <p className="text-xs text-slate-400">Costo actual del sistema: <span className="text-white font-bold">${parseFloat(galCosto).toFixed(2)}</span></p>
+            </div>
+            <button onClick={saveGal} disabled={saving} className="w-full mt-4 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60"
+              style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+              {saving?"Guardando...":"Guardar precio GAL"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Membresías */}
+      {tab==="membresias" && (
+        <MembresiasConfig configMembresias={configMembresias} reload={reload} />
+      )}
+    </div>
+  );
+};
+
+const ExamenPrecioForm = ({ item, reload, onClose }) => {
+  const [cinturonDesde, setCinturonDesde] = useState(item?.cinturon_desde || CINTURONES[0]);
+  const [cinturonHasta, setCinturonHasta] = useState(item?.cinturon_hasta || CINTURONES[1]);
+  const [costo, setCosto] = useState(item?.costo || "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!costo) return;
+    setSaving(true);
+    const data = { cinturon_desde: cinturonDesde, cinturon_hasta: cinturonHasta, costo: parseFloat(costo) };
+    if (item) await db.update("config_examenes", item.id, data);
+    else await db.insert("config_examenes", data);
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={item?"Editar precio":"Nuevo precio de examen"} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Cinturón desde">
+            <select value={cinturonDesde} onChange={e=>setCinturonDesde(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none">
+              {CINTURONES.map(cin=><option key={cin} value={cin} className="bg-slate-800">{cin}</option>)}
+            </select>
+          </Field>
+          <Field label="Cinturón hasta">
+            <select value={cinturonHasta} onChange={e=>setCinturonHasta(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none">
+              {CINTURONES.map(cin=><option key={cin} value={cin} className="bg-slate-800">{cin}</option>)}
+            </select>
+          </Field>
+        </div>
+        <Field label="Costo ($)">
+          <Input type="number" value={costo} onChange={e=>setCosto(e.target.value)} placeholder="0.00" step="0.01" />
+        </Field>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cancelar</button>
+        <button onClick={save} disabled={saving||!costo} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60"
+          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+          {saving?"Guardando...":item?"Guardar":"Agregar"}
+        </button>
+      </div>
+    </Modal>
+  );
+};
+
+const MembresiasConfig = ({ configMembresias, reload }) => {
+  const [showForm, setShowForm] = useState(false);
+  const [editMemb, setEditMemb] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const deleteMemb = async (id) => {
+    if (!confirm("¿Eliminar esta membresía?")) return;
+    await db.delete("config_membresias", id);
+    await reload();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-slate-400">Define tus planes de membresía y precios</p>
+        <button onClick={()=>{ setEditMemb(null); setShowForm(true); }}
+          className="px-4 py-2 rounded-xl text-sm font-bold text-[#020617]"
+          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+          + Membresía
+        </button>
+      </div>
+      <div className="space-y-2">
+        {configMembresias.map(m=>(
+          <div key={m.id} className="flex items-center justify-between p-4 rounded-2xl border" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.25)" }}>
+            <div>
+              <p className="font-bold text-white">{m.nombre}</p>
+              <p className="text-xs text-slate-500">{m.sesiones>=999?"Sesiones ilimitadas":`${m.sesiones} sesiones`}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-black text-yellow-400">${parseFloat(m.precio||0).toFixed(2)}</p>
+              <button onClick={()=>{ setEditMemb(m); setShowForm(true); }} className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 text-xs flex items-center justify-center">✏️</button>
+              <button onClick={()=>deleteMemb(m.id)} className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center"><Icon name="trash" className="w-3 h-3" /></button>
+            </div>
+          </div>
+        ))}
+        {configMembresias.length===0 && (
+          <div className="p-6 text-center rounded-2xl border" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.2)" }}>
+            <p className="text-slate-500 text-sm">Sin membresías configuradas</p>
+            <p className="text-slate-600 text-xs mt-1">Se usarán los planes por defecto del sistema</p>
+          </div>
+        )}
+      </div>
+      {showForm && <MembresiaForm item={editMemb} reload={reload} onClose={()=>{ setShowForm(false); setEditMemb(null); }} />}
+    </div>
+  );
+};
+
+const MembresiaForm = ({ item, reload, onClose }) => {
+  const [nombre, setNombre] = useState(item?.nombre || "");
+  const [precio, setPrecio] = useState(item?.precio || "");
+  const [sesiones, setSesiones] = useState(item?.sesiones || 999);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!nombre||!precio) return;
+    setSaving(true);
+    const data = { nombre, precio: parseFloat(precio), sesiones: parseInt(sesiones)||999 };
+    if (item) await db.update("config_membresias", item.id, data);
+    else await db.insert("config_membresias", data);
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={item?"Editar membresía":"Nueva membresía"} onClose={onClose}>
+      <div className="space-y-4">
+        <Field label="Nombre"><Input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Mensual, Trimestral..." /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Precio ($)"><Input type="number" value={precio} onChange={e=>setPrecio(e.target.value)} placeholder="0.00" /></Field>
+          <Field label="Sesiones (999=ilimitadas)"><Input type="number" value={sesiones} onChange={e=>setSesiones(e.target.value)} /></Field>
+        </div>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cancelar</button>
+        <button onClick={save} disabled={saving||!nombre||!precio} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60"
+          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+          {saving?"Guardando...":item?"Guardar":"Agregar"}
+        </button>
+      </div>
+    </Modal>
+  );
+};
+
 export default function App() {
   const [user, setUser] = useState(null);
   
@@ -4405,10 +4661,14 @@ export default function App() {
   const [historialVentas, setHistorialVentas] = useState([]);
   const [inventario, setInventario] = useState([]);
   const [gastos, setGastos] = useState([]);
+  const [configExamenes, setConfigExamenes] = useState([]);
+  const [configGal, setConfigGal] = useState([]);
+  const [configMembresias, setConfigMembresias] = useState([]);
 
   const loadAll = useCallback(async () => {
-    const [s,p,a,e,v,ex,h,hv,inv,g] = await Promise.all([
+    const [s,p,a,e,v,ex,h,hv,inv,g,cfgEx,cfgGal,cfgMemb] = await Promise.all([
       db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"), db.get("historial_pagos"), db.get("historial_ventas"), db.get("inventario"), db.get("gastos"),
+      db.get("config_examenes"), db.get("config_gal"), db.get("config_membresias"),
     ]);
     setStudents(Array.isArray(s)?s:[]);
     // Estado se calcula en tiempo real, no se guarda en BD
@@ -4417,6 +4677,9 @@ export default function App() {
     setHistorialVentas(Array.isArray(hv) ? hv : []);
     setInventario(Array.isArray(inv) ? inv : []);
     setGastos(Array.isArray(g) ? g : []);
+    setConfigExamenes(Array.isArray(cfgEx) ? cfgEx : []);
+    setConfigGal(Array.isArray(cfgGal) ? cfgGal : []);
+    setConfigMembresias(Array.isArray(cfgMemb) ? cfgMemb : []);
     setAsistencia(Array.isArray(a)?a:[]);
     setEventos(Array.isArray(e)?e:[]);
     setVentas(Array.isArray(v)?v:[]);
@@ -4469,6 +4732,7 @@ export default function App() {
     { id:"events",        label:"Eventos",      icon:"calendar"     },
     { id:"inventario",    label:"Inventario",   icon:"ventas"       },
     { id:"gastos",        label:"Gastos",       icon:"finance"      },
+    { id:"configuracion", label:"Configuración", icon:"users"        },
     { id:"users",         label:"Usuarios",     icon:"users"        },
     { id:"mi_asistencia", label:"Mi Asistencia",icon:"mi_asistencia"},
     { id:"mis_pagos",     label:"Mis Pagos",    icon:"mis_pagos"    },
@@ -4497,7 +4761,8 @@ export default function App() {
       case "payments":      return <PaymentsPage students={students} pagos={pagos} historialPagos={historialPagos} reload={loadAll} isAdmin={isAdmin} />;
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
-      case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} />;
+      case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} configExamenes={configExamenes} configGal={configGal} />;
+      case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} reload={loadAll} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} />;
       case "inventario":    return <InventarioPage inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "gastos":        return <GastosPage gastos={gastos} reload={loadAll} isAdmin={isAdmin} />;
