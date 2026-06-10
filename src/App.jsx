@@ -4384,9 +4384,11 @@ const GastoForm = ({ gasto, reload, onClose }) => {
   );
 };
 
-const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, reload }) => {
+const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, inventario, reload }) => {
   const [tab, setTab] = useState("examenes");
   const [saving, setSaving] = useState(false);
+  const [showProdForm, setShowProdForm] = useState(false);
+  const [editProd, setEditProd] = useState(null);
 
   // ── Exámenes config ──
   const [editExamen, setEditExamen] = useState(null);
@@ -4419,7 +4421,7 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, reload
 
       {/* Tabs */}
       <div className="flex gap-2 flex-wrap">
-        {[["examenes","🏆 Exámenes"],["gal","📄 GAL"],["membresias","💳 Membresías"]].map(([id,label])=>(
+        {[["examenes","🏆 Exámenes"],["gal","📄 GAL"],["membresias","💳 Membresías"],["productos","🛍️ Productos"]].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)}
             className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
             style={tab===id?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"rgba(255,255,255,0.05)",color:"#64748b"}}>
@@ -4493,6 +4495,61 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, reload
       {/* Membresías */}
       {tab==="membresias" && (
         <MembresiasConfig configMembresias={configMembresias} reload={reload} />
+      )}
+
+      {/* Productos */}
+      {tab==="productos" && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-slate-400">Gestiona tus productos y precios de venta</p>
+            <button onClick={()=>{ setEditProd(null); setShowProdForm(true); }}
+              className="px-4 py-2 rounded-xl text-sm font-bold text-[#020617]"
+              style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+              + Producto
+            </button>
+          </div>
+
+          {/* Lista productos por categoría */}
+          {["bebidas","implementos","uniformes","otros"].map(cat => {
+            const prods = (inventario||[]).filter(p=>p.categoria===cat);
+            if (prods.length === 0) return null;
+            return (
+              <div key={cat} className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+                <div className="px-4 py-2 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+                  <p className="text-xs font-bold text-blue-300 uppercase">{cat}</p>
+                </div>
+                {prods.map(p=>(
+                  <div key={p.id} className="flex items-center justify-between px-4 py-3 border-b" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.1)" }}>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{p.nombre}</p>
+                      <p className="text-xs text-slate-500">Stock: {p.stock} · Mín: {p.stock_minimo}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-base font-black text-yellow-400">${parseFloat(p.precio_venta||0).toFixed(2)}</p>
+                      <button onClick={()=>{ setEditProd(p); setShowProdForm(true); }}
+                        className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 text-xs flex items-center justify-center">✏️</button>
+                      <button onClick={async()=>{ if(!confirm("¿Eliminar?")) return; await db.delete("inventario",p.id); await reload(); }}
+                        className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center">
+                        <Icon name="trash" className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+
+          {(!inventario || inventario.length === 0) && (
+            <div className="p-8 text-center rounded-2xl border" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.2)" }}>
+              <p className="text-slate-500 text-sm">Sin productos registrados</p>
+              <p className="text-slate-600 text-xs mt-1">Agrega tus productos con sus precios</p>
+            </div>
+          )}
+
+          {showProdForm && (
+            <InventarioForm item={editProd} reload={reload} onClose={()=>{ setShowProdForm(false); setEditProd(null); }} />
+          )}
+        </div>
       )}
     </div>
   );
@@ -4762,7 +4819,7 @@ export default function App() {
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} configExamenes={configExamenes} configGal={configGal} />;
-      case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} reload={loadAll} />;
+      case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} inventario={inventario} reload={loadAll} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} />;
       case "inventario":    return <InventarioPage inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "gastos":        return <GastosPage gastos={gastos} reload={loadAll} isAdmin={isAdmin} />;
