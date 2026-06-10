@@ -461,8 +461,6 @@ const RegisterClub = ({ onBack }) => {
                 <p className="text-slate-400 text-[10px]">{desc}</p>
               </button>
             ))}
-              </button>
-            ))}
           </div>
           <p className="text-xs text-slate-500 mt-1">Selecciona tu plan — activarás el pago al terminar el período de prueba.</p>
         </Field>
