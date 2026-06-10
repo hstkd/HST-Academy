@@ -14,12 +14,12 @@ const HEADERS = {
 
 // club_id global — se setea al login
 let CURRENT_CLUB_ID = null;
-const GLOBAL_TABLES = ["clubs","suscripciones","users"];
+const GLOBAL_TABLES = ["clubs","suscripciones"]; // users SI se filtra por club_id
 
 const db = {
-  get: async (table, filters = "") => {
+  get: async (table, filters = "", bypassClub = false) => {
     try {
-      const clubFilter = (!GLOBAL_TABLES.includes(table) && CURRENT_CLUB_ID)
+      const clubFilter = (!bypassClub && !GLOBAL_TABLES.includes(table) && CURRENT_CLUB_ID)
         ? `&club_id=eq.${CURRENT_CLUB_ID}` : "";
       const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?order=created_at.desc${clubFilter}${filters}`, { headers: HEADERS });
       if (!r.ok) return [];
@@ -398,7 +398,7 @@ const RegisterClub = ({ onBack }) => {
     if (!nombre||!email||!password||!ownerNombre) { setErr("Completa todos los campos obligatorios"); return; }
     setSaving(true); setErr("");
     // Verificar email único
-    const existing = await db.get("users", `&email=eq.${encodeURIComponent(email)}`);
+    const existing = await db.get("users", `&email=eq.${encodeURIComponent(email)}`, true);
     if (existing?.length > 0) { setErr("Este correo ya está registrado"); setSaving(false); return; }
     const trialHasta = new Date();
     trialHasta.setDate(trialHasta.getDate() + 15);
@@ -484,7 +484,7 @@ const SuperAdminPage = ({ currentUser, reload }) => {
 
   useEffect(()=>{
     const load = async () => {
-      const [c, s] = await Promise.all([db.get("clubs"), db.get("suscripciones")]);
+      const [c, s] = await Promise.all([db.get("clubs","",true), db.get("suscripciones","",true)]);
       setClubs(Array.isArray(c)?c:[]);
       setSuscripciones(Array.isArray(s)?s:[]);
       setLoading(false);
@@ -493,7 +493,7 @@ const SuperAdminPage = ({ currentUser, reload }) => {
   },[]);
 
   const reloadAll = async () => {
-    const [c,s] = await Promise.all([db.get("clubs"), db.get("suscripciones")]);
+    const [c,s] = await Promise.all([db.get("clubs","",true), db.get("suscripciones","",true)]);
     setClubs(Array.isArray(c)?c:[]);
     setSuscripciones(Array.isArray(s)?s:[]);
   };
@@ -660,12 +660,12 @@ const LoginScreen = ({ onLogin }) => {
   const handleLogin = async () => {
     if (!email||!password) { setErr("Completa todos los campos"); return; }
     setLoading(true); setErr("");
-    const users = await db.get("users",`&email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(password)}`);
+    const users = await db.get("users",`&email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(password)}`, true);
     if (users&&users.length>0) {
       const u = users[0];
       if (u.role === "superadmin") { onLogin(u); return; }
       if (u.club_id) {
-        const clubs = await db.get("clubs",`&id=eq.${u.club_id}`);
+        const clubs = await db.get("clubs",`&id=eq.${u.club_id}`, true);
         const club = clubs?.[0];
         if (club) {
           const hoy = new Date().toISOString().slice(0,10);
@@ -681,7 +681,7 @@ const LoginScreen = ({ onLogin }) => {
   const handleForgot = async () => {
     if (!forgotEmail) { setErr("Ingresa tu correo"); return; }
     setLoading(true); setErr("");
-    const users = await db.get("users",`&email=eq.${encodeURIComponent(forgotEmail)}`);
+    const users = await db.get("users",`&email=eq.${encodeURIComponent(forgotEmail)}`, true);
     if (users&&users.length>0) { setForgotUser(users[0]); setMode("change_pass"); }
     else setErr("No existe una cuenta con ese correo");
     setLoading(false);
@@ -772,7 +772,7 @@ const ChangePasswordModal = ({ currentUser, onClose }) => {
     if (newPass.length<6) { setErr("Mínimo 6 caracteres"); return; }
     if (newPass!==confirm) { setErr("Las contraseñas no coinciden"); return; }
     setSaving(true);
-    const users = await db.get("users",`&id=eq.${currentUser.id}`);
+    const users = await db.get("users",`&id=eq.${currentUser.id}`, true);
     if (!users||users[0]?.password!==oldPass) { setErr("Contraseña actual incorrecta"); setSaving(false); return; }
     await db.update("users", currentUser.id, { password:newPass });
     setOk("✅ Contraseña actualizada");
@@ -944,8 +944,8 @@ const StudentFormModal = ({ student, reload, onClose }) => {
       // Si cambió el usuario, actualizar en tabla users
       if (student.correo && correo !== student.correo) {
         try {
-          const users = await db.get("users");
-          const userOld = users?.find(u => u.email === student.correo && u.role === "alumno");
+          const users = await db.get("users", "", true);
+          const userOld = users?.find(u => u.email === student.correo && u.role === "alumno" && u.club_id === CURRENT_CLUB_ID);
           if (userOld) {
             await db.update("users", userOld.id, { email: correo, nombre: `${nombres} ${apellidos}` });
           }
@@ -4429,7 +4429,8 @@ export default function App() {
   }, []);
 
   const reloadUsers = useCallback(async () => {
-    const u = await db.get("users");
+    // Filter by club_id — only show users from same academy
+    const u = await db.get("users", `&club_id=eq.${CURRENT_CLUB_ID}`);
     setAllUsers(Array.isArray(u)?u:[]);
   }, []);
 
