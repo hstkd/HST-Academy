@@ -59,6 +59,39 @@ const HEADERS = {
 let CURRENT_CLUB_ID = null;
 const GLOBAL_TABLES = ["clubs","suscripciones"]; // users SI se filtra por club_id
 
+// ── Seguridad: hash de contraseñas (SHA-256) ──────────────────────────────────
+const hashPassword = async (plain) => {
+  const data = new TextEncoder().encode("sportsync::" + plain);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+};
+
+// ── Seguridad: límite de intentos de login ────────────────────────────────────
+const loginLimiter = {
+  key: "ss-login-attempts",
+  max: 5,
+  lockMinutes: 5,
+  check() {
+    try {
+      const d = JSON.parse(localStorage.getItem(this.key) || "{}");
+      if (d.lockedUntil && Date.now() < d.lockedUntil) {
+        return Math.ceil((d.lockedUntil - Date.now()) / 60000);
+      }
+    } catch {}
+    return 0;
+  },
+  fail() {
+    try {
+      const d = JSON.parse(localStorage.getItem(this.key) || "{}");
+      const count = (d.count || 0) + 1;
+      const lockedUntil = count >= this.max ? Date.now() + this.lockMinutes*60000 : null;
+      localStorage.setItem(this.key, JSON.stringify({ count: lockedUntil?0:count, lockedUntil }));
+      return lockedUntil ? this.lockMinutes : 0;
+    } catch { return 0; }
+  },
+  reset() { try { localStorage.removeItem(this.key); } catch {} },
+};
+
 const db = {
   get: async (table, filters = "", bypassClub = false) => {
     try {
@@ -454,8 +487,9 @@ const RegisterClub = ({ onBack }) => {
     });
     if (!club?.id) { setErr("Error al crear la academia. Intenta nuevamente."); setSaving(false); return; }
     // Crear usuario admin del club
+    const hashedPass = await hashPassword(password);
     await db.insert("users", {
-      nombre: ownerNombre, email, password,
+      nombre: ownerNombre, email, password: hashedPass,
       role: "admin", club_id: club.id,
     });
     // Actualizar owner_id del club
@@ -702,9 +736,25 @@ const LoginScreen = ({ onLogin }) => {
 
   const handleLogin = async () => {
     if (!email||!password) { setErr("Completa todos los campos"); return; }
+    // Límite de intentos
+    const lockedMin = loginLimiter.check();
+    if (lockedMin > 0) { setErr(`Demasiados intentos. Espera ${lockedMin} min e intenta de nuevo.`); return; }
     setLoading(true); setErr("");
-    const users = await db.get("users",`&email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(password)}`, true);
+    // Buscar SOLO por email (la contraseña nunca viaja en la URL)
+    const candidates = await db.get("users",`&email=eq.${encodeURIComponent(email)}`, true);
+    const hashed = await hashPassword(password);
+    let matched = (candidates||[]).find(u => u.password === hashed);
+    // Migración automática: si aún tiene contraseña en texto plano, validar y actualizar a hash
+    if (!matched) {
+      const plain = (candidates||[]).find(u => u.password === password);
+      if (plain) {
+        await db.update("users", plain.id, { password: hashed });
+        matched = { ...plain, password: hashed };
+      }
+    }
+    const users = matched ? [matched] : [];
     if (users&&users.length>0) {
+      loginLimiter.reset();
       const u = users[0];
       if (u.role === "superadmin") { onLogin(u); return; }
       if (u.club_id) {
@@ -718,28 +768,13 @@ const LoginScreen = ({ onLogin }) => {
       }
       onLogin(u);
     }
-    else { setErr("Correo o contraseña incorrectos"); setLoading(false); }
+    else {
+      const locked = loginLimiter.fail();
+      setErr(locked ? `Demasiados intentos fallidos. Bloqueado ${locked} minutos.` : "Correo o contraseña incorrectos");
+      setLoading(false);
+    }
   };
 
-  const handleForgot = async () => {
-    if (!forgotEmail) { setErr("Ingresa tu correo"); return; }
-    setLoading(true); setErr("");
-    const users = await db.get("users",`&email=eq.${encodeURIComponent(forgotEmail)}`, true);
-    if (users&&users.length>0) { setForgotUser(users[0]); setMode("change_pass"); }
-    else setErr("No existe una cuenta con ese correo");
-    setLoading(false);
-  };
-
-  const handleChangePass = async () => {
-    if (!newPass||!confirmPass) { setErr("Completa todos los campos"); return; }
-    if (newPass.length<6) { setErr("Mínimo 6 caracteres"); return; }
-    if (newPass!==confirmPass) { setErr("Las contraseñas no coinciden"); return; }
-    setLoading(true); setErr("");
-    await db.update("users", forgotUser.id, { password:newPass });
-    setOk("✅ Contraseña actualizada. Inicia sesión.");
-    setTimeout(()=>{ setMode("login"); setOk(""); setForgotUser(null); setForgotEmail(""); setNewPass(""); setConfirmPass(""); }, 2500);
-    setLoading(false);
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background:"var(--ss-bg)" }}>
@@ -777,24 +812,16 @@ const LoginScreen = ({ onLogin }) => {
           {mode==="register" && <RegisterClub onBack={()=>{setMode("login");setErr("");}} />}
           {mode==="forgot" && <>
             <h2 className="text-xl font-bold text-white mb-2">Recuperar Contraseña</h2>
-            <p className="text-slate-400 text-sm mb-6">Ingresa tu correo registrado.</p>
-            {err&&<div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">{err}</div>}
-            <Field label="Correo"><Input type="email" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="tu@correo.com" onKeyDown={e=>e.key==="Enter"&&handleForgot()} /></Field>
-            <button onClick={handleForgot} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-white disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{loading?"BUSCANDO...":"CONTINUAR"}</button>
-            <button onClick={()=>{setMode("login");setErr("");}} className="w-full mt-3 text-center text-sm text-slate-500 hover:text-amber-400 transition-colors">← Volver</button>
-          </>}
-          {mode==="change_pass" && <>
-            <h2 className="text-xl font-bold text-white mb-2">Nueva Contraseña</h2>
-            <p className="text-slate-400 text-sm mb-6">Cuenta: <span className="text-amber-400">{forgotUser?.email}</span></p>
-            {err&&<div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">{err}</div>}
-            {ok&&<div className="mb-4 p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm">{ok}</div>}
-            <div className="space-y-4">
-              <Field label="Nueva contraseña"><Input type="password" value={newPass} onChange={e=>setNewPass(e.target.value)} placeholder="Mínimo 6 caracteres" /></Field>
-              <Field label="Confirmar"><Input type="password" value={confirmPass} onChange={e=>setConfirmPass(e.target.value)} placeholder="Repite la contraseña" onKeyDown={e=>e.key==="Enter"&&handleChangePass()} /></Field>
+            <div className="p-4 rounded-xl border mb-4" style={{ background:"rgba(37,99,235,0.08)", borderColor:"var(--ss-border)" }}>
+              <p className="text-sm text-slate-300 mb-3">Por seguridad, el restablecimiento de contraseña lo realiza un administrador:</p>
+              <div className="space-y-2 text-sm text-slate-400">
+                <p>👤 <span className="font-semibold text-white">Alumnos y profesores:</span> contacta al administrador de tu academia. Él te generará una contraseña temporal.</p>
+                <p>🏫 <span className="font-semibold text-white">Administradores de academia:</span> escribe al equipo de SportSync por WhatsApp.</p>
+              </div>
             </div>
-            <button onClick={handleChangePass} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-white disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{loading?"GUARDANDO...":"CAMBIAR CONTRASEÑA"}</button>
-            <button onClick={()=>{setMode("login");setErr("");}} className="w-full mt-3 text-center text-sm text-slate-500 hover:text-amber-400 transition-colors">← Volver</button>
+            <button onClick={()=>{setMode("login");setErr("");}} className="w-full py-3.5 rounded-xl font-bold text-sm text-white" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>← Volver al login</button>
           </>}
+          
         </div>
       </div>
     </div>
@@ -816,8 +843,9 @@ const ChangePasswordModal = ({ currentUser, onClose }) => {
     if (newPass!==confirm) { setErr("Las contraseñas no coinciden"); return; }
     setSaving(true);
     const users = await db.get("users",`&id=eq.${currentUser.id}`, true);
-    if (!users||users[0]?.password!==oldPass) { setErr("Contraseña actual incorrecta"); setSaving(false); return; }
-    await db.update("users", currentUser.id, { password:newPass });
+    const oldHash = await hashPassword(oldPass);
+    if (!users || (users[0]?.password !== oldHash && users[0]?.password !== oldPass)) { setErr("Contraseña actual incorrecta"); setSaving(false); return; }
+    await db.update("users", currentUser.id, { password: await hashPassword(newPass) });
     setOk("✅ Contraseña actualizada");
     setTimeout(onClose, 2000);
     setSaving(false);
@@ -1002,7 +1030,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
           await db.insert("users", { 
             nombre: `${nombres} ${apellidos}`, 
             email: correo, 
-            password: tempPassword, 
+            password: await hashPassword(tempPassword), 
             role: "alumno",
             created_at: fmt(new Date())
           });
@@ -1020,7 +1048,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
           await db.insert("users", { 
             nombre: `${nombres} ${apellidos}`, 
             email: correo, 
-            password: tempPassword, 
+            password: await hashPassword(tempPassword), 
             role: "alumno",
             created_at: fmt(new Date())
           });
@@ -1076,7 +1104,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
         await db.insert("users", { 
           nombre: `${nombres} ${apellidos}`, 
           email: correo, 
-          password: tempPassword, 
+          password: await hashPassword(tempPassword), 
           role: "alumno",
           created_at: fmt(new Date())
         });
@@ -3618,6 +3646,15 @@ const EventsPage = ({ eventos, students, reload }) => {
 };
 
 const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
+  const [tempPassInfo, setTempPassInfo] = useState(null); // { nombre, email, pass }
+
+  const resetPassword = async (u) => {
+    if (!confirm(`¿Generar nueva contraseña temporal para ${u.nombre}?`)) return;
+    const temp = Math.random().toString(36).substring(2, 10);
+    await db.update("users", u.id, { password: await hashPassword(temp) });
+    setTempPassInfo({ nombre: u.nombre, email: u.email, pass: temp });
+  };
+
   const [showForm, setShowForm] = useState(false);
   const [editUser, setEditUser] = useState(null);
 
@@ -3646,7 +3683,7 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
         await db.update("users", user.id, upd);
         if (currentUser.id===user.id) setCurrentUser({...currentUser,...upd});
       } else {
-        await db.insert("users",{ nombre, email, password, role });
+        await db.insert("users",{ nombre, email, password: await hashPassword(password), role });
       }
       await reloadUsers();
       setSaving(false);
@@ -3708,6 +3745,7 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
             </div>
             <div className="flex items-center gap-3">
               <RoleBadge role={u.role} />
+              <button onClick={()=>resetPassword(u)} title="Resetear contraseña" className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"><Icon name="lock" className="w-4 h-4" /></button>
               <button onClick={()=>{ setEditUser(u); setShowForm(true); }} className="p-2 rounded-lg bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"><Icon name="edit" className="w-4 h-4" /></button>
               {u.id!==currentUser.id&&<button onClick={()=>onDelete(u.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-4 h-4" /></button>}
             </div>
@@ -3715,6 +3753,21 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
         ))}
       </div>
       {showForm&&<UserForm user={editUser} onClose={()=>{ setShowForm(false); setEditUser(null); }} />}
+      {tempPassInfo && (
+        <Modal title="Contraseña temporal generada" onClose={()=>setTempPassInfo(null)}>
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl border" style={{ background:"rgba(34,197,94,0.08)", borderColor:"rgba(34,197,94,0.3)" }}>
+              <p className="text-sm text-slate-300 mb-1">Usuario: <span className="font-bold text-white">{tempPassInfo.nombre}</span></p>
+              <p className="text-sm text-slate-300 mb-3">{tempPassInfo.email}</p>
+              <p className="text-xs text-slate-400 mb-1">Contraseña temporal:</p>
+              <p className="text-2xl font-black text-emerald-400 tracking-wider select-all">{tempPassInfo.pass}</p>
+            </div>
+            <p className="text-xs text-slate-500">⚠️ Compártela de forma segura. No volverá a mostrarse. Recomienda al usuario cambiarla desde "Cambiar contraseña" al entrar.</p>
+            <button onClick={()=>{ navigator.clipboard?.writeText(tempPassInfo.pass); }} className="w-full py-2.5 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">📋 Copiar contraseña</button>
+            <button onClick={()=>setTempPassInfo(null)} className="w-full py-3 rounded-xl text-white text-sm font-bold" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>Entendido</button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
