@@ -117,18 +117,17 @@ const db = {
       const payload = (!GLOBAL_TABLES.includes(table) && CURRENT_CLUB_ID)
         ? { ...data, club_id: CURRENT_CLUB_ID } : data;
       const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, { method: "POST", headers: { ...HEADERS, "Prefer":"return=representation" }, body: JSON.stringify(payload) });
-      if (!r.ok) return null;
+      if (!r.ok) { globalThis.__dbErr = await r.text().catch(()=>r.status); console.error("db.insert", table, globalThis.__dbErr); return null; }
       const res = await r.json();
       return Array.isArray(res) ? res[0] : res;
     } catch { return null; }
   },
   update: async (table, id, data) => {
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, { method: "PATCH", headers: HEADERS, body: JSON.stringify(data) });
-      if (!r.ok) return null;
-      const res = await r.json();
-      return Array.isArray(res) ? res[0] : res;
-    } catch { return null; }
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, { method: "PATCH", headers: { ...HEADERS, "Prefer":"return=representation" }, body: JSON.stringify(data) });
+      if (!r.ok) { globalThis.__dbErr = await r.text().catch(()=>r.status); console.error("db.update", table, globalThis.__dbErr); return null; }
+      try { const res = await r.json(); return Array.isArray(res) ? (res[0]||true) : (res||true); } catch { return true; }
+    } catch (e) { globalThis.__dbErr = String(e); return null; }
   },
   delete: async (table, id) => {
     try { await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, { method: "DELETE", headers: HEADERS }); } catch {}
@@ -5030,7 +5029,7 @@ const MembresiaForm = ({ item, reload, onClose }) => {
     let res;
     if (item) res = await db.update("config_membresias", item.id, data);
     else res = await db.insert("config_membresias", data);
-    if (!res) { alert("No se pudo guardar la membresía. Verifica tu conexión e intenta de nuevo."); setSaving(false); return; }
+    if (!res) { alert("No se pudo guardar la membresía.\nDetalle: " + (globalThis.__dbErr||"desconocido")); setSaving(false); return; }
     await reload();
     setSaving(false);
     onClose();
