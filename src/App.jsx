@@ -149,6 +149,9 @@ const calcVencimiento = (fechaBase, membresiaId) => {
   if (!fechaBase) return fmt(addDays(today, 30));
   const base = new Date(fechaBase + "T12:00:00");
   const v = new Date(base);
+  // Membresía configurada por la academia → usar su duración en meses
+  const cfg = CONFIG_MEMBRESIAS.find(m => m.id === membresiaId);
+  if (cfg) { v.setMonth(v.getMonth() + (parseInt(cfg.duracion_meses)||1)); return fmt(v); }
   if (membresiaId === "trimestral") v.setMonth(v.getMonth() + 3);
   else if (membresiaId === "semestral") v.setMonth(v.getMonth() + 6);
   else if (membresiaId === "anual") v.setFullYear(v.getFullYear() + 1);
@@ -191,6 +194,12 @@ const getCategoria = (fechaNac) => {
   return "Máster";
 };
 
+let CONFIG_MEMBRESIAS = []; // membresías por academia, cargadas en loadAll
+const MEMB_PALETTE = ["#3b82f6","#2563EB","#a855f7","#22c55e","#06b6d4","#f43f5e","#f59e0b","#14b8a6"];
+const getMembresias = () => CONFIG_MEMBRESIAS.length > 0
+  ? CONFIG_MEMBRESIAS.map((m,i)=>({ id:m.id, nombre:m.nombre, sesiones:m.sesiones, color:MEMB_PALETTE[i%MEMB_PALETTE.length] }))
+  : [];
+
 const MEMBRESIAS = [
   { id: "basica",      nombre: "Básico",      sesiones: 8,   color: "#3b82f6" },
   { id: "estandar",    nombre: "Estándar",    sesiones: 12,  color: "#2563EB" },
@@ -201,7 +210,7 @@ const MEMBRESIAS = [
 ];
 
 const CINTURONES = ["Blanco","Blanco/Amarillo","Amarillo","Amarillo/Verde","Verde","Verde/Azul","Azul","Azul/Rojo","Rojo","Rojo/Negro","Negro"];
-const SEDES = ["Quito","Cumbayá"];
+let SEDES = []; // se carga desde config_sedes por academia
 
 const COSTOS_ASCENSO = {
   "Blanco":          { siguiente:"Blanco/Amarillo", costo:45  },
@@ -360,7 +369,7 @@ const StatusBadge = ({ estado }) => {
 };
 
 const MembresiaTag = ({ membresiaId }) => {
-  const m = MEMBRESIAS.find((x) => x.id===membresiaId);
+  const m = getMembresias().find((x) => x.id===membresiaId) || MEMBRESIAS.find((x)=>x.id===membresiaId);
   if (!m) return null;
   return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold" style={{ background:`${m.color}22`, color:m.color, border:`1px solid ${m.color}44` }}>{m.sesiones===999?"♾️":`${m.sesiones}🎯`} {m.nombre}</span>;
 };
@@ -694,6 +703,17 @@ const SuperAdminPage = ({ currentUser, reload }) => {
     setSuscripciones(Array.isArray(s)?s:[]);
   };
 
+  const [tempPassInfo, setTempPassInfo] = useState(null);
+  const resetAdminPass = async (club) => {
+    const admins = await db.get("users", `&club_id=eq.${club.id}&role=eq.admin`, true);
+    if (!admins || admins.length === 0) { alert("Esta academia no tiene usuario administrador."); return; }
+    const admin = admins[0];
+    if (!confirm(`¿Generar nueva contraseña temporal para ${admin.nombre} (${admin.email})?`)) return;
+    const temp = Math.random().toString(36).substring(2, 10);
+    await db.update("users", admin.id, { password: await hashPassword(temp) });
+    setTempPassInfo({ nombre: admin.nombre, email: admin.email, club: club.nombre, pass: temp });
+  };
+
   const toggleEstado = async (club) => {
     const nuevoEstado = club.estado === "activo" ? "suspendido" : "activo";
     await db.update("clubs", club.id, { estado: nuevoEstado });
@@ -763,6 +783,10 @@ const SuperAdminPage = ({ currentUser, reload }) => {
                   className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold">
                   💳 Registrar pago
                 </button>
+                <button onClick={()=>resetAdminPass(club)}
+                  className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold">
+                  🔑 Reset clave admin
+                </button>
                 <button onClick={()=>toggleEstado(club)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${club.estado==="suspendido"?"bg-emerald-500/20 text-emerald-400":"bg-red-500/20 text-red-400"}`}>
                   {club.estado==="suspendido"?"▶ Activar":"⏸ Suspender"}
@@ -784,6 +808,21 @@ const SuperAdminPage = ({ currentUser, reload }) => {
       {/* Modal registrar pago suscripción */}
       {showSuscForm && selectedClub && (
         <SuscripcionForm club={selectedClub} reload={reloadAll} onClose={()=>{ setShowSuscForm(false); setSelectedClub(null); }} />
+      )}
+      {tempPassInfo && (
+        <Modal title="Contraseña temporal generada" onClose={()=>setTempPassInfo(null)}>
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl border" style={{ background:"rgba(34,197,94,0.08)", borderColor:"rgba(34,197,94,0.3)" }}>
+              <p className="text-sm text-slate-300">Academia: <span className="font-bold text-white">{tempPassInfo.club}</span></p>
+              <p className="text-sm text-slate-300">Admin: <span className="font-bold text-white">{tempPassInfo.nombre}</span> · {tempPassInfo.email}</p>
+              <p className="text-xs text-slate-400 mt-3 mb-1">Contraseña temporal:</p>
+              <p className="text-2xl font-black text-emerald-400 tracking-wider select-all">{tempPassInfo.pass}</p>
+            </div>
+            <p className="text-xs text-slate-500">⚠️ Compártela de forma segura con el administrador. No volverá a mostrarse.</p>
+            <button onClick={()=>{ navigator.clipboard?.writeText(tempPassInfo.pass); }} className="w-full py-2.5 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">📋 Copiar contraseña</button>
+            <button onClick={()=>setTempPassInfo(null)} className="w-full py-3 rounded-xl text-white text-sm font-bold" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>Entendido</button>
+          </div>
+        </Modal>
       )}
     </div>
   );
@@ -1002,7 +1041,7 @@ const DashboardPage = ({ students, pagos, historialPagos, asistencia, ventas, ev
   const hoyPresentes = asistencia.filter(a=>a.fecha===fmt(today)&&a.presente).length;
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const chartData = meses.slice(0,today.getMonth()+1).map((label,i)=>({ label, value:pagos.filter(p=>parseInt(p.fecha_pago?.slice(5,7))===i+1).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0) }));
-  const memCounts = MEMBRESIAS.map(m=>({ ...m, count:students.filter(s=>s.membresia===m.id&&s.estado==="activo").length }));
+  const memCounts = getMembresias().map(m=>({ ...m, count:students.filter(s=>s.membresia===m.id&&s.estado==="activo").length }));
   // Estado basado SOLO en fecha_vencimiento
   const pagosConEstadoReal = pagos.map(p => {
     if (!p.fecha_vencimiento) return p;
@@ -1179,7 +1218,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
       if (registrarPago && montoInscripcion && newStudent?.id) {
         const total = parseFloat(montoInscripcion) || 0;
         const pagado = parseFloat(montoPagadoIns) || 0;
-        const memb = MEMBRESIAS.find(m => m.id === membresia);
+        const memb = getMembresias().find(m => m.id === membresia);
         await db.insert("pagos", {
           alumno_id: newStudent.id,
           alumno_nombre: `${nombres} ${apellidos}`,
@@ -1235,7 +1274,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
     if (registrarPago && montoInscripcion && newStudent?.id) {
       const total = parseFloat(montoInscripcion) || 0;
       const pagado = parseFloat(montoPagadoIns) || 0;
-      const memb = MEMBRESIAS.find(m => m.id === membresia);
+      const memb = getMembresias().find(m => m.id === membresia);
       await db.insert("pagos", {
         alumno_id: newStudent.id,
         alumno_nombre: `${nombres} ${apellidos}`,
@@ -1304,7 +1343,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
         </Field>
         <Field label="Membresía">
           <div className="grid grid-cols-3 gap-2 mt-1">
-            {MEMBRESIAS.map(m => (
+            {getMembresias().map(m => (
               <button key={m.id} type="button" onClick={() => setMembresia(m.id)}
                 className="p-3 rounded-xl border text-center transition-all"
                 style={{ background: membresia === m.id ? `${m.color}30` : "rgba(255,255,255,0.03)", borderColor: membresia === m.id ? m.color : "rgba(255,255,255,0.1)", color: membresia === m.id ? m.color : "#94a3b8" }}>
@@ -1816,7 +1855,7 @@ const ReanudirModal = ({ pago, students, reload, onClose }) => {
   const fechaVenc = calcVencimiento(fechaPago, tipoPago);
   const total = parseFloat(montoTotal)||0;
   const pagado = parseFloat(montoPagado)||0;
-  const memb = MEMBRESIAS.find(m=>m.id===tipoPago);
+  const memb = getMembresias().find(m=>m.id===tipoPago);
 
   const save = async () => {
     if (!montoTotal) return;
@@ -1853,7 +1892,7 @@ const ReanudirModal = ({ pago, students, reload, onClose }) => {
       <div className="space-y-5">
         <Field label="Nueva Membresía">
           <div className="grid grid-cols-3 gap-2">
-            {MEMBRESIAS.map(m=>(
+            {getMembresias().map(m=>(
               <button key={m.id} type="button" onClick={()=>setTipoPago(m.id)}
                 className="p-3 rounded-xl border text-center transition-all"
                 style={{ background:tipoPago===m.id?`${m.color}25`:"rgba(255,255,255,0.03)", borderColor:tipoPago===m.id?m.color:"rgba(255,255,255,0.1)" }}>
@@ -1890,7 +1929,7 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
   const nuevaFechaVenc = calcNuevoVencimiento(pago.fecha_vencimiento, tipoPago);
   const total = parseFloat(montoTotal)||0;
   const pagado = parseFloat(montoPagado)||0;
-  const memb = MEMBRESIAS.find(m=>m.id===tipoPago);
+  const memb = getMembresias().find(m=>m.id===tipoPago);
 
   const save = async () => {
     if (!montoTotal) return;
@@ -1930,7 +1969,7 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
       <div className="space-y-5">
         <Field label="Membresía">
           <div className="grid grid-cols-3 gap-2">
-            {MEMBRESIAS.map(m=>(
+            {getMembresias().map(m=>(
               <button key={m.id} type="button" onClick={()=>setTipoPago(m.id)}
                 className="p-3 rounded-xl border text-center transition-all"
                 style={{ background:tipoPago===m.id?`${m.color}25`:"rgba(255,255,255,0.03)", borderColor:tipoPago===m.id?m.color:"rgba(255,255,255,0.1)" }}>
@@ -2050,7 +2089,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
     const total = parseFloat(montoTotal)||0;
     const pagado = parseFloat(montoPagado)||0;
     const deuda = Math.max(0,total-pagado);
-    const memb = MEMBRESIAS.find(m=>m.id===tipoPago);
+    const memb = getMembresias().find(m=>m.id===tipoPago);
 
     const save = async () => {
       if (!alumnoId||!montoTotal) return;
@@ -2116,7 +2155,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
           </Field>
           <Field label="Membresía">
             <div className="grid grid-cols-3 gap-3 mt-1">
-              {MEMBRESIAS.map(m=>(
+              {getMembresias().map(m=>(
                 <button key={m.id} type="button" onClick={()=>{
                   setTipoPago(m.id);
                   if (fechaPago) setFechaVenc(calcVencimiento(fechaPago, m.id));
@@ -2460,8 +2499,8 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
       onClose();
     };
 
-    // Combinar productos hardcodeados + inventario registrado
-    const productosInventario = (inventario||[]).map(i=>({
+    // Solo productos del inventario de la academia (sin valores por defecto)
+    const todosProductos = (inventario||[]).map(i=>({
       id: i.id,
       nombre: i.nombre,
       precio: parseFloat(i.precio_venta||0),
@@ -2469,10 +2508,6 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
       stock: i.stock,
       fromInventario: true,
     }));
-    // Merge: inventario override productos hardcodeados si tienen el mismo nombre
-    const nombresInv = productosInventario.map(p=>p.nombre.toLowerCase());
-    const prodBase = PRODUCTOS.filter(p=>!nombresInv.includes(p.nombre.toLowerCase()));
-    const todosProductos = [...prodBase, ...productosInventario];
     const productos = catFilter==="todos" ? todosProductos : todosProductos.filter(p=>p.cat===catFilter);
 
     return (
@@ -2517,6 +2552,9 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
                 <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center"><Icon name="plus" className="w-4 h-4" /></div>
               </button>
             ))}
+            {productos.length===0 && (
+              <p className="col-span-2 text-center text-sm text-slate-500 py-6">Sin productos. Agrégalos en Configuración → Productos.</p>
+            )}
           </div>
           {carrito.length>0&&(
             <div className="bg-white/5 border border-white/10 rounded-xl p-4">
@@ -3020,13 +3058,8 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
 
   const selectedStudent = students.find(s => s.id === selectedId);
   const costoInfo = selectedStudent ? (() => {
-    // Usar config de la academia si existe
-    if (configExamenes && configExamenes.length > 0) {
-      const cfg = configExamenes.find(cfg => cfg.cinturon_desde === selectedStudent.cinturon);
-      if (cfg) return { siguiente: cfg.cinturon_hasta, costo: parseFloat(cfg.costo||0) };
-    }
-    // Sino usar hardcoded
-    return COSTOS_ASCENSO[selectedStudent.cinturon] || null;
+    const cfg = (configExamenes||[]).find(cfg => cfg.cinturon_desde === selectedStudent.cinturon);
+    return cfg ? { siguiente: cfg.cinturon_hasta, costo: parseFloat(cfg.costo||0) } : null;
   })() : null;
 
   const handleSelectStudent = (id) => {
@@ -3073,7 +3106,8 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
     }
     setSavingGal(true);
     const al = students.find(s => s.id === galAlumnoId);
-    const costoGal = configGal && configGal.length > 0 ? parseFloat(configGal[0].costo||13) : 13;
+    if (!configGal || configGal.length === 0) { alert("Configura el costo del GAL en Configuración → GAL antes de registrar."); return; }
+    const costoGal = parseFloat(configGal[0].costo||0);
     const pagado = parseFloat(galPagado) || 0;
     const saldo = Math.max(0, costoGal - pagado);
     const estadoPago = pagado >= costoGal ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
@@ -3138,6 +3172,9 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
               </Field>
               <Field label="Nuevo Cinturón">
                 <Select options={CINTURONES} value={newBelt} onChange={e=>setNewBelt(e.target.value)} />
+                {selectedStudent && !costoInfo && (
+                  <p className="text-xs text-amber-400 p-2 rounded-lg" style={{ background:"rgba(245,158,11,0.1)" }}>⚠️ No hay precio configurado para el ascenso desde {selectedStudent.cinturon}. Configúralo en Configuración → Exámenes.</p>
+                )}
                 {costoInfo && costoInfo.costo > 0 && (
                   <div className="mt-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 font-semibold">
                     💰 Costo del examen: ${costoInfo.costo}.00
@@ -4667,8 +4704,24 @@ const GastoForm = ({ gasto, reload, onClose }) => {
   );
 };
 
-const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, inventario, reload }) => {
-  const [tab, setTab] = useState("examenes");
+const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, configSedes, inventario, reload }) => {
+  const [nuevaSede, setNuevaSede] = useState("");
+  const [savingSede, setSavingSede] = useState(false);
+  const addSede = async () => {
+    if (!nuevaSede.trim()) return;
+    setSavingSede(true);
+    const res = await db.insert("config_sedes", { nombre: nuevaSede.trim() });
+    if (!res) alert("No se pudo crear la sede. Intenta de nuevo.");
+    setNuevaSede("");
+    await reload();
+    setSavingSede(false);
+  };
+  const deleteSede = async (s) => {
+    if (!confirm(`¿Eliminar la sede "${s.nombre}"? Los registros existentes conservarán el nombre.`)) return;
+    await db.delete("config_sedes", s.id);
+    await reload();
+  };
+  const [tab, setTab] = useState((configSedes&&configSedes.length>0)?"examenes":"sedes");
   const [saving, setSaving] = useState(false);
   const [showProdForm, setShowProdForm] = useState(false);
   const [editProd, setEditProd] = useState(null);
@@ -4704,7 +4757,7 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
 
       {/* Tabs */}
       <div className="flex gap-2 flex-wrap">
-        {[["examenes","🏆 Exámenes"],["gal","📄 GAL"],["membresias","💳 Membresías"],["productos","🛍️ Productos"]].map(([id,label])=>(
+        {[["sedes","📍 Sedes"],["examenes","🏆 Exámenes"],["gal","📄 GAL"],["membresias","💳 Membresías"],["productos","🛍️ Productos"]].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)}
             className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
             style={tab===id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
@@ -4712,6 +4765,35 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
           </button>
         ))}
       </div>
+
+      {/* Sedes */}
+      {tab==="sedes" && (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">Crea las sedes o sucursales de tu academia. Se usan en alumnos, pagos, gastos y reportes.</p>
+          <div className="flex gap-2">
+            <Input value={nuevaSede} onChange={e=>setNuevaSede(e.target.value)} placeholder="Nombre de la sede (ej: Norte, Centro...)" onKeyDown={e=>e.key==="Enter"&&addSede()} />
+            <button onClick={addSede} disabled={savingSede||!nuevaSede.trim()}
+              className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-60 flex-shrink-0"
+              style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
+              {savingSede?"...":"+ Agregar"}
+            </button>
+          </div>
+          <div className="space-y-2">
+            {(configSedes||[]).map(s=>(
+              <div key={s.id} className="flex items-center justify-between p-4 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+                <p className="font-bold text-white">📍 {s.nombre}</p>
+                <button onClick={()=>deleteSede(s)} className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center"><Icon name="trash" className="w-3 h-3" /></button>
+              </div>
+            ))}
+            {(!configSedes||configSedes.length===0)&&(
+              <div className="p-6 text-center rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+                <p className="text-amber-400 text-sm font-semibold">⚠️ Aún no tienes sedes</p>
+                <p className="text-slate-500 text-xs mt-1">Crea al menos una para registrar alumnos, pagos y gastos.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Exámenes */}
       {tab==="examenes" && (
@@ -4938,14 +5020,17 @@ const MembresiaForm = ({ item, reload, onClose }) => {
   const [nombre, setNombre] = useState(item?.nombre || "");
   const [precio, setPrecio] = useState(item?.precio || "");
   const [sesiones, setSesiones] = useState(item?.sesiones || 999);
+  const [duracion, setDuracion] = useState(item?.duracion_meses || 1);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
-    if (!nombre||!precio) return;
+    if (!nombre||precio==="") return;
     setSaving(true);
-    const data = { nombre, precio: parseFloat(precio), sesiones: parseInt(sesiones)||999 };
-    if (item) await db.update("config_membresias", item.id, data);
-    else await db.insert("config_membresias", data);
+    const data = { nombre, precio: parseFloat(precio)||0, sesiones: parseInt(sesiones)||999, duracion_meses: parseInt(duracion)||1 };
+    let res;
+    if (item) res = await db.update("config_membresias", item.id, data);
+    else res = await db.insert("config_membresias", data);
+    if (!res) { alert("No se pudo guardar la membresía. Verifica tu conexión e intenta de nuevo."); setSaving(false); return; }
     await reload();
     setSaving(false);
     onClose();
@@ -4955,14 +5040,15 @@ const MembresiaForm = ({ item, reload, onClose }) => {
     <Modal title={item?"Editar membresía":"Nueva membresía"} onClose={onClose}>
       <div className="space-y-4">
         <Field label="Nombre"><Input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Mensual, Trimestral..." /></Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Field label="Precio ($)"><Input type="number" value={precio} onChange={e=>setPrecio(e.target.value)} placeholder="0.00" /></Field>
-          <Field label="Sesiones (999=ilimitadas)"><Input type="number" value={sesiones} onChange={e=>setSesiones(e.target.value)} /></Field>
+          <Field label="Sesiones (999=ilim.)"><Input type="number" value={sesiones} onChange={e=>setSesiones(e.target.value)} /></Field>
+          <Field label="Duración (meses)"><Input type="number" value={duracion} onChange={e=>setDuracion(e.target.value)} min="1" /></Field>
         </div>
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cancelar</button>
-        <button onClick={save} disabled={saving||!nombre||!precio} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60"
+        <button onClick={save} disabled={saving||!nombre||precio===""} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60"
           style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
           {saving?"Guardando...":item?"Guardar":"Agregar"}
         </button>
@@ -5025,12 +5111,16 @@ export default function App() {
   const [configExamenes, setConfigExamenes] = useState([]);
   const [configGal, setConfigGal] = useState([]);
   const [configMembresias, setConfigMembresias] = useState([]);
+  const [configSedes, setConfigSedes] = useState([]);
 
   const loadAll = useCallback(async () => {
-    const [s,p,a,e,v,ex,h,hv,inv,g,cfgEx,cfgGal,cfgMemb] = await Promise.all([
+    const [s,p,a,e,v,ex,h,hv,inv,g,cfgEx,cfgGal,cfgMemb,cfgSedes] = await Promise.all([
       db.get("students"), db.get("pagos"), db.get("asistencia"), db.get("eventos"), db.get("ventas"), db.get("examenes"), db.get("historial_pagos"), db.get("historial_ventas"), db.get("inventario"), db.get("gastos"),
-      db.get("config_examenes"), db.get("config_gal"), db.get("config_membresias"),
+      db.get("config_examenes"), db.get("config_gal"), db.get("config_membresias"), db.get("config_sedes"),
     ]);
+    // Globales por academia
+    SEDES = (Array.isArray(cfgSedes)?cfgSedes:[]).map(x=>x.nombre);
+    CONFIG_MEMBRESIAS = Array.isArray(cfgMemb)?cfgMemb:[];
     setStudents(Array.isArray(s)?s:[]);
     // Estado se calcula en tiempo real, no se guarda en BD
     setPagos(Array.isArray(p) ? p : []);
@@ -5041,6 +5131,7 @@ export default function App() {
     setConfigExamenes(Array.isArray(cfgEx) ? cfgEx : []);
     setConfigGal(Array.isArray(cfgGal) ? cfgGal : []);
     setConfigMembresias(Array.isArray(cfgMemb) ? cfgMemb : []);
+    setConfigSedes(Array.isArray(cfgSedes) ? cfgSedes : []);
     setAsistencia(Array.isArray(a)?a:[]);
     setEventos(Array.isArray(e)?e:[]);
     setVentas(Array.isArray(v)?v:[]);
@@ -5123,7 +5214,7 @@ export default function App() {
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} configExamenes={configExamenes} configGal={configGal} />;
-      case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} inventario={inventario} reload={loadAll} />;
+      case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} configSedes={configSedes} inventario={inventario} reload={loadAll} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} />;
       case "inventario":    return <InventarioPage inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "gastos":        return <GastosPage gastos={gastos} reload={loadAll} isAdmin={isAdmin} />;
@@ -5188,7 +5279,20 @@ export default function App() {
             </button>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8">{renderPage()}</main>
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+          {isAdmin && SEDES.length===0 && page!=="configuracion" && page!=="superadmin" && (
+            <div className="mb-4 p-4 rounded-2xl border flex items-center justify-between gap-3 flex-wrap" style={{ background:"rgba(245,158,11,0.1)", borderColor:"rgba(245,158,11,0.35)" }}>
+              <div>
+                <p className="font-bold text-amber-400 text-sm">👋 ¡Bienvenido a SportSync! Configura tu academia para empezar</p>
+                <p className="text-xs text-slate-400 mt-0.5">Crea tus sedes, membresías, precios de exámenes, GAL y productos.</p>
+              </div>
+              <button onClick={()=>setPage("configuracion")} className="px-4 py-2 rounded-xl text-xs font-bold text-white flex-shrink-0" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
+                Ir a Configuración →
+              </button>
+            </div>
+          )}
+          {renderPage()}
+        </main>
       </div>
       {showChangePass&&<ChangePasswordModal currentUser={user} onClose={()=>setShowChangePass(false)} />}
       {showSearch&&<GlobalSearchModal students={students} pagos={pagos} examenes={examenes} ventas={ventas} setPage={setPage} onClose={()=>setShowSearch(false)} />}
