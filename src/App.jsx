@@ -1,6 +1,49 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const LOGO_SRC = "https://i.imgur.com/tQZkiMl.png";
+const LOGO_SRC = "https://i.imgur.com/fJdJygP.png";
+
+// ── SPORTSYNC DESIGN SYSTEM — temas claro/oscuro ──────────────────────────────
+const THEME_CSS = `
+:root, .ss-dark {
+  --ss-bg: #0B1220;
+  --ss-card: #111A2E;
+  --ss-card2: #16203A;
+  --ss-overlay: rgba(11,18,32,0.97);
+  --ss-text: #F1F5F9;
+  --ss-text2: #94A3B8;
+  --ss-border: rgba(37,99,235,0.25);
+}
+.ss-light {
+  --ss-bg: #F8FAFC;
+  --ss-card: #FFFFFF;
+  --ss-card2: #F1F5F9;
+  --ss-overlay: rgba(248,250,252,0.98);
+  --ss-text: #1E293B;
+  --ss-text2: #64748B;
+  --ss-border: #E2E8F0;
+}
+/* Overrides de utilidades Tailwind en modo claro */
+.ss-light .text-white { color: #1E293B !important; }
+.ss-light .text-slate-200 { color: #334155 !important; }
+.ss-light .text-slate-300 { color: #475569 !important; }
+.ss-light .text-slate-400 { color: #64748B !important; }
+.ss-light .text-slate-500 { color: #64748B !important; }
+.ss-light .text-slate-600 { color: #94A3B8 !important; }
+.ss-light .bg-white\/3  { background: #F1F5F9 !important; }
+.ss-light .bg-white\/5  { background: #F1F5F9 !important; }
+.ss-light .bg-white\/10 { background: #E2E8F0 !important; }
+.ss-light .hover\:bg-white\/5:hover  { background: #F1F5F9 !important; }
+.ss-light .hover\:bg-white\/10:hover { background: #E2E8F0 !important; }
+.ss-light .border-white\/5  { border-color: #E2E8F0 !important; }
+.ss-light .border-white\/8  { border-color: #E2E8F0 !important; }
+.ss-light .border-white\/10 { border-color: #E2E8F0 !important; }
+.ss-light .divide-white\/5 > * + * { border-color: #E2E8F0 !important; }
+.ss-light .bg-\[\#1e293b\] { background: #FFFFFF !important; color:#1E293B !important; }
+.ss-light select, .ss-light input, .ss-light textarea { color: #1E293B; }
+.ss-light select option { background: #FFFFFF !important; color:#1E293B; }
+.ss-light .bg-black\/60 { background: rgba(15,23,42,0.35) !important; }
+* { transition: background-color .25s ease, border-color .25s ease, color .15s ease; }
+`;
 
 const SUPABASE_URL = "https://khmqgetdhjidpboniuoj.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtobXFnZXRkaGppZHBib25pdW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTk0OTYsImV4cCI6MjA5NDk3NTQ5Nn0.jIZzqrQAnObmFHixbvRxBcYijw3qxCT0bxWaC99EL68";
@@ -107,7 +150,7 @@ const getCategoria = (fechaNac) => {
 
 const MEMBRESIAS = [
   { id: "basica",      nombre: "Básico",      sesiones: 8,   color: "#3b82f6" },
-  { id: "estandar",    nombre: "Estándar",    sesiones: 12,  color: "#d4a017" },
+  { id: "estandar",    nombre: "Estándar",    sesiones: 12,  color: "#2563EB" },
   { id: "premium",     nombre: "Completo",    sesiones: 999, color: "#a855f7" },
   { id: "trimestral",  nombre: "Trimestral",  sesiones: 999, color: "#22c55e" },
   { id: "semestral",   nombre: "Semestral",   sesiones: 999, color: "#06b6d4" },
@@ -220,7 +263,7 @@ const Modal = ({ title, onClose, children, wide = false }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background:"rgba(0,0,0,0.75)", backdropFilter:"blur(4px)" }}>
     <div className={`relative bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl w-full ${wide?"max-w-3xl":"max-w-lg"} max-h-[90vh] overflow-y-auto`}>
       <div className="flex items-center justify-between p-6 border-b border-white/10">
-        <h2 className="text-xl font-bold text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>{title}</h2>
+        <h2 className="text-xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>{title}</h2>
         <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white"><Icon name="x" /></button>
       </div>
       <div className="p-6">{children}</div>
@@ -253,7 +296,7 @@ const StatCard = ({ title, value, sub, icon, accent="amber" }) => {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">{title}</p>
-          <p className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{value}</p>
+          <p className="text-4xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>{value}</p>
           {sub && <p className="text-sm text-slate-400 mt-1">{sub}</p>}
         </div>
         <div className={`p-3 rounded-xl bg-white/5 ${iconColors[accent]||iconColors.amber}`}><Icon name={icon} className="w-6 h-6" /></div>
@@ -280,18 +323,18 @@ const MembresiaTag = ({ membresiaId }) => {
 };
 
 const RoleBadge = ({ role }) => {
-  const cfg = { admin:{color:"#d4a017",label:"Admin"}, profesor:{color:"#3b82f6",label:"Profesor"}, alumno:{color:"#22c55e",label:"Alumno/Padre"} };
+  const cfg = { admin:{color:"#2563EB",label:"Admin"}, profesor:{color:"#3b82f6",label:"Profesor"}, alumno:{color:"#22c55e",label:"Alumno/Padre"} };
   const c = cfg[role]||cfg.alumno;
   return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background:`${c.color}22`, color:c.color }}>{c.label}</span>;
 };
 
 const CategoriaBadge = ({ categoria }) => {
-  const colors = { Infantil:"#22c55e", Cadete:"#3b82f6", Junior:"#d4a017", Senior:"#ef4444" };
+  const colors = { Infantil:"#22c55e", Cadete:"#3b82f6", Junior:"#2563EB", Senior:"#ef4444" };
   const c = colors[categoria]||"#94a3b8";
   return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background:`${c}22`, color:c }}>{categoria}</span>;
 };
 
-const MiniBarChart = ({ data, color="#d4a017" }) => {
+const MiniBarChart = ({ data, color="#2563EB" }) => {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
     <div className="flex items-end gap-1 h-16">
@@ -341,9 +384,9 @@ const AlumnoSelector = ({ students, value, onChange, placeholder="Buscar alumno.
       {/* Dropdown */}
       {open && (
         <div className="absolute z-50 w-full mt-1 rounded-xl border shadow-2xl overflow-hidden"
-          style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.4)", maxHeight:"260px" }}>
+          style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)", maxHeight:"260px" }}>
           {/* Search input */}
-          <div className="p-2 border-b" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+          <div className="p-2 border-b" style={{ borderColor:"var(--ss-border)" }}>
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background:"rgba(255,255,255,0.05)" }}>
               <Icon name="search" className="w-4 h-4 text-slate-500 flex-shrink-0" />
               <input autoFocus value={q} onChange={e=>setQ(e.target.value)}
@@ -357,7 +400,7 @@ const AlumnoSelector = ({ students, value, onChange, placeholder="Buscar alumno.
             {extraOption && (
               <button type="button" onClick={()=>select("")}
                 className="w-full px-4 py-2.5 text-left text-sm text-slate-400 hover:bg-white/5 border-b"
-                style={{ borderColor:"rgba(30,58,123,0.2)" }}>
+                style={{ borderColor:"var(--ss-border)" }}>
                 {extraOption}
               </button>
             )}
@@ -426,8 +469,8 @@ const RegisterClub = ({ onBack }) => {
       <div className="text-5xl">🎉</div>
       <h2 className="text-xl font-black text-white">¡Registro exitoso!</h2>
       <p className="text-emerald-400 text-sm">{ok}</p>
-      <button onClick={onBack} className="w-full py-3 rounded-xl font-bold text-[#020617]"
-        style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+      <button onClick={onBack} className="w-full py-3 rounded-xl font-bold text-white"
+        style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
         Iniciar sesión
       </button>
     </div>
@@ -457,7 +500,7 @@ const RegisterClub = ({ onBack }) => {
                 className="p-3 rounded-xl border text-center transition-all"
                 style={plan===id?{background:"rgba(30,58,123,0.3)",borderColor:"rgba(30,58,123,0.6)"}:{background:"rgba(255,255,255,0.03)",borderColor:"rgba(255,255,255,0.1)"}}>
                 <p className="font-black text-white text-sm">{titulo}</p>
-                <p className="text-yellow-400 font-bold text-xs">{precio}</p>
+                <p className="text-blue-400 font-bold text-xs">{precio}</p>
                 <p className="text-slate-400 text-[10px]">{desc}</p>
               </button>
             ))}
@@ -465,8 +508,8 @@ const RegisterClub = ({ onBack }) => {
           <p className="text-xs text-slate-500 mt-1">Selecciona tu plan — activarás el pago al terminar el período de prueba.</p>
         </Field>
       </div>
-      <button onClick={save} disabled={saving} className="w-full py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60"
-        style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+      <button onClick={save} disabled={saving} className="w-full py-3.5 rounded-xl font-bold text-sm text-white disabled:opacity-60"
+        style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
         {saving?"Registrando...":"Crear cuenta gratis"}
       </button>
       <button onClick={onBack} className="w-full text-center text-sm text-slate-500 hover:text-slate-300">← Volver al login</button>
@@ -513,8 +556,8 @@ const SuperAdminPage = ({ currentUser, reload }) => {
   return (
     <div className="space-y-6 p-4 max-w-2xl mx-auto">
       <div>
-        <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>SUPER ADMIN</h1>
-        <p className="text-slate-500 text-sm">Panel de control — HS Taekwondo System</p>
+        <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>SUPER ADMIN</h1>
+        <p className="text-slate-500 text-sm">Panel de control — SportSync</p>
       </div>
 
       {/* Stats */}
@@ -524,7 +567,7 @@ const SuperAdminPage = ({ currentUser, reload }) => {
           <p className="text-3xl font-black text-white">${mrr}</p>
           <p className="text-xs text-slate-500 mt-1">{activos} academias activas</p>
         </div>
-        <div className="rounded-2xl p-4 border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.2)" }}>
+        <div className="rounded-2xl p-4 border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
           <p className="text-xs text-blue-400 font-semibold uppercase">Total Academias</p>
           <p className="text-3xl font-black text-white">{clubs.length}</p>
           <p className="text-xs text-slate-500 mt-1">{trial} en prueba · {suspendidos} suspendidas</p>
@@ -538,7 +581,7 @@ const SuperAdminPage = ({ currentUser, reload }) => {
           const suscClub = suscripciones.filter(s=>s.club_id===club.id).sort((a,b)=>b.created_at?.localeCompare(a.created_at));
           const ultimaSusc = suscClub[0];
           return (
-            <div key={club.id} className="p-4 rounded-2xl border" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.25)" }}>
+            <div key={club.id} className="p-4 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <p className="font-black text-white">{club.nombre}</p>
@@ -624,7 +667,7 @@ const SuscripcionForm = ({ club, reload, onClose }) => {
   return (
     <Modal title={`Pago — ${club.nombre}`} onClose={onClose}>
       <div className="space-y-4">
-        <div className="p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.3)" }}>
+        <div className="p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
           <p className="text-xs text-slate-400">Plan: <span className="text-white font-bold">{club.plan==="pro"?"Pro $50/mes":"Básico $30/mes"}</span></p>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -638,8 +681,8 @@ const SuscripcionForm = ({ club, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cancelar</button>
-        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60"
-          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar pago"}</button>
+        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60"
+          style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Registrar pago"}</button>
       </div>
     </Modal>
   );
@@ -669,8 +712,8 @@ const LoginScreen = ({ onLogin }) => {
         const club = clubs?.[0];
         if (club) {
           const hoy = new Date().toISOString().slice(0,10);
-          if (club.estado === "suspendido") { setErr("Tu academia está suspendida. Contacta a HS Taekwondo System."); setLoading(false); return; }
-          if (club.estado === "trial" && club.trial_hasta < hoy) { setErr("Tu período de prueba venció. Contacta a HS Taekwondo System para activar."); setLoading(false); return; }
+          if (club.estado === "suspendido") { setErr("Tu academia está suspendida. Contacta al equipo de SportSync."); setLoading(false); return; }
+          if (club.estado === "trial" && club.trial_hasta < hoy) { setErr("Tu período de prueba venció. Contacta a SportSync para activar tu plan."); setLoading(false); return; }
         }
       }
       onLogin(u);
@@ -699,7 +742,7 @@ const LoginScreen = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background:"linear-gradient(135deg,#080d1a 0%,#0d1426 40%,#0a1535 100%)" }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background:"var(--ss-bg)" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full opacity-10" style={{ background:"radial-gradient(circle,#1e3a7b,transparent)" }} />
@@ -708,12 +751,12 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative w-full max-w-md p-8">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-28 h-28 rounded-2xl mb-5 bg-white shadow-2xl shadow-blue-900/30 p-2">
-            <img src={LOGO_SRC} alt="HST Logo" className="w-full h-full object-contain" />
+            <img src={LOGO_SRC} alt="SportSync" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.1em" }}>HS TAEKWONDO SYSTEM</h1>
-          <p className="font-medium tracking-widest text-xs mt-2" style={{ color:"#9ca3af" }}>SISTEMA DE GESTIÓN ACADÉMICA</p>
+          <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.01em" }}>SPORTSYNC</h1>
+          <p className="font-medium tracking-widest text-xs mt-2" style={{ color:"#9ca3af" }}>ADMINISTRA, CONECTA, CRECE.</p>
         </div>
-        <div className="border rounded-3xl p-8 shadow-2xl" style={{ background:"rgba(13,20,38,0.95)", borderColor:"rgba(30,58,123,0.3)" }}>
+        <div className="border rounded-3xl p-8 shadow-2xl" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
           {mode==="login" && <>
             <h2 className="text-xl font-bold text-white mb-6">Iniciar Sesión</h2>
             {err&&<div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">{err}</div>}
@@ -721,15 +764,15 @@ const LoginScreen = ({ onLogin }) => {
               <Field label="Correo"><Input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@correo.com" onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></Field>
               <Field label="Contraseña"><Input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></Field>
             </div>
-            <button onClick={handleLogin} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{loading?"VERIFICANDO...":"INGRESAR AL SISTEMA"}</button>
-            <div className="mt-4 pt-4 border-t" style={{ borderColor:"rgba(30,58,123,0.2)" }}>
+            <button onClick={handleLogin} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-white disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{loading?"VERIFICANDO...":"INGRESAR AL SISTEMA"}</button>
+            <div className="mt-4 pt-4 border-t" style={{ borderColor:"var(--ss-border)" }}>
               <button onClick={()=>{setMode("register");setErr("");}}
                 className="w-full py-3 rounded-xl border text-sm font-semibold transition-all"
-                style={{ borderColor:"rgba(30,58,123,0.4)", color:"#93c5fd", background:"rgba(30,58,123,0.1)" }}>
+                style={{ borderColor:"var(--ss-border)", color:"#93c5fd", background:"rgba(30,58,123,0.1)" }}>
                 🏫 Registrar mi academia — Prueba gratis 15 días
               </button>
             </div>
-            <button onClick={()=>{setMode("forgot");setErr("");}} className="w-full mt-3 text-center text-sm text-slate-500 hover:text-yellow-500 transition-colors">¿Olvidaste tu contraseña?</button>
+            <button onClick={()=>{setMode("forgot");setErr("");}} className="w-full mt-3 text-center text-sm text-slate-500 hover:text-blue-500 transition-colors">¿Olvidaste tu contraseña?</button>
           </>}
           {mode==="register" && <RegisterClub onBack={()=>{setMode("login");setErr("");}} />}
           {mode==="forgot" && <>
@@ -737,7 +780,7 @@ const LoginScreen = ({ onLogin }) => {
             <p className="text-slate-400 text-sm mb-6">Ingresa tu correo registrado.</p>
             {err&&<div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm">{err}</div>}
             <Field label="Correo"><Input type="email" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="tu@correo.com" onKeyDown={e=>e.key==="Enter"&&handleForgot()} /></Field>
-            <button onClick={handleForgot} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{loading?"BUSCANDO...":"CONTINUAR"}</button>
+            <button onClick={handleForgot} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-white disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{loading?"BUSCANDO...":"CONTINUAR"}</button>
             <button onClick={()=>{setMode("login");setErr("");}} className="w-full mt-3 text-center text-sm text-slate-500 hover:text-amber-400 transition-colors">← Volver</button>
           </>}
           {mode==="change_pass" && <>
@@ -749,7 +792,7 @@ const LoginScreen = ({ onLogin }) => {
               <Field label="Nueva contraseña"><Input type="password" value={newPass} onChange={e=>setNewPass(e.target.value)} placeholder="Mínimo 6 caracteres" /></Field>
               <Field label="Confirmar"><Input type="password" value={confirmPass} onChange={e=>setConfirmPass(e.target.value)} placeholder="Repite la contraseña" onKeyDown={e=>e.key==="Enter"&&handleChangePass()} /></Field>
             </div>
-            <button onClick={handleChangePass} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-[#020617] disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{loading?"GUARDANDO...":"CAMBIAR CONTRASEÑA"}</button>
+            <button onClick={handleChangePass} disabled={loading} className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm text-white disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{loading?"GUARDANDO...":"CAMBIAR CONTRASEÑA"}</button>
             <button onClick={()=>{setMode("login");setErr("");}} className="w-full mt-3 text-center text-sm text-slate-500 hover:text-amber-400 transition-colors">← Volver</button>
           </>}
         </div>
@@ -791,7 +834,7 @@ const ChangePasswordModal = ({ currentUser, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Cambiar"}</button>
+        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Cambiar"}</button>
       </div>
     </Modal>
   );
@@ -849,7 +892,7 @@ const DashboardPage = ({ students, pagos, historialPagos, asistencia, ventas, ev
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>DASHBOARD</h1>
+        <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>DASHBOARD</h1>
         <p className="text-slate-400 text-sm mt-1">{new Date().toLocaleDateString("es-EC",{ weekday:"long", year:"numeric", month:"long", day:"numeric" })}</p>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -859,12 +902,12 @@ const DashboardPage = ({ students, pagos, historialPagos, asistencia, ventas, ev
         <StatCard title="Ingresos Mes" value={`$${(ingresosMes+ventasMes+eventosMes+examenesTotal).toFixed(0)}`} sub="Pagos+Ventas+Eventos+Exámenes" icon="finance" accent="amber" />
       </div>
       <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>MEMBRESÍAS ACTIVAS</h3>
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>MEMBRESÍAS ACTIVAS</h3>
         <div className="grid grid-cols-3 gap-4">
           {memCounts.map(m=>(
             <div key={m.id} className="rounded-2xl p-4 text-center border" style={{ background:`${m.color}12`, borderColor:`${m.color}30` }}>
               <p className="text-xs font-bold text-slate-400">{m.nombre}</p>
-              <p className="text-4xl font-black mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif", color:m.color }}>{m.count}</p>
+              <p className="text-4xl font-black mt-1" style={{ fontFamily:"'Inter',sans-serif", color:m.color }}>{m.count}</p>
               <p className="text-xs mt-1" style={{ color:m.color }}>{m.sesiones===999?"Ilimitadas":`${m.sesiones} ses.`}</p>
             </div>
           ))}
@@ -872,11 +915,11 @@ const DashboardPage = ({ students, pagos, historialPagos, asistencia, ventas, ev
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>INGRESOS POR MENSUALIDADES</h3>
-          <MiniBarChart data={chartData} color="#d4a017" />
+          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>INGRESOS POR MENSUALIDADES</h3>
+          <MiniBarChart data={chartData} color="#2563EB" />
         </div>
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>CINTURONES</h3>
+          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>CINTURONES</h3>
           <div className="space-y-2">
             {CINTURONES.map(c=>{ const count=students.filter(s=>s.cinturon===c).length; const pct=students.length?(count/students.length)*100:0; return (
               <div key={c} className="flex items-center gap-3">
@@ -890,7 +933,7 @@ const DashboardPage = ({ students, pagos, historialPagos, asistencia, ventas, ev
       </div>
       {alertas.length>0&&(
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-amber-400 mb-3" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>⚡ ALERTAS</h3>
+          <h3 className="text-lg font-bold text-amber-400 mb-3" style={{ fontFamily:"'Inter',sans-serif" }}>⚡ ALERTAS</h3>
           <div className="space-y-2">{alertas.map((a,i)=><div key={i} className={`p-3 rounded-xl text-sm ${a.tipo==="error"?"bg-red-500/10 text-red-400":a.tipo==="warn"?"bg-amber-500/10 text-amber-400":"bg-blue-500/10 text-blue-400"}`}>{a.msg}</div>)}</div>
         </div>
       )}
@@ -1167,13 +1210,13 @@ const StudentFormModal = ({ student, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background: "linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving ? "Guardando..." : student ? "Guardar Cambios" : "Crear Alumno"}</button>
+        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background: "linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving ? "Guardando..." : student ? "Guardar Cambios" : "Crear Alumno"}</button>
       </div>
 
       {/* Modal de Credenciales Temporales */}
       {showCredentials && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="border border-white/10 rounded-2xl p-6 max-w-md w-full" style={{ background:"#0d1426" }}>
+          <div className="border border-white/10 rounded-2xl p-6 max-w-md w-full" style={{ background:"var(--ss-card)" }}>
             <p className="text-xs text-amber-400 font-bold mb-2">⚠️ CREDENCIALES TEMPORALES</p>
             <h3 className="text-lg font-black text-white mb-4">Nuevo Usuario Creado</h3>
             
@@ -1207,8 +1250,8 @@ const StudentFormModal = ({ student, reload, onClose }) => {
               <button 
                 onClick={confirmAndSave} 
                 disabled={saving}
-                className="flex-1 py-2.5 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" 
-                style={{ background: "linear-gradient(135deg,#d4a017,#b8860b)" }}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-60" 
+                style={{ background: "linear-gradient(135deg,#2563EB,#1d4ed8)" }}
               >
                 {saving ? "Guardando..." : "Confirmar y Guardar"}
               </button>
@@ -1242,8 +1285,8 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>ALUMNOS</h1><p className="text-slate-400 text-sm">{filtered.length} de {students.length}</p></div>
-        <button onClick={()=>{ setEditStudent(null); setShowForm(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Alumno</button>
+        <div><h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>ALUMNOS</h1><p className="text-slate-400 text-sm">{filtered.length} de {students.length}</p></div>
+        <button onClick={()=>{ setEditStudent(null); setShowForm(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Alumno</button>
       </div>
       <div className="flex gap-3 flex-wrap">
         <div className="flex-1 min-w-48 relative">
@@ -1258,7 +1301,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
           <div key={s.id} className="group bg-white/3 border border-white/8 rounded-2xl p-5 hover:border-amber-400/30 hover:bg-white/5 transition-all">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-white" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
                 <div><p className="font-bold text-white text-sm">{s.nombres} {s.apellidos}</p><p className="text-xs text-slate-500">{s.edad} años · {s.sede}</p></div>
               </div>
               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.estado==="activo"?"bg-emerald-500/20 text-emerald-400":"bg-slate-500/20 text-slate-400"}`}>{s.estado}</span>
@@ -1291,9 +1334,9 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
         const asistMes = vAsist.filter(a=>a.fecha?.slice(0,7)===hoyStr.slice(0,7)&&a.presente).length;
 
         return (
-        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background:"#080d1a" }}>
+        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background:"var(--ss-bg)" }}>
           {/* Header */}
-          <div className="sticky top-0 z-10 border-b px-4 py-3 flex items-center gap-3" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.3)" }}>
+          <div className="sticky top-0 z-10 border-b px-4 py-3 flex items-center gap-3" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
             <button onClick={()=>setViewStudent(null)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10">
               ←
             </button>
@@ -1309,9 +1352,9 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
 
           <div className="p-4 space-y-4 max-w-2xl mx-auto pb-10">
             {/* Avatar + stats rápidos */}
-            <div className="flex items-center gap-4 p-4 rounded-2xl border" style={{ background:"rgba(13,20,38,0.8)", borderColor:"rgba(30,58,123,0.3)" }}>
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-[#020617] flex-shrink-0"
-                style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+            <div className="flex items-center gap-4 p-4 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-white flex-shrink-0"
+                style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
                 {viewStudent.nombres[0]}{viewStudent.apellidos[0]}
               </div>
               <div className="flex-1 min-w-0">
@@ -1333,11 +1376,11 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
                 <p className="text-xl font-black text-emerald-400">{vPresentes}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">Asistencias</p>
               </div>
-              <div className="rounded-2xl p-3 text-center border" style={{ background:"rgba(212,160,23,0.1)", borderColor:"rgba(212,160,23,0.2)" }}>
-                <p className="text-xl font-black text-yellow-400">{vExamenes.filter(e=>e.tipo?.includes("Ascenso")).length}</p>
+              <div className="rounded-2xl p-3 text-center border" style={{ background:"rgba(37,99,235,0.1)", borderColor:"rgba(37,99,235,0.2)" }}>
+                <p className="text-xl font-black text-blue-400">{vExamenes.filter(e=>e.tipo?.includes("Ascenso")).length}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">Ascensos</p>
               </div>
-              <div className="rounded-2xl p-3 text-center border" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+              <div className="rounded-2xl p-3 text-center border" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xl font-black text-blue-400">{asistMes}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">Este mes</p>
               </div>
@@ -1348,20 +1391,20 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
             </div>
 
             {/* Datos personales */}
-            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
-              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
+              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Datos Personales</p>
               </div>
               <div className="grid grid-cols-2 gap-px" style={{ background:"rgba(30,58,123,0.1)" }}>
                 {[["Representante",viewStudent.representante],["Teléfono",viewStudent.telefono],["Usuario",viewStudent.correo],["Dirección",viewStudent.direccion],["Edad",`${viewStudent.edad} años`],["Nacimiento",viewStudent.fecha_nacimiento],["Inscripción",viewStudent.fecha_inscripcion],["Sede",viewStudent.sede]].map(([k,v])=>(
-                  <div key={k} className="p-3" style={{ background:"#0d1426" }}>
+                  <div key={k} className="p-3" style={{ background:"var(--ss-card)" }}>
                     <p className="text-[10px] text-slate-500 uppercase">{k}</p>
                     <p className="text-sm font-semibold text-white mt-0.5">{v||"—"}</p>
                   </div>
                 ))}
               </div>
               {viewStudent.observaciones && (
-                <div className="p-3 border-t" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.2)" }}>
+                <div className="p-3 border-t" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
                   <p className="text-[10px] text-slate-500 uppercase mb-1">Observaciones</p>
                   <p className="text-sm text-slate-300">{viewStudent.observaciones}</p>
                 </div>
@@ -1369,12 +1412,12 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
             </div>
 
             {/* Pago actual */}
-            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
-              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
+              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Membresía Actual</p>
               </div>
               {vPago ? (
-                <div className="p-4" style={{ background:"#0d1426" }}>
+                <div className="p-4" style={{ background:"var(--ss-card)" }}>
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <p className="font-bold text-white">{vPago.tipo}</p>
@@ -1389,7 +1432,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
                   </div>
                   {/* Historial de pagos */}
                   {vHistPagos.length > 0 && (
-                    <div className="space-y-1 mt-3 pt-3 border-t" style={{ borderColor:"rgba(30,58,123,0.2)" }}>
+                    <div className="space-y-1 mt-3 pt-3 border-t" style={{ borderColor:"var(--ss-border)" }}>
                       <p className="text-[10px] text-slate-500 uppercase mb-2">Historial de pagos</p>
                       {vHistPagos.map(h=>(
                         <div key={h.id} className="flex justify-between text-xs p-2 rounded-lg" style={{ background:"rgba(255,255,255,0.03)" }}>
@@ -1401,17 +1444,17 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
                   )}
                 </div>
               ) : (
-                <div className="p-4 text-center text-slate-500 text-sm" style={{ background:"#0d1426" }}>Sin pago registrado</div>
+                <div className="p-4 text-center text-slate-500 text-sm" style={{ background:"var(--ss-card)" }}>Sin pago registrado</div>
               )}
             </div>
 
             {/* Asistencia */}
-            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
-              <div className="px-4 py-3 border-b flex justify-between items-center" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
+              <div className="px-4 py-3 border-b flex justify-between items-center" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Asistencia</p>
                 <p className="text-xs text-slate-400">{vPresentes} totales</p>
               </div>
-              <div className="p-3 space-y-1 max-h-48 overflow-y-auto" style={{ background:"#0d1426" }}>
+              <div className="p-3 space-y-1 max-h-48 overflow-y-auto" style={{ background:"var(--ss-card)" }}>
                 {vAsist.slice(0,20).map(a=>(
                   <div key={a.id} className={`flex justify-between p-2 rounded-lg text-xs ${a.presente?"bg-emerald-500/10 text-emerald-400":"bg-red-500/10 text-red-400"}`}>
                     <span>{a.fecha}</span><span>{a.presente?"✓ Presente":"✗ Falta"}</span>
@@ -1422,13 +1465,13 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
             </div>
 
             {/* Exámenes */}
-            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
-              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
+              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Exámenes y GAL</p>
               </div>
-              <div className="p-3 space-y-2" style={{ background:"#0d1426" }}>
+              <div className="p-3 space-y-2" style={{ background:"var(--ss-card)" }}>
                 {vExamenes.map(ex=>(
-                  <div key={ex.id} className="flex justify-between p-3 rounded-xl text-xs border" style={{ background:"rgba(212,160,23,0.05)", borderColor:"rgba(212,160,23,0.15)" }}>
+                  <div key={ex.id} className="flex justify-between p-3 rounded-xl text-xs border" style={{ background:"rgba(37,99,235,0.05)", borderColor:"rgba(37,99,235,0.15)" }}>
                     <div>
                       <p className="font-bold text-amber-400">{ex.tipo}</p>
                       <p className="text-slate-500 mt-0.5">{ex.fecha}</p>
@@ -1445,11 +1488,11 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
 
             {/* Compras/Ventas */}
             {vVentas.length > 0 && (
-              <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
-                <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+              <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
+                <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
                   <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Compras</p>
                 </div>
-                <div className="p-3 space-y-2" style={{ background:"#0d1426" }}>
+                <div className="p-3 space-y-2" style={{ background:"var(--ss-card)" }}>
                   {vVentas.map(v=>(
                     <div key={v.id} className="flex justify-between p-3 rounded-xl text-xs border" style={{ background:"rgba(168,85,247,0.05)", borderColor:"rgba(168,85,247,0.15)" }}>
                       <div>
@@ -1561,7 +1604,7 @@ const CompletarModal = ({ pago, historialPagos, reload, onClose }) => {
 
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||montoIngreso<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Completar pago"}</button>
+        <button onClick={save} disabled={saving||montoIngreso<=0} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Completar pago"}</button>
       </div>
     </Modal>
   );
@@ -1609,7 +1652,7 @@ const PausarModal = ({ pago, reload, onClose }) => {
 
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Pausar membresía"}</button>
+        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Pausar membresía"}</button>
       </div>
     </Modal>
   );
@@ -1682,7 +1725,7 @@ const ReanudirModal = ({ pago, students, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||!montoTotal} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Reanudar membresía"}</button>
+        <button onClick={save} disabled={saving||!montoTotal} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Reanudar membresía"}</button>
       </div>
     </Modal>
   );
@@ -1728,7 +1771,7 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
   return (
     <Modal title={`Renovar — ${pago.alumno_nombre}`} onClose={onClose} wide>
       {/* Ciclo actual → nuevo ciclo */}
-      <div className="mb-4 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.3)" }}>
+      <div className="mb-4 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
         <p className="text-xs text-slate-400 mb-2">📅 Ciclo de membresía</p>
         <div className="flex items-center gap-2 text-sm">
           <span className="text-red-400 font-bold">{pago.fecha_vencimiento || "Sin fecha"}</span>
@@ -1765,7 +1808,7 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||!montoTotal} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar Renovación"}</button>
+        <button onClick={save} disabled={saving||!montoTotal} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Registrar Renovación"}</button>
       </div>
     </Modal>
   );
@@ -1986,7 +2029,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
         </div>
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar Pago"}</button>
+          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Registrar Pago"}</button>
         </div>
       </Modal>
     );
@@ -2001,8 +2044,8 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>PAGOS</h1><p className="text-slate-400 text-sm">{pagos.length} registros</p></div>
-        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}><Icon name="plus" className="w-4 h-4" /> Registrar Pago</button>
+        <div><h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>PAGOS</h1><p className="text-slate-400 text-sm">{pagos.length} registros</p></div>
+        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}><Icon name="plus" className="w-4 h-4" /> Registrar Pago</button>
       </div>
       {isAdmin&&(
         <div className="grid grid-cols-3 gap-4">
@@ -2013,7 +2056,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
       )}
       <div className="flex gap-2 flex-wrap">
         {["Todos","al día","parcial","vencido","pendiente","pausado"].map(f=>(
-          <button key={f} onClick={()=>setFilter(f)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={filter===f?{background:"linear-gradient(135deg,#d4a017,#b8860b)"}:{}}>
+          <button key={f} onClick={()=>setFilter(f)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-white":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={filter===f?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{}}>
             {f==="Todos"?"Todos":f==="al día"?"Al día":f==="pausado"?"Pausado":f.charAt(0).toUpperCase()+f.slice(1)}
           </button>
         ))}
@@ -2025,7 +2068,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
             <div key={`nopago-${s.id}`} className="bg-slate-500/10 border border-slate-500/20 rounded-2xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[#020617] font-black text-sm" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
                   <div><p className="font-bold text-white text-sm">{s.nombres} {s.apellidos}</p><p className="text-xs text-slate-500">Sin pago registrado · {s.sede}</p></div>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-xs font-bold border bg-slate-500/20 text-slate-400 border-slate-500/30">Pendiente</span>
@@ -2041,7 +2084,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
             <div key={p.id} className="bg-white/3 border border-white/8 rounded-2xl p-4 hover:border-white/15 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[#020617] font-black text-sm" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{p.alumno_nombre?.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{p.alumno_nombre?.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
                   <div><p className="font-bold text-white text-sm">{p.alumno_nombre}</p><p className="text-xs text-slate-500">{p.tipo} · {p.sede} · {p.fecha_pago}</p></div>
                 </div>
                 <div className="text-right">
@@ -2057,7 +2100,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                   {dias<0?`Vencido hace ${Math.abs(dias)} día(s)`:`${dias} día(s) restantes`}
                 </span>
               </div>
-              {p.estado!=="pagado"&&<div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background:p.estado==="vencido"?"#ef4444":"#d4a017" }} /></div>}
+              {p.estado!=="pagado"&&<div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background:p.estado==="vencido"?"#ef4444":"#2563EB" }} /></div>}
               <div className="flex justify-between items-center mt-3 flex-wrap gap-2">
                 {/* Estado Pausado */}
                 {p.estado_membresia === "Pausada" && (
@@ -2205,7 +2248,7 @@ const AbonoVentaModal = ({ venta, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||abono<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar abono"}</button>
+        <button onClick={save} disabled={saving||abono<=0} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Registrar abono"}</button>
       </div>
     </Modal>
   );
@@ -2309,7 +2352,7 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
 
           <div className="flex gap-2 flex-wrap">
             {[{id:"todos",label:"Todos"},{id:"bebidas",label:"🥤 Bebidas"},{id:"implementos",label:"🥋 Implementos"},{id:"uniformes",label:"👕 Uniformes"}].map(c=>(
-              <button key={c.id} onClick={()=>setCatFilter(c.id)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${catFilter===c.id?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={catFilter===c.id?{background:"linear-gradient(135deg,#d4a017,#b8860b)"}:{}}>
+              <button key={c.id} onClick={()=>setCatFilter(c.id)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${catFilter===c.id?"text-white":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={catFilter===c.id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{}}>
                 {c.label}
               </button>
             ))}
@@ -2347,7 +2390,7 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
               <div className="border-t border-white/10 mt-3 pt-3">
                 <div className="flex justify-between mb-3">
                   <span className="font-bold text-white">TOTAL</span>
-                  <span className="text-2xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${total.toFixed(2)}</span>
+                  <span className="text-2xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>${total.toFixed(2)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Monto pagado ($)">
@@ -2370,7 +2413,7 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
         </div>
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-          <button onClick={save} disabled={saving||carrito.length===0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar Venta"}</button>
+          <button onClick={save} disabled={saving||carrito.length===0} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Registrar Venta"}</button>
         </div>
       </Modal>
     );
@@ -2385,8 +2428,8 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>VENTAS</h1><p className="text-slate-400 text-sm">Bebidas e implementos</p></div>
-        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}><Icon name="plus" className="w-4 h-4" /> Nueva Venta</button>
+        <div><h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>VENTAS</h1><p className="text-slate-400 text-sm">Bebidas e implementos</p></div>
+        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}><Icon name="plus" className="w-4 h-4" /> Nueva Venta</button>
       </div>
       {isAdmin&&(
         <div className="grid grid-cols-2 gap-4">
@@ -2398,8 +2441,8 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
       <div className="flex gap-2 flex-wrap">
         {["Todos","pagado","parcial","credito"].map(f=>(
           <button key={f} onClick={()=>setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`}
-            style={filter===f?{background:"linear-gradient(135deg,#d4a017,#b8860b)"}:{}}>
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-white":"bg-white/5 text-slate-400 hover:bg-white/10"}`}
+            style={filter===f?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{}}>
             {f==="Todos"?"Todos":f==="pagado"?"Pagado":f==="parcial"?"Parcial":"Crédito"}
           </button>
         ))}
@@ -2571,7 +2614,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>
+      <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>
         ASISTENCIA {saving&&<span className="text-sm text-amber-400 ml-2 font-normal">Guardando...</span>}
       </h1>
 
@@ -2607,12 +2650,12 @@ const AttendancePage = ({ students, asistencia, reload }) => {
               <p className="text-2xl font-black text-emerald-400">{statsAlumnos.reduce((a,s)=>a+s.estesMes,0)}</p>
               <p className="text-xs text-slate-400 mt-1">Asistencias este mes</p>
             </div>
-            <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.2)" }}>
+            <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
               <p className="text-2xl font-black text-blue-400">{statsAlumnos.length}</p>
               <p className="text-xs text-slate-400 mt-1">Alumnos activos</p>
             </div>
-            <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(212,160,23,0.1)", borderColor:"rgba(212,160,23,0.2)" }}>
-              <p className="text-2xl font-black text-yellow-400">
+            <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(37,99,235,0.1)", borderColor:"rgba(37,99,235,0.2)" }}>
+              <p className="text-2xl font-black text-blue-400">
                 {statsAlumnos.length > 0 ? Math.round(statsAlumnos.reduce((a,s)=>a+s.estesMes,0)/statsAlumnos.length) : 0}
               </p>
               <p className="text-xs text-slate-400 mt-1">Promedio por alumno</p>
@@ -2620,13 +2663,13 @@ const AttendancePage = ({ students, asistencia, reload }) => {
           </div>
 
           {/* Ranking por alumno */}
-          <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
-            <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+          <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
+            <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
               <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Ranking de Asistencia</p>
             </div>
             <div className="divide-y divide-white/5">
               {statsAlumnos.map((st, i) => (
-                <div key={st.student.id} className="p-4" style={{ background: i%2===0?"#0d1426":"#0a1020" }}>
+                <div key={st.student.id} className="p-4" style={{ background: i%2===0?"var(--ss-card)":"var(--ss-card2)" }}>
                   <div className="flex items-center gap-3 mb-2">
                     <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0 ${i===0?"bg-yellow-500 text-black":i===1?"bg-slate-400 text-black":i===2?"bg-amber-700 text-white":"bg-white/10 text-slate-400"}`}>
                       {i+1}
@@ -2688,15 +2731,15 @@ const AttendancePage = ({ students, asistencia, reload }) => {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-center">
-          <p className="text-3xl font-black text-emerald-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{presentes}</p>
+          <p className="text-3xl font-black text-emerald-400" style={{ fontFamily:"'Inter',sans-serif" }}>{presentes}</p>
           <p className="text-xs text-slate-400 mt-1">Presentes</p>
         </div>
         <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center">
-          <p className="text-3xl font-black text-red-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{ausentes}</p>
+          <p className="text-3xl font-black text-red-400" style={{ fontFamily:"'Inter',sans-serif" }}>{ausentes}</p>
           <p className="text-xs text-slate-400 mt-1">Faltas</p>
         </div>
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-center">
-          <p className="text-3xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{pct}%</p>
+          <p className="text-3xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>{pct}%</p>
           <p className="text-xs text-slate-400 mt-1">Asistencia</p>
         </div>
       </div>
@@ -2716,7 +2759,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
             <div key={s.id} className={`rounded-2xl border transition-all ${presente ? "bg-emerald-500/10 border-emerald-500/30" : "bg-white/3 border-white/8"}`}>
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={()=>setExpanded(e=>e===s.id?null:s.id)}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
                     {s.nombres[0]}{s.apellidos[0]}
                   </div>
                   <div>
@@ -2808,7 +2851,7 @@ const AbonoExamenModal = ({ examen, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||abono<=0} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Registrar abono"}</button>
+        <button onClick={save} disabled={saving||abono<=0} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Registrar abono"}</button>
       </div>
     </Modal>
   );
@@ -2909,7 +2952,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
 
   return (
     <div className="space-y-6">
-      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>EXÁMENES Y GALs</h1>
+      <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>EXÁMENES Y GALs</h1>
 
       <div className="grid grid-cols-2 gap-4">
         <StatCard title="Total Mes" value={`$${totalMes.toFixed(0)}`} icon="examenes" accent="amber" />
@@ -2919,7 +2962,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
       {/* TABS */}
       <div className="flex gap-2">
         {[{id:"ascenso",label:"🥋 Ascenso de Cinturón"},{id:"gal",label:"📋 Emisión GAL"},{id:"historial",label:"📊 Historial"}].map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab===t.id?"text-[#020617]":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={tab===t.id?{background:"linear-gradient(135deg,#d4a017,#b8860b)"}:{}}>{t.label}</button>
+          <button key={t.id} onClick={()=>setTab(t.id)} className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab===t.id?"text-white":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={tab===t.id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{}}>{t.label}</button>
         ))}
       </div>
 
@@ -2930,12 +2973,12 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
             <div key={c} className="bg-white/3 border border-white/8 rounded-2xl p-3 text-center">
               <div className="w-7 h-7 rounded-full mx-auto mb-2 border-2 border-white/20" style={{ background:cinturonColor[c] }} />
               <p className="text-[10px] font-bold text-white leading-tight">{c}</p>
-              <p className="text-2xl font-black mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif", color:cinturonColor[c]==="#ffffff"?"#e2e8f0":cinturonColor[c] }}>{count}</p>
+              <p className="text-2xl font-black mt-1" style={{ fontFamily:"'Inter',sans-serif", color:cinturonColor[c]==="#ffffff"?"#e2e8f0":cinturonColor[c] }}>{count}</p>
             </div>
           ); })}
         </div>
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-          <h2 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>REGISTRAR ASCENSO</h2>
+          <h2 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>REGISTRAR ASCENSO</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field label="Alumno">
@@ -2976,7 +3019,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
                 </div>
               </Field>
             </div>
-            <button onClick={upgrade} disabled={saving||!selectedId} className="w-full py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+            <button onClick={upgrade} disabled={saving||!selectedId} className="w-full py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
               {saving ? "Guardando..." : "Registrar Ascenso"}
             </button>
           </div>
@@ -2985,7 +3028,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
           {students.filter(s=>s.estado==="activo").map(s=>(
             <div key={s.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-2xl">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{s.nombres[0]}{s.apellidos[0]}</div>
                 <div><p className="font-semibold text-white text-sm">{s.nombres} {s.apellidos}</p><div className="flex gap-1 mt-0.5"><CategoriaBadge categoria={s.categoria||getCategoria(s.fecha_nacimiento)} /><span className="text-xs text-slate-500">· {s.sede}</span></div></div>
               </div>
               <BeltBadge cinturon={s.cinturon} />
@@ -2997,7 +3040,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
       {/* GAL */}
       {tab==="gal" && (
         <div className="bg-white/3 border border-white/8 rounded-2xl p-6 space-y-4">
-          <h2 className="text-lg font-bold text-white mb-2" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>EMISIÓN DE GAL</h2>
+          <h2 className="text-lg font-bold text-white mb-2" style={{ fontFamily:"'Inter',sans-serif" }}>EMISIÓN DE GAL</h2>
           <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm text-amber-400">
             💰 Valor por GAL: <span className="font-black">$13.00</span>
           </div>
@@ -3031,7 +3074,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
                 </div>
               </Field>
             </div>
-            <button onClick={registrarGal} disabled={savingGal||!galAlumnoId} className="w-full py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+            <button onClick={registrarGal} disabled={savingGal||!galAlumnoId} className="w-full py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
               {savingGal ? "Registrando..." : "Registrar GAL"}
             </button>
           </div>
@@ -3059,7 +3102,7 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
       {/* HISTORIAL */}
       {tab==="historial" && (
         <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
-          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>HISTORIAL</h3>
+          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>HISTORIAL</h3>
           <div className="space-y-2">
             {examenes.length===0 && <p className="text-slate-500 text-sm text-center py-4">Sin registros aún</p>}
             {examenes.sort((a,b)=>b.fecha?.localeCompare(a.fecha)).map(ex=>{
@@ -3181,12 +3224,12 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
     const hoy = fmt(new Date());
     
     // Header
-    doc.setFillColor(13, 20, 38);
+    doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 210, 40, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('HS TAEKWONDO SYSTEM', 15, 18);
+    doc.text('SPORTSYNC', 15, 18);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(156, 163, 175);
@@ -3194,7 +3237,7 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
     doc.text(`Generado: ${hoy}`, 150, 30);
     
     // Summary boxes
-    doc.setTextColor(30, 58, 123);
+    doc.setTextColor(37, 99, 235);
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.text('RESUMEN DE INGRESOS', 15, 55);
@@ -3211,7 +3254,7 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
     resumen.forEach(([label, value], i) => {
       const isTotal = i === resumen.length - 1;
       if (isTotal) {
-        doc.setFillColor(30, 58, 123);
+        doc.setFillColor(37, 99, 235);
         doc.rect(15, y - 5, 180, 10, 'F');
         doc.setTextColor(255, 255, 255);
       } else {
@@ -3228,7 +3271,7 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
     
     // Por sede
     y += 8;
-    doc.setTextColor(30, 58, 123);
+    doc.setTextColor(37, 99, 235);
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.text('INGRESOS POR SEDE', 15, y);
@@ -3247,14 +3290,14 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
     
     // Historial de pagos del mes
     y += 8;
-    doc.setTextColor(30, 58, 123);
+    doc.setTextColor(37, 99, 235);
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.text('HISTORIAL DE PAGOS DEL MES', 15, y);
     y += 10;
     
     // Header de tabla
-    doc.setFillColor(30, 58, 123);
+    doc.setFillColor(37, 99, 235);
     doc.rect(15, y - 5, 180, 10, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
@@ -3295,16 +3338,16 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
-      doc.text(`HS Taekwondo System — Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+      doc.text(`SportSync — Administra, Conecta, Crece. — Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
     }
     
-    doc.save(`Reporte_HST_${mesActual.replace(' ', '_')}.pdf`);
+    doc.save(`Reporte_SportSync_${mesActual.replace(' ', '_')}.pdf`);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>FINANZAS</h1>
+        <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>FINANZAS</h1>
         <button onClick={generarPDF} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)" }}>
           📄 Reporte PDF
         </button>
@@ -3314,19 +3357,19 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
           <p className="text-xs text-amber-400 font-semibold uppercase">Mensualidades</p>
-          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalMensual.toFixed(0)}</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${totalMensual.toFixed(0)}</p>
         </div>
         <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4">
           <p className="text-xs text-purple-400 font-semibold uppercase">Ventas</p>
-          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalVentas.toFixed(0)}</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${totalVentas.toFixed(0)}</p>
         </div>
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4">
           <p className="text-xs text-blue-400 font-semibold uppercase">Eventos</p>
-          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalEventos.toFixed(0)}</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${totalEventos.toFixed(0)}</p>
         </div>
         <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4">
           <p className="text-xs text-orange-400 font-semibold uppercase">Exámenes / GAL</p>
-          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalExamenes.toFixed(0)}</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${totalExamenes.toFixed(0)}</p>
         </div>
       </div>
 
@@ -3347,18 +3390,18 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
       </div>
 
       {/* Total año */}
-      <div className="rounded-2xl p-5 border" style={{ background:"rgba(13,20,38,0.9)", borderColor:"rgba(30,58,123,0.3)" }}>
+      <div className="rounded-2xl p-5 border" style={{ background:"rgba(13,20,38,0.9)", borderColor:"var(--ss-border)" }}>
         <div className="flex justify-between items-start mb-4">
           <div>
             <p className="text-xs text-slate-400 font-semibold uppercase">Total Ingresos Año</p>
-            <p className="text-4xl font-black text-white mt-1" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalAnual.toFixed(2)}</p>
+            <p className="text-4xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${totalAnual.toFixed(2)}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-slate-400 font-semibold uppercase">Utilidad Año</p>
             <p className={`text-2xl font-black mt-1 ${utilidad>=0?"text-emerald-400":"text-red-400"}`}>{utilidad>=0?"+":""}{utilidad.toFixed(2)}</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs border-t pt-3" style={{ borderColor:"rgba(30,58,123,0.2)" }}>
+        <div className="grid grid-cols-2 gap-2 text-xs border-t pt-3" style={{ borderColor:"var(--ss-border)" }}>
           <div>
             <p className="text-slate-500 mb-1">Ingresos</p>
             <p>Mensualidades: <span className="text-amber-400 font-bold">${totalMensual.toFixed(0)}</span></p>
@@ -3376,24 +3419,24 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
 
       {/* Gráfico total ingresos por mes */}
       <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>TOTAL INGRESOS POR MES</h3>
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>TOTAL INGRESOS POR MES</h3>
         <MiniBarChart data={totalByMonth} color="#10b981" />
       </div>
 
       {/* Por sede — total ingresos */}
       <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>INGRESOS POR SEDE</h3>
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>INGRESOS POR SEDE</h3>
         {bySedeTotal.map(({sede,total})=>(
           <div key={sede} className="flex items-center justify-between p-3 bg-white/5 rounded-xl mb-2">
             <span className="text-sm text-slate-300 font-semibold">📍 {sede}</span>
-            <span className="text-xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${total.toFixed(2)}</span>
+            <span className="text-xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>${total.toFixed(2)}</span>
           </div>
         ))}
       </div>
 
       {/* Historial de pagos */}
       <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>HISTORIAL DE PAGOS</h3>
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>HISTORIAL DE PAGOS</h3>
         <div className="space-y-2">
           {(historialPagos||[]).sort((a,b)=>b.fecha_pago?.localeCompare(a.fecha_pago)).slice(0,20).map(h=>(
             <div key={h.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
@@ -3455,9 +3498,9 @@ const EventoDetail = ({ evento, students, reload, onClose }) => {
     <Modal title={evento.titulo} onClose={onClose} wide>
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white/5 rounded-xl p-3 text-center"><p className="text-xs text-slate-500">Participantes</p><p className="text-2xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{participantes.length}</p></div>
-          <div className="bg-amber-500/10 rounded-xl p-3 text-center border border-amber-500/20"><p className="text-xs text-slate-500">Total</p><p className="text-2xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalEvento.toFixed(0)}</p></div>
-          <div className="bg-emerald-500/10 rounded-xl p-3 text-center border border-emerald-500/20"><p className="text-xs text-slate-500">Pagado</p><p className="text-2xl font-black text-emerald-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>${totalPagado.toFixed(0)}</p></div>
+          <div className="bg-white/5 rounded-xl p-3 text-center"><p className="text-xs text-slate-500">Participantes</p><p className="text-2xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>{participantes.length}</p></div>
+          <div className="bg-amber-500/10 rounded-xl p-3 text-center border border-amber-500/20"><p className="text-xs text-slate-500">Total</p><p className="text-2xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>${totalEvento.toFixed(0)}</p></div>
+          <div className="bg-emerald-500/10 rounded-xl p-3 text-center border border-emerald-500/20"><p className="text-xs text-slate-500">Pagado</p><p className="text-2xl font-black text-emerald-400" style={{ fontFamily:"'Inter',sans-serif" }}>${totalPagado.toFixed(0)}</p></div>
         </div>
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
           <p className="text-xs text-slate-400 font-semibold uppercase mb-3">Añadir Alumno</p>
@@ -3472,13 +3515,13 @@ const EventoDetail = ({ evento, students, reload, onClose }) => {
             </Field>
             <Field label="Valor ($)"><Input type="number" value={valor} onChange={e => setValor(e.target.value)} placeholder="0.00" /></Field>
           </div>
-          <button onClick={addParticipante} disabled={savingP || !alumnoId} className="mt-3 px-4 py-2 rounded-xl text-[#020617] text-xs font-bold disabled:opacity-50" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{savingP ? "Añadiendo..." : "Añadir al evento"}</button>
+          <button onClick={addParticipante} disabled={savingP || !alumnoId} className="mt-3 px-4 py-2 rounded-xl text-white text-xs font-bold disabled:opacity-50" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{savingP ? "Añadiendo..." : "Añadir al evento"}</button>
         </div>
         <div className="space-y-2">
           {participantes.map(p => (
             <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border ${p.pagado ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/3 border-white/8"}`}>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-[#020617]" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{p.nombre.split(" ").map(n => n[0]).join("").slice(0, 2)}</div>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{p.nombre.split(" ").map(n => n[0]).join("").slice(0, 2)}</div>
                 <div><p className="text-sm font-semibold text-white">{p.nombre}</p><p className="text-xs text-amber-400 font-bold">${parseFloat(p.valor || 0).toFixed(2)}</p></div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -3525,8 +3568,8 @@ const EventsPage = ({ eventos, students, reload }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>EVENTOS</h1>
-        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Evento</button>
+        <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>EVENTOS</h1>
+        <button onClick={()=>setShowForm(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Evento</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {eventos.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(e=>{ const days=Math.ceil((new Date(e.fecha)-today)/86400000); const parts=(() => { try { return JSON.parse(e.participantes||"[]"); } catch { return []; } })(); return (
@@ -3565,7 +3608,7 @@ const EventsPage = ({ eventos, students, reload }) => {
           </div>
           <div className="flex gap-3 mt-6">
             <button onClick={()=>setShowForm(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-            <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":"Crear Evento"}</button>
+            <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Crear Evento"}</button>
           </div>
         </Modal>
       )}
@@ -3619,7 +3662,7 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
           <Field label={user?"Nueva contraseña (vacío = no cambiar)":"Contraseña"}><Input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" /></Field>
           <Field label="Rol">
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {[{id:"admin",label:"Admin",desc:"Todo el sistema",color:"#d4a017"},{id:"profesor",label:"Profesor",desc:"Asistencia + Pagos",color:"#3b82f6"},{id:"alumno",label:"Alumno/Padre",desc:"Solo sus datos",color:"#22c55e"}].map(r=>(
+              {[{id:"admin",label:"Admin",desc:"Todo el sistema",color:"#2563EB"},{id:"profesor",label:"Profesor",desc:"Asistencia + Pagos",color:"#3b82f6"},{id:"alumno",label:"Alumno/Padre",desc:"Solo sus datos",color:"#22c55e"}].map(r=>(
                 <button key={r.id} type="button" onClick={()=>setRole(r.id)}
                   className="p-3 rounded-xl border text-center transition-all"
                   style={{ background:role===r.id?`${r.color}25`:"rgba(255,255,255,0.03)", borderColor:role===r.id?r.color:"rgba(255,255,255,0.1)" }}>
@@ -3632,7 +3675,7 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
         </div>
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":user?"Guardar":"Crear Usuario"}</button>
+          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":user?"Guardar":"Crear Usuario"}</button>
         </div>
       </Modal>
     );
@@ -3641,11 +3684,11 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>USUARIOS</h1><p className="text-slate-400 text-sm">{allUsers.length} usuarios</p></div>
-        <button onClick={()=>{ setEditUser(null); setShowForm(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[#020617] text-sm font-bold" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Usuario</button>
+        <div><h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>USUARIOS</h1><p className="text-slate-400 text-sm">{allUsers.length} usuarios</p></div>
+        <button onClick={()=>{ setEditUser(null); setShowForm(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}><Icon name="plus" className="w-4 h-4" /> Nuevo Usuario</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[{role:"admin",color:"#d4a017",label:"Admin",perms:["Todo el sistema"]},{role:"profesor",color:"#3b82f6",label:"Profesor",perms:["Asistencia","Alumnos","Registrar pagos","Ventas"]},{role:"alumno",color:"#22c55e",label:"Alumno/Padre",perms:["Ver su asistencia","Ver sus pagos"]}].map(r=>(
+        {[{role:"admin",color:"#2563EB",label:"Admin",perms:["Todo el sistema"]},{role:"profesor",color:"#3b82f6",label:"Profesor",perms:["Asistencia","Alumnos","Registrar pagos","Ventas"]},{role:"alumno",color:"#22c55e",label:"Alumno/Padre",perms:["Ver su asistencia","Ver sus pagos"]}].map(r=>(
           <div key={r.role} className="rounded-2xl border p-4" style={{ background:`${r.color}10`, borderColor:`${r.color}30` }}>
             <p className="font-bold text-sm mb-2" style={{ color:r.color }}>{r.label}</p>
             <ul className="space-y-1">{r.perms.map(p=><li key={p} className="text-xs text-slate-400 flex items-center gap-1.5"><Icon name="check" className="w-3 h-3 text-emerald-400" />{p}</li>)}</ul>
@@ -3657,7 +3700,7 @@ const UsersPage = ({ currentUser, setCurrentUser, allUsers, reloadUsers }) => {
         {allUsers.map(u=>(
           <div key={u.id} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-2xl hover:border-white/15">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black" style={{ background:u.id===currentUser.id?"linear-gradient(135deg,#d4a017,#b8860b)":"rgba(255,255,255,0.08)", color:u.id===currentUser.id?"#020617":"#fff" }}>{u.nombre?.[0]||"U"}</div>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black" style={{ background:u.id===currentUser.id?"linear-gradient(135deg,#2563EB,#1d4ed8)":"rgba(255,255,255,0.08)", color:u.id===currentUser.id?"#020617":"#fff" }}>{u.nombre?.[0]||"U"}</div>
               <div>
                 <div className="flex items-center gap-2"><p className="font-bold text-white text-sm">{u.nombre}</p>{u.id===currentUser.id&&<span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-bold">Tú</span>}</div>
                 <p className="text-xs text-slate-500">{u.email}</p>
@@ -3699,7 +3742,7 @@ const MiAsistenciaPage = ({ currentUser, students, asistencia }) => {
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <div className="bg-white/3 border border-amber-400/20 rounded-3xl p-6 text-center">
-        <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-[#020617] mx-auto mb-3" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{alumno.nombres[0]}{alumno.apellidos[0]}</div>
+        <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-white mx-auto mb-3" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{alumno.nombres[0]}{alumno.apellidos[0]}</div>
         <h2 className="text-2xl font-black text-white">{alumno.nombres} {alumno.apellidos}</h2>
         <div className="flex justify-center gap-2 mt-2 flex-wrap"><BeltBadge cinturon={alumno.cinturon} /><CategoriaBadge categoria={alumno.categoria||getCategoria(alumno.fecha_nacimiento)} /><MembresiaTag membresiaId={alumno.membresia} /></div>
       </div>
@@ -3714,13 +3757,13 @@ const MiAsistenciaPage = ({ currentUser, students, asistencia }) => {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-emerald-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{presentes}</p><p className="text-xs text-slate-400 mt-1">Presentes</p></div>
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-red-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{ausentes}</p><p className="text-xs text-slate-400 mt-1">Ausentes</p></div>
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-amber-400" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>{pct}%</p><p className="text-xs text-slate-400 mt-1">Asistencia</p></div>
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-emerald-400" style={{ fontFamily:"'Inter',sans-serif" }}>{presentes}</p><p className="text-xs text-slate-400 mt-1">Presentes</p></div>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-red-400" style={{ fontFamily:"'Inter',sans-serif" }}>{ausentes}</p><p className="text-xs text-slate-400 mt-1">Ausentes</p></div>
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-center"><p className="text-3xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>{pct}%</p><p className="text-xs text-slate-400 mt-1">Asistencia</p></div>
       </div>
 
       <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
-        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>
           {mesSeleccionado ? formatMes(mesSeleccionado) : "HISTORIAL"}
         </h3>
         <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -3750,11 +3793,11 @@ const MiHistorialPage = ({ currentUser, students, examenes, eventos }) => {
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
-      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>MI HISTORIAL</h1>
+      <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>MI HISTORIAL</h1>
 
       {/* Ascensos */}
       <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
-        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>🥋 ASCENSOS DE CINTURÓN</h3>
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>🥋 ASCENSOS DE CINTURÓN</h3>
         {misExamenes.filter(e=>e.tipo?.includes("Ascenso")).length===0 && <p className="text-slate-500 text-sm">Sin ascensos registrados aún</p>}
         <div className="space-y-2">
           {misExamenes.filter(e=>e.tipo?.includes("Ascenso")).map(ex=>(
@@ -3768,7 +3811,7 @@ const MiHistorialPage = ({ currentUser, students, examenes, eventos }) => {
 
       {/* GALs */}
       <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
-        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>📋 GALs EMITIDOS</h3>
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>📋 GALs EMITIDOS</h3>
         {misExamenes.filter(e=>e.tipo?.includes("GAL")).length===0 && <p className="text-slate-500 text-sm">Sin GALs registrados</p>}
         <div className="space-y-2">
           {misExamenes.filter(e=>e.tipo?.includes("GAL")).map(ex=>(
@@ -3782,7 +3825,7 @@ const MiHistorialPage = ({ currentUser, students, examenes, eventos }) => {
 
       {/* Eventos */}
       <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
-        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>🏆 PARTICIPACIÓN EN EVENTOS</h3>
+        <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily:"'Inter',sans-serif" }}>🏆 PARTICIPACIÓN EN EVENTOS</h3>
         {misEventos.length===0 && <p className="text-slate-500 text-sm">Sin participaciones registradas</p>}
         <div className="space-y-2">
           {misEventos.map(ev=>{
@@ -3822,7 +3865,7 @@ const MisPagosPage = ({ currentUser, students, pagos }) => {
   };
   return (
     <div className="space-y-6 max-w-lg mx-auto">
-      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>MIS PAGOS</h1>
+      <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>MIS PAGOS</h1>
       {misPagos.length===0&&<div className="bg-white/3 border border-white/8 rounded-2xl p-8 text-center"><p className="text-slate-400">Sin registros de pago</p></div>}
       <div className="space-y-3">
         {misPagos.map(p=>{ const dias=getDays(p.fecha_vencimiento); return (
@@ -3871,7 +3914,7 @@ const GlobalSearchModal = ({ students, pagos, examenes, ventas, setPage, onClose
       icon: "💳",
       titulo: p.alumno_nombre,
       sub: `${p.tipo} · Vence: ${p.fecha_vencimiento}`,
-      color: "#d4a017",
+      color: "#2563EB",
       action: () => { setPage("payments"); onClose(); }
     }));
 
@@ -3903,11 +3946,11 @@ const GlobalSearchModal = ({ students, pagos, examenes, ventas, setPage, onClose
   })();
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background:"rgba(8,13,26,0.97)" }}>
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background:"var(--ss-overlay)" }}>
       {/* Search input */}
-      <div className="p-4 border-b" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+      <div className="p-4 border-b" style={{ borderColor:"var(--ss-border)" }}>
         <div className="flex items-center gap-3">
-          <div className="flex-1 flex items-center gap-3 px-4 py-3 rounded-2xl border" style={{ background:"rgba(13,20,38,0.8)", borderColor:"rgba(30,58,123,0.4)" }}>
+          <div className="flex-1 flex items-center gap-3 px-4 py-3 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
             <Icon name="search" className="w-5 h-5 text-slate-400 flex-shrink-0" />
             <input
               ref={inputRef}
@@ -3947,7 +3990,7 @@ const GlobalSearchModal = ({ students, pagos, examenes, ventas, setPage, onClose
             {results.map((r, i) => (
               <button key={i} onClick={r.action}
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border text-left transition-all hover:border-blue-500/40 active:scale-98"
-                style={{ background:"rgba(13,20,38,0.8)", borderColor:"rgba(30,58,123,0.2)" }}>
+                style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
                   style={{ background:"rgba(30,58,123,0.2)" }}>
                   {r.icon}
@@ -3989,10 +4032,10 @@ const InventarioPage = ({ inventario, reload, isAdmin }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>INVENTARIO</h1>
+        <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>INVENTARIO</h1>
         {isAdmin && <button onClick={()=>{ setEditItem(null); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-[#020617]"
-          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
+          style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
           + Producto
         </button>}
       </div>
@@ -4013,7 +4056,7 @@ const InventarioPage = ({ inventario, reload, isAdmin }) => {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.2)" }}>
+        <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
           <p className="text-2xl font-black text-blue-400">{inventario.length}</p>
           <p className="text-xs text-slate-400 mt-1">Productos</p>
         </div>
@@ -4021,8 +4064,8 @@ const InventarioPage = ({ inventario, reload, isAdmin }) => {
           <p className="text-2xl font-black text-emerald-400">{inventario.reduce((a,i)=>a+i.stock,0)}</p>
           <p className="text-xs text-slate-400 mt-1">Unidades totales</p>
         </div>
-        <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(212,160,23,0.1)", borderColor:"rgba(212,160,23,0.2)" }}>
-          <p className="text-2xl font-black text-yellow-400">${inventario.reduce((a,i)=>a+(i.stock*i.precio_venta),0).toFixed(0)}</p>
+        <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(37,99,235,0.1)", borderColor:"rgba(37,99,235,0.2)" }}>
+          <p className="text-2xl font-black text-blue-400">${inventario.reduce((a,i)=>a+(i.stock*i.precio_venta),0).toFixed(0)}</p>
           <p className="text-xs text-slate-400 mt-1">Valor stock</p>
         </div>
       </div>
@@ -4043,7 +4086,7 @@ const InventarioPage = ({ inventario, reload, isAdmin }) => {
         {filtered.map(item => {
           const stockBajoItem = item.stock <= item.stock_minimo && item.stock_minimo > 0;
           return (
-            <div key={item.id} className="p-4 rounded-2xl border" style={{ background:"#0d1426", borderColor:stockBajoItem?"rgba(239,68,68,0.3)":"rgba(30,58,123,0.25)" }}>
+            <div key={item.id} className="p-4 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:stockBajoItem?"rgba(239,68,68,0.3)":"rgba(30,58,123,0.25)" }}>
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -4056,7 +4099,7 @@ const InventarioPage = ({ inventario, reload, isAdmin }) => {
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="text-right">
                     <p className="text-lg font-black text-white">{item.stock} <span className="text-xs text-slate-500 font-normal">unid.</span></p>
-                    <p className="text-xs text-yellow-400 font-semibold">${parseFloat(item.precio_venta||0).toFixed(2)}</p>
+                    <p className="text-xs text-blue-400 font-semibold">${parseFloat(item.precio_venta||0).toFixed(2)}</p>
                   </div>
                   {isAdmin && (
                     <div className="flex gap-1">
@@ -4116,7 +4159,7 @@ const InventarioForm = ({ item, reload, onClose }) => {
           <Field label="Precio venta ($)"><Input type="number" value={precioVenta} onChange={e=>setPrecioVenta(e.target.value)} placeholder="0.00" /></Field>
           {item ? (
             <>
-              <div className="col-span-2 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.3)" }}>
+              <div className="col-span-2 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xs text-slate-400 mb-1">Stock actual: <span className="font-bold text-white">{item.stock} unidades</span></p>
                 <Field label="Agregar stock (+)"><Input type="number" value={stockExtra} onChange={e=>setStockExtra(e.target.value)} placeholder="0" /></Field>
                 {stockExtra && <p className="text-xs text-emerald-400 mt-1">Nuevo total: {parseInt(item.stock||0) + parseInt(stockExtra||0)} unidades</p>}
@@ -4131,7 +4174,7 @@ const InventarioForm = ({ item, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||!nombre} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>{saving?"Guardando...":item?"Guardar cambios":"Agregar producto"}</button>
+        <button onClick={save} disabled={saving||!nombre} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":item?"Guardar cambios":"Agregar producto"}</button>
       </div>
     </Modal>
   );
@@ -4178,10 +4221,10 @@ const GastosPage = ({ gastos, reload, isAdmin }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>GASTOS</h1>
+        <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>GASTOS</h1>
         {isAdmin && <button onClick={()=>{ setEditGasto(null); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-[#020617]"
-          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white"
+          style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
           + Registrar
         </button>}
       </div>
@@ -4225,7 +4268,7 @@ const GastosPage = ({ gastos, reload, isAdmin }) => {
       {/* Por sede */}
       <div className="grid grid-cols-2 gap-3">
         {porSede.map(({sede,total})=>(
-          <div key={sede} className="rounded-2xl p-3 border" style={{ background:"rgba(13,20,38,0.8)", borderColor:"rgba(30,58,123,0.25)" }}>
+          <div key={sede} className="rounded-2xl p-3 border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
             <p className="text-xs text-slate-400">📍 {sede}</p>
             <p className="text-lg font-black text-white mt-1">${total.toFixed(2)}</p>
           </div>
@@ -4246,7 +4289,7 @@ const GastosPage = ({ gastos, reload, isAdmin }) => {
               {items.map(g=>{
                 const cat = CATEGORIAS_GASTO[g.categoria] || CATEGORIAS_GASTO.variable;
                 return (
-                  <div key={g.id} className="flex items-center justify-between p-4 rounded-2xl border mb-2" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.25)" }}>
+                  <div key={g.id} className="flex items-center justify-between p-4 rounded-2xl border mb-2" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
                         style={{ background:`${cat.color}20` }}>
@@ -4375,8 +4418,8 @@ const GastoForm = ({ gasto, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
-        <button onClick={save} disabled={saving||!nombre||!monto} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60"
-          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+        <button onClick={save} disabled={saving||!nombre||!monto} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60"
+          style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
           {saving?"Guardando...":gasto?"Guardar cambios":"Registrar gasto"}
         </button>
       </div>
@@ -4417,7 +4460,7 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
 
   return (
     <div className="space-y-6">
-      <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.05em" }}>CONFIGURACIÓN</h1>
+      <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>CONFIGURACIÓN</h1>
 
       {/* Tabs */}
       <div className="flex gap-2 flex-wrap">
@@ -4436,31 +4479,31 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
           <div className="flex justify-between items-center">
             <p className="text-sm text-slate-400">Configura el costo de cada ascenso de cinturón</p>
             <button onClick={()=>{ setEditExamen(null); setShowExamenForm(true); }}
-              className="px-4 py-2 rounded-xl text-sm font-bold text-[#020617]"
-              style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+              className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+              style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
               + Agregar
             </button>
           </div>
 
           {/* Tabla de precios */}
-          <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
-            <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+          <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
+            <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
               <div className="grid grid-cols-4 text-xs font-bold text-blue-300 uppercase">
                 <span>Desde</span><span>Hasta</span><span>Costo</span><span></span>
               </div>
             </div>
             {configExamenes.length > 0 ? configExamenes.map(cfg=>(
-              <div key={cfg.id} className="grid grid-cols-4 items-center px-4 py-3 border-b" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.15)" }}>
+              <div key={cfg.id} className="grid grid-cols-4 items-center px-4 py-3 border-b" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
                 <span className="text-sm text-white">{cfg.cinturon_desde}</span>
                 <span className="text-sm text-white">{cfg.cinturon_hasta}</span>
-                <span className="text-sm font-bold text-yellow-400">${parseFloat(cfg.costo||0).toFixed(2)}</span>
+                <span className="text-sm font-bold text-blue-400">${parseFloat(cfg.costo||0).toFixed(2)}</span>
                 <div className="flex gap-1 justify-end">
                   <button onClick={()=>{ setEditExamen(cfg); setShowExamenForm(true); }} className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 text-xs flex items-center justify-center">✏️</button>
                   <button onClick={()=>deleteExamen(cfg.id)} className="w-7 h-7 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center"><Icon name="trash" className="w-3 h-3" /></button>
                 </div>
               </div>
             )) : (
-              <div className="p-6 text-center" style={{ background:"#0d1426" }}>
+              <div className="p-6 text-center" style={{ background:"var(--ss-card)" }}>
                 <p className="text-slate-500 text-sm">Sin precios configurados</p>
                 <p className="text-slate-600 text-xs mt-1">Se usarán los precios por defecto del sistema</p>
               </div>
@@ -4477,15 +4520,15 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
       {tab==="gal" && (
         <div className="space-y-4">
           <p className="text-sm text-slate-400">Define el costo de emisión del GAL para tu academia</p>
-          <div className="p-5 rounded-2xl border" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.3)" }}>
+          <div className="p-5 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
             <Field label="Costo del GAL ($)">
               <Input type="number" value={newGalCosto} onChange={e=>setNewGalCosto(e.target.value)} placeholder="13.00" step="0.01" />
             </Field>
-            <div className="mt-4 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"rgba(30,58,123,0.2)" }}>
+            <div className="mt-4 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
               <p className="text-xs text-slate-400">Costo actual del sistema: <span className="text-white font-bold">${parseFloat(galCosto).toFixed(2)}</span></p>
             </div>
-            <button onClick={saveGal} disabled={saving} className="w-full mt-4 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60"
-              style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+            <button onClick={saveGal} disabled={saving} className="w-full mt-4 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60"
+              style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
               {saving?"Guardando...":"Guardar precio GAL"}
             </button>
           </div>
@@ -4503,8 +4546,8 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
           <div className="flex justify-between items-center">
             <p className="text-sm text-slate-400">Gestiona tus productos y precios de venta</p>
             <button onClick={()=>{ setEditProd(null); setShowProdForm(true); }}
-              className="px-4 py-2 rounded-xl text-sm font-bold text-[#020617]"
-              style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+              className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+              style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
               + Producto
             </button>
           </div>
@@ -4514,18 +4557,18 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
             const prods = (inventario||[]).filter(p=>p.categoria===cat);
             if (prods.length === 0) return null;
             return (
-              <div key={cat} className="rounded-2xl border overflow-hidden" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
-                <div className="px-4 py-2 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"rgba(30,58,123,0.3)" }}>
+              <div key={cat} className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
+                <div className="px-4 py-2 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
                   <p className="text-xs font-bold text-blue-300 uppercase">{cat}</p>
                 </div>
                 {prods.map(p=>(
-                  <div key={p.id} className="flex items-center justify-between px-4 py-3 border-b" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.1)" }}>
+                  <div key={p.id} className="flex items-center justify-between px-4 py-3 border-b" style={{ background:"var(--ss-card)", borderColor:"rgba(30,58,123,0.1)" }}>
                     <div>
                       <p className="text-sm font-semibold text-white">{p.nombre}</p>
                       <p className="text-xs text-slate-500">Stock: {p.stock} · Mín: {p.stock_minimo}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <p className="text-base font-black text-yellow-400">${parseFloat(p.precio_venta||0).toFixed(2)}</p>
+                      <p className="text-base font-black text-blue-400">${parseFloat(p.precio_venta||0).toFixed(2)}</p>
                       <button onClick={()=>{ setEditProd(p); setShowProdForm(true); }}
                         className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 text-xs flex items-center justify-center">✏️</button>
                       <button onClick={async()=>{ if(!confirm("¿Eliminar?")) return; await db.delete("inventario",p.id); await reload(); }}
@@ -4540,7 +4583,7 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
           })}
 
           {(!inventario || inventario.length === 0) && (
-            <div className="p-8 text-center rounded-2xl border" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.2)" }}>
+            <div className="p-8 text-center rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
               <p className="text-slate-500 text-sm">Sin productos registrados</p>
               <p className="text-slate-600 text-xs mt-1">Agrega tus productos con sus precios</p>
             </div>
@@ -4595,8 +4638,8 @@ const ExamenPrecioForm = ({ item, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cancelar</button>
-        <button onClick={save} disabled={saving||!costo} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60"
-          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+        <button onClick={save} disabled={saving||!costo} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60"
+          style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
           {saving?"Guardando...":item?"Guardar":"Agregar"}
         </button>
       </div>
@@ -4620,27 +4663,27 @@ const MembresiasConfig = ({ configMembresias, reload }) => {
       <div className="flex justify-between items-center">
         <p className="text-sm text-slate-400">Define tus planes de membresía y precios</p>
         <button onClick={()=>{ setEditMemb(null); setShowForm(true); }}
-          className="px-4 py-2 rounded-xl text-sm font-bold text-[#020617]"
-          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+          className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+          style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
           + Membresía
         </button>
       </div>
       <div className="space-y-2">
         {configMembresias.map(m=>(
-          <div key={m.id} className="flex items-center justify-between p-4 rounded-2xl border" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.25)" }}>
+          <div key={m.id} className="flex items-center justify-between p-4 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
             <div>
               <p className="font-bold text-white">{m.nombre}</p>
               <p className="text-xs text-slate-500">{m.sesiones>=999?"Sesiones ilimitadas":`${m.sesiones} sesiones`}</p>
             </div>
             <div className="flex items-center gap-2">
-              <p className="text-lg font-black text-yellow-400">${parseFloat(m.precio||0).toFixed(2)}</p>
+              <p className="text-lg font-black text-blue-400">${parseFloat(m.precio||0).toFixed(2)}</p>
               <button onClick={()=>{ setEditMemb(m); setShowForm(true); }} className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 text-xs flex items-center justify-center">✏️</button>
               <button onClick={()=>deleteMemb(m.id)} className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center"><Icon name="trash" className="w-3 h-3" /></button>
             </div>
           </div>
         ))}
         {configMembresias.length===0 && (
-          <div className="p-6 text-center rounded-2xl border" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.2)" }}>
+          <div className="p-6 text-center rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
             <p className="text-slate-500 text-sm">Sin membresías configuradas</p>
             <p className="text-slate-600 text-xs mt-1">Se usarán los planes por defecto del sistema</p>
           </div>
@@ -4679,8 +4722,8 @@ const MembresiaForm = ({ item, reload, onClose }) => {
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cancelar</button>
-        <button onClick={save} disabled={saving||!nombre||!precio} className="flex-1 py-3 rounded-xl text-[#020617] text-sm font-bold disabled:opacity-60"
-          style={{ background:"linear-gradient(135deg,#d4a017,#b8860b)" }}>
+        <button onClick={save} disabled={saving||!nombre||!precio} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60"
+          style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
           {saving?"Guardando...":item?"Guardar":"Agregar"}
         </button>
       </div>
@@ -4703,6 +4746,27 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return localStorage.getItem("ss-theme") !== "light"; } catch { return true; }
+  });
+  const toggleTheme = () => {
+    setDarkMode(d => {
+      try { localStorage.setItem("ss-theme", d ? "light" : "dark"); } catch {}
+      return !d;
+    });
+  };
+  useEffect(() => {
+    // Inyectar CSS del design system una sola vez
+    if (!document.getElementById("ss-theme-css")) {
+      const tag = document.createElement("style");
+      tag.id = "ss-theme-css";
+      tag.textContent = THEME_CSS;
+      document.head.appendChild(tag);
+    }
+  }, []);
+  useEffect(() => {
+    document.documentElement.className = darkMode ? "ss-dark" : "ss-light";
+  }, [darkMode]);
   const [students, setStudents] = useState([]);
   const [pagos, setPagos] = useState([]);
   const [asistencia, setAsistencia] = useState([]);
@@ -4807,7 +4871,7 @@ export default function App() {
     const dias = Math.ceil((vencMs - hoyMs) / 86400000);
     return dias <= 5;
   }).length;
-  const roleColors = { admin:"#d4a017", profesor:"#3b82f6", alumno:"#22c55e" };
+  const roleColors = { admin:"#2563EB", profesor:"#3b82f6", alumno:"#22c55e" };
 
   const renderPage = () => {
     if (loading) return <Spinner />;
@@ -4833,15 +4897,15 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background:"#080d1a", fontFamily:"'DM Sans',sans-serif" }}>
+    <div className="min-h-screen flex" style={{ background:"var(--ss-bg)", fontFamily:"'DM Sans',sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 flex flex-col border-r transition-transform duration-300 ${sidebarOpen?"translate-x-0":"-translate-x-full lg:translate-x-0"}`} style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.3)" }}>
-        <div className="p-5 border-b" style={{ borderColor:"rgba(30,58,123,0.3)" }}>
+      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 flex flex-col border-r transition-transform duration-300 ${sidebarOpen?"translate-x-0":"-translate-x-full lg:translate-x-0"}`} style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+        <div className="p-5 border-b" style={{ borderColor:"var(--ss-border)" }}>
           <div className="flex items-center gap-3">
             <img src={LOGO_SRC} alt="Logo" className="w-12 h-12 rounded-xl object-contain bg-white p-1.5 shadow-lg" />
             <div>
-              <p className="font-black text-white text-xs tracking-widest" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:"0.15em" }}>HS TAEKWONDO</p>
-              <p className="text-[10px] font-semibold tracking-widest" style={{ color:"#9ca3af" }}>SYSTEM</p>
+              <p className="font-black text-white text-xs tracking-widest" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"0.08em" }}>SPORTSYNC</p>
+              <p className="text-[9px] font-medium" style={{ color:"#64748B" }}>Administra, Conecta, Crece.</p>
             </div>
           </div>
         </div>
@@ -4856,11 +4920,14 @@ export default function App() {
           ))}
         </nav>
         <div className="p-4 border-t border-white/8 space-y-2">
+          <button onClick={toggleTheme} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-slate-400 text-xs font-semibold hover:bg-white/5 hover:text-white transition-colors">
+            {darkMode ? "☀️ Modo claro" : "🌙 Modo oscuro"}
+          </button>
           <button onClick={()=>setShowChangePass(true)} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-slate-400 text-xs font-semibold hover:bg-white/5 hover:text-white transition-colors">
             <Icon name="lock" className="w-4 h-4" /> Cambiar contraseña
           </button>
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{ background:`${roleColors[user.role]||"#d4a017"}30`, color:roleColors[user.role]||"#d4a017" }}>{user.nombre?.[0]||"U"}</div>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{ background:`${roleColors[user.role]||"#2563EB"}30`, color:roleColors[user.role]||"#2563EB" }}>{user.nombre?.[0]||"U"}</div>
             <div className="flex-1 min-w-0"><p className="text-xs font-bold text-white truncate">{user.nombre}</p><RoleBadge role={user.role} /></div>
             <button onClick={()=>{ clearInterval(refreshRef.current); setUser(null); }} className="text-slate-500 hover:text-red-400 transition-colors"><Icon name="logout" className="w-4 h-4" /></button>
           </div>
@@ -4868,15 +4935,18 @@ export default function App() {
       </aside>
       {sidebarOpen&&<div className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={()=>setSidebarOpen(false)} />}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center justify-between px-6 py-4 border-b lg:hidden" style={{ background:"#0d1426", borderColor:"rgba(30,58,123,0.3)" }}>
+        <header className="flex items-center justify-between px-6 py-4 border-b lg:hidden" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
           <button onClick={()=>setSidebarOpen(true)} className="text-slate-400 hover:text-white"><Icon name="menu" /></button>
           <div className="flex items-center gap-2">
             <img src={LOGO_SRC} alt="Logo" className="w-7 h-7 rounded-lg object-contain bg-white p-0.5" />
-            <p className="font-black text-white text-xs tracking-widest" style={{ fontFamily:"'Bebas Neue',sans-serif" }}>HS TAEKWONDO SYSTEM</p>
+            <p className="font-black text-white text-xs tracking-widest" style={{ fontFamily:"'Inter',sans-serif" }}>SPORTSYNC</p>
           </div>
-          <button onClick={()=>setShowSearch(s=>!s)} className="text-slate-400 hover:text-white p-1">
-            <Icon name="search" className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={toggleTheme} className="text-slate-400 hover:text-white p-1 text-base">{darkMode?"☀️":"🌙"}</button>
+            <button onClick={()=>setShowSearch(s=>!s)} className="text-slate-400 hover:text-white p-1">
+              <Icon name="search" className="w-5 h-5" />
+            </button>
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6 lg:p-8">{renderPage()}</main>
       </div>
