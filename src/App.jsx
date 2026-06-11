@@ -469,9 +469,12 @@ const RegisterClub = ({ onBack }) => {
   const [saving, setSaving] = useState(false);
   const [ok, setOk] = useState("");
   const [err, setErr] = useState("");
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const [showTerminos, setShowTerminos] = useState(false);
 
   const save = async () => {
     if (!nombre||!email||!password||!ownerNombre) { setErr("Completa todos los campos obligatorios"); return; }
+    if (!aceptaTerminos) { setErr("Debes aceptar los Términos y Condiciones y la Política de Privacidad para continuar"); return; }
     setSaving(true); setErr("");
     // Verificar email único
     const existing = await db.get("users", `&email=eq.${encodeURIComponent(email)}`, true);
@@ -542,14 +545,120 @@ const RegisterClub = ({ onBack }) => {
           <p className="text-xs text-slate-500 mt-1">Selecciona tu plan — activarás el pago al terminar el período de prueba.</p>
         </Field>
       </div>
-      <button onClick={save} disabled={saving} className="w-full py-3.5 rounded-xl font-bold text-sm text-white disabled:opacity-60"
+      <label className="flex items-start gap-3 p-3 rounded-xl border cursor-pointer" style={{ borderColor:"var(--ss-border)", background:"rgba(37,99,235,0.05)" }}>
+        <input type="checkbox" checked={aceptaTerminos} onChange={e=>setAceptaTerminos(e.target.checked)}
+          className="mt-0.5 w-4 h-4 rounded accent-blue-600 flex-shrink-0" />
+        <span className="text-xs text-slate-300">
+          He leído y acepto los{" "}
+          <button type="button" onClick={(e)=>{e.preventDefault(); setShowTerminos(true);}} className="text-blue-400 underline font-semibold">
+            Términos y Condiciones y la Política de Privacidad
+          </button>{" "}
+          de SportSync.
+        </span>
+      </label>
+      <button onClick={save} disabled={saving||!aceptaTerminos} className="w-full py-3.5 rounded-xl font-bold text-sm text-white disabled:opacity-60"
         style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
         {saving?"Registrando...":"Crear cuenta gratis"}
       </button>
       <button onClick={onBack} className="w-full text-center text-sm text-slate-500 hover:text-slate-300">← Volver al login</button>
+      {showTerminos && <TerminosModal onClose={()=>setShowTerminos(false)} onAccept={()=>{ setAceptaTerminos(true); setShowTerminos(false); }} />}
     </div>
   );
 };
+
+// ── Modal de Términos y Condiciones + Política de Privacidad ──────────────────
+const TerminosModal = ({ onClose, onAccept }) => {
+  const [tab, setTab] = useState("terminos");
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background:"rgba(0,0,0,0.7)" }}>
+      <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl border overflow-hidden" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+        <div className="p-4 border-b flex items-center justify-between" style={{ borderColor:"var(--ss-border)" }}>
+          <h2 className="font-bold text-white">SportSync — Legal</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
+        </div>
+        <div className="flex gap-2 px-4 pt-3">
+          {[["terminos","Términos y Condiciones"],["privacidad","Política de Privacidad"]].map(([id,label])=>(
+            <button key={id} onClick={()=>setTab(id)}
+              className="px-3 py-2 rounded-lg text-xs font-bold transition-all"
+              style={tab===id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white"}:{background:"rgba(255,255,255,0.05)",color:"#64748b"}}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1 overflow-y-auto p-5 text-sm text-slate-300 space-y-3">
+          {tab==="terminos" ? <TerminosTexto/> : <PrivacidadTexto/>}
+        </div>
+        <div className="p-4 border-t flex gap-3" style={{ borderColor:"var(--ss-border)" }}>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-300 text-sm">Cerrar</button>
+          <button onClick={onAccept} className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>Aceptar y continuar</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const LegalH = ({children}) => <h3 className="font-bold text-white text-base mt-4 mb-1">{children}</h3>;
+const LegalP = ({children}) => <p className="text-slate-400 leading-relaxed">{children}</p>;
+
+const TerminosTexto = () => (
+  <>
+    <p className="text-xs text-slate-500">Última actualización: junio de 2026</p>
+    <LegalH>1. Aceptación de los Términos</LegalH>
+    <LegalP>Al registrarse y utilizar SportSync ("la Plataforma"), la academia, club, gimnasio, asociación o federación deportiva ("el Cliente") acepta íntegramente los presentes Términos y Condiciones.</LegalP>
+    <LegalH>2. Descripción del Servicio</LegalH>
+    <LegalP>SportSync provee gestión de alumnos, asistencia, pagos, membresías, ventas, inventario, gastos, exámenes/GAL, eventos y reportes financieros. SportSync puede modificar o agregar funcionalidades notificando cambios sustanciales con antelación razonable.</LegalP>
+    <LegalH>3. Planes, Precios y Período de Prueba</LegalH>
+    <LegalP>Plan Básico (hasta 30 alumnos) y Plan Pro (alumnos ilimitados), ambos con las mismas funcionalidades. Período de prueba gratuito de 15 días sin tarjeta. Disponible mensual o anual, con descuento en la modalidad anual.</LegalP>
+    <LegalH>4. Forma de Pago y Permanencia</LegalH>
+    <LegalP>Pago por adelantado vía transferencia o enlace de pago. Plan mensual: cancelable antes del siguiente ciclo sin penalidad. Plan anual: vigencia de 12 meses, descuento condicionado a la permanencia. No hay reembolsos de períodos ya pagados salvo incumplimiento comprobado de disponibilidad.</LegalP>
+    <LegalH>5. Suspensión por Falta de Pago</LegalH>
+    <LegalP>Vencido el plazo, se otorgan 3 días de gracia con servicio activo. Tras esto, el acceso se suspende automáticamente, conservando los datos, y se restablece al regularizar el pago.</LegalP>
+    <LegalH>6. Propiedad de Datos y de la Plataforma</LegalH>
+    <LegalP>Los datos ingresados por el Cliente son de su exclusiva propiedad. El software, código, marca SportSync, diseño y estructura son propiedad exclusiva de SportSync; el Cliente recibe una licencia de uso no exclusiva e intransferible. Prohibido copiar, descompilar, redistribuir o usar la Plataforma para crear productos competidores.</LegalP>
+    <LegalH>7. Disponibilidad del Servicio</LegalH>
+    <LegalP>SportSync procura disponibilidad continua pero no garantiza el 100%, por mantenimiento, actualizaciones o causas atribuibles a proveedores de infraestructura externos.</LegalP>
+    <LegalH>8. Limitación de Responsabilidad</LegalH>
+    <LegalP>SportSync no responde por pérdidas indirectas, lucro cesante, errores en datos ingresados por el Cliente, ni decisiones tomadas con base en la información de la Plataforma. La responsabilidad total se limita a lo pagado en los 3 meses previos al reclamo.</LegalP>
+    <LegalH>9. Cancelación y Eliminación de Datos</LegalH>
+    <LegalP>Tras cancelar, el Cliente tiene 15 días calendario para exportar su información antes de su eliminación permanente.</LegalP>
+    <LegalH>10. Confidencialidad</LegalH>
+    <LegalP>Ambas partes mantendrán confidencial la información a la que accedan, salvo requerimiento legal.</LegalP>
+    <LegalH>11. Modificaciones</LegalH>
+    <LegalP>SportSync podrá actualizar estos Términos notificando cambios sustanciales. El uso continuado implica aceptación.</LegalP>
+    <LegalH>12. Legislación Aplicable</LegalH>
+    <LegalP>Se rigen por las leyes de la República del Ecuador.</LegalP>
+    <LegalH>13. Contacto</LegalH>
+    <LegalP>Consultas a través de los canales de soporte indicados en la Plataforma.</LegalP>
+  </>
+);
+
+const PrivacidadTexto = () => (
+  <>
+    <p className="text-xs text-slate-500">Última actualización: junio de 2026</p>
+    <LegalH>1. Introducción</LegalH>
+    <LegalP>Esta política describe cómo SportSync recopila, usa, almacena y protege la información de administradores, profesores, alumnos y representantes registrados por el Cliente.</LegalP>
+    <LegalH>2. Información que Recopilamos</LegalH>
+    <LegalP>Datos del Cliente (academia): nombre, ciudad, contacto, plan e historial de pagos. Datos de alumnos: identificación, contacto, información deportiva (cinturón, asistencia, exámenes), información financiera (pagos, ventas, inventario) y credenciales encriptadas. SportSync no recopila esto directamente; es el Cliente quien lo ingresa, y es responsable de contar con el consentimiento correspondiente.</LegalP>
+    <LegalH>3. Finalidad del Tratamiento</LegalH>
+    <LegalP>Funcionamiento de la Plataforma, reportes internos, gestión de suscripción, soporte técnico y notificaciones operativas. No se usa con fines publicitarios ni se comparte con terceros para fines comerciales.</LegalP>
+    <LegalH>4. Almacenamiento y Seguridad</LegalH>
+    <LegalP>Datos alojados en infraestructura en la nube con respaldos periódicos. Medidas: contraseñas encriptadas (hash), aislamiento de datos por academia, límite de intentos de login y conexión cifrada (HTTPS). Ningún sistema es infalible; SportSync notificará incidentes que afecten datos del Cliente.</LegalP>
+    <LegalH>5. Acceso a la Información</LegalH>
+    <LegalP>Acceso segmentado por rol: administrador (acceso completo a su academia), profesor (asistencia, alumnos, pagos según configuración) y alumno/representante (solo su información). Soporte técnico de SportSync accede solo cuando es necesario, bajo confidencialidad.</LegalP>
+    <LegalH>6. Conservación de Datos</LegalH>
+    <LegalP>Mientras la cuenta esté activa. Tras cancelación, 15 días para exportar antes de eliminación permanente.</LegalP>
+    <LegalH>7. Derechos de los Titulares</LegalH>
+    <LegalP>Acceso, rectificación o eliminación se canalizan a través de la academia (Cliente), responsable principal del tratamiento. SportSync da soporte técnico para atender estas solicitudes.</LegalP>
+    <LegalH>8. Cookies y Almacenamiento Local</LegalH>
+    <LegalP>Uso de localStorage para sesión y preferencias (modo claro/oscuro). No se comparte con terceros.</LegalP>
+    <LegalH>9. Menores de Edad</LegalH>
+    <LegalP>El Cliente declara contar con autorización de padres/representantes para registrar datos de alumnos menores de edad.</LegalP>
+    <LegalH>10. Cambios a esta Política</LegalH>
+    <LegalP>Cambios sustanciales se comunicarán a través de la Plataforma o correo electrónico.</LegalP>
+    <LegalH>11. Contacto</LegalH>
+    <LegalP>A través de los canales de soporte indicados en la Plataforma.</LegalP>
+  </>
+);
 
 // ── SuperAdminPage — panel de control de todas las academias ──────────────────
 const SuperAdminPage = ({ currentUser, reload }) => {
