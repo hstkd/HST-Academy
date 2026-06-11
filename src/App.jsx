@@ -12,6 +12,7 @@ const THEME_CSS = `
   --ss-text: #F1F5F9;
   --ss-text2: #94A3B8;
   --ss-border: rgba(37,99,235,0.25);
+  --ss-input: rgba(255,255,255,0.05);
 }
 .ss-light {
   --ss-bg: #F8FAFC;
@@ -21,6 +22,7 @@ const THEME_CSS = `
   --ss-text: #1E293B;
   --ss-text2: #64748B;
   --ss-border: #E2E8F0;
+  --ss-input: #F1F5F9;
 }
 /* Overrides de utilidades Tailwind en modo claro */
 .ss-light .text-white { color: #1E293B !important; }
@@ -42,6 +44,15 @@ const THEME_CSS = `
 .ss-light select, .ss-light input, .ss-light textarea { color: #1E293B; }
 .ss-light select option { background: #FFFFFF !important; color:#1E293B; }
 .ss-light .bg-black\/60 { background: rgba(15,23,42,0.35) !important; }
+.ss-light .bg-black\/80 { background: rgba(15,23,42,0.45) !important; }
+.ss-light .text-blue-400, .ss-light .text-blue-300 { color: #1D4ED8 !important; }
+.ss-light .text-blue-500 { color: #1E40AF !important; }
+.ss-light .text-emerald-400, .ss-light .text-emerald-300 { color: #047857 !important; }
+.ss-light .text-amber-400, .ss-light .text-amber-300 { color: #B45309 !important; }
+.ss-light .text-red-400, .ss-light .text-red-300 { color: #B91C1C !important; }
+.ss-light .text-purple-400, .ss-light .text-purple-300 { color: #7E22CE !important; }
+.ss-light .text-orange-400, .ss-light .text-orange-300 { color: #C2410C !important; }
+.ss-light .placeholder-slate-500::placeholder { color: #94A3B8 !important; }
 * { transition: background-color .25s ease, border-color .25s ease, color .15s ease; }
 `;
 
@@ -407,7 +418,7 @@ const AlumnoSelector = ({ students, value, onChange, placeholder="Buscar alumno.
       {/* Trigger */}
       <button type="button" onClick={()=>{ if(!disabled) setOpen(o=>!o); }}
         className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border text-sm text-left transition-all"
-        style={{ background:"rgba(255,255,255,0.05)", borderColor: open?"rgba(30,58,123,0.6)":"rgba(255,255,255,0.1)", color: selected?"white":"#64748b" }}>
+        style={{ background:"var(--ss-input)", borderColor: open?"rgba(30,58,123,0.6)":"rgba(255,255,255,0.1)", color: selected?"white":"#64748b" }}>
         <span className="truncate">
           {selected ? `${selected.nombres} ${selected.apellidos}` : placeholder}
         </span>
@@ -420,7 +431,7 @@ const AlumnoSelector = ({ students, value, onChange, placeholder="Buscar alumno.
           style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)", maxHeight:"260px" }}>
           {/* Search input */}
           <div className="p-2 border-b" style={{ borderColor:"var(--ss-border)" }}>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background:"rgba(255,255,255,0.05)" }}>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background:"var(--ss-input)" }}>
               <Icon name="search" className="w-4 h-4 text-slate-500 flex-shrink-0" />
               <input autoFocus value={q} onChange={e=>setQ(e.target.value)}
                 placeholder="Escribir nombre..."
@@ -535,7 +546,7 @@ const RegisterClub = ({ onBack }) => {
               ].map(({id,titulo,precio,desc})=>(
               <button key={id} type="button" onClick={()=>setPlan(id)}
                 className="p-3 rounded-xl border text-center transition-all"
-                style={plan===id?{background:"rgba(30,58,123,0.3)",borderColor:"rgba(30,58,123,0.6)"}:{background:"rgba(255,255,255,0.03)",borderColor:"rgba(255,255,255,0.1)"}}>
+                style={plan===id?{background:"rgba(30,58,123,0.3)",borderColor:"rgba(30,58,123,0.6)"}:{background:"var(--ss-input)",borderColor:"rgba(255,255,255,0.1)"}}>
                 <p className="font-black text-white text-sm">{titulo}</p>
                 <p className="text-blue-400 font-bold text-xs">{precio}</p>
                 <p className="text-slate-400 text-[10px]">{desc}</p>
@@ -580,7 +591,7 @@ const TerminosModal = ({ onClose, onAccept }) => {
           {[["terminos","Términos y Condiciones"],["privacidad","Política de Privacidad"]].map(([id,label])=>(
             <button key={id} onClick={()=>setTab(id)}
               className="px-3 py-2 rounded-lg text-xs font-bold transition-all"
-              style={tab===id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white"}:{background:"rgba(255,255,255,0.05)",color:"#64748b"}}>
+              style={tab===id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
               {label}
             </button>
           ))}
@@ -898,7 +909,7 @@ const LoginScreen = ({ onLogin }) => {
             <img src={LOGO_SRC} alt="SportSync" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-4xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.01em" }}>SPORTSYNC</h1>
-          <p className="font-medium tracking-widest text-xs mt-2" style={{ color:"#9ca3af" }}>ADMINISTRA, CONECTA, CRECE.</p>
+          <p className="font-medium tracking-widest text-xs mt-2" style={{ color:"var(--ss-text2)" }}>ADMINISTRA, CONECTA, CRECE.</p>
         </div>
         <div className="border rounded-3xl p-8 shadow-2xl" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
           {mode==="login" && <>
@@ -1572,7 +1583,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
                     <div className="space-y-1 mt-3 pt-3 border-t" style={{ borderColor:"var(--ss-border)" }}>
                       <p className="text-[10px] text-slate-500 uppercase mb-2">Historial de pagos</p>
                       {vHistPagos.map(h=>(
-                        <div key={h.id} className="flex justify-between text-xs p-2 rounded-lg" style={{ background:"rgba(255,255,255,0.03)" }}>
+                        <div key={h.id} className="flex justify-between text-xs p-2 rounded-lg" style={{ background:"var(--ss-input)" }}>
                           <span className="text-slate-400">{h.fecha_pago} · {h.tipo}</span>
                           <span className="text-emerald-400 font-bold">${parseFloat(h.monto_pagado||0).toFixed(2)}</span>
                         </div>
@@ -2114,7 +2125,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                   className="p-4 rounded-2xl border text-center transition-all"
                   style={{ background:tipoPago===m.id?`${m.color}25`:"rgba(255,255,255,0.03)", borderColor:tipoPago===m.id?m.color:"rgba(255,255,255,0.1)" }}>
                   <p className="text-xs font-bold" style={{ color:tipoPago===m.id?m.color:"#94a3b8" }}>{m.nombre}</p>
-                  <p className="text-[11px] mt-0.5" style={{ color:tipoPago===m.id?m.color:"#64748b" }}>{m.sesiones===999?"Ilimitadas":`${m.sesiones} ses.`}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color:tipoPago===m.id?m.color:"var(--ss-text2)" }}>{m.sesiones===999?"Ilimitadas":`${m.sesiones} ses.`}</p>
                 </button>
               ))}
             </div>
@@ -2154,7 +2165,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                   );
                 }
                 return (
-                  <div className="flex items-center h-[42px] px-4 rounded-xl border" style={{ background:"rgba(255,255,255,0.05)", borderColor:"rgba(255,255,255,0.1)" }}>
+                  <div className="flex items-center h-[42px] px-4 rounded-xl border" style={{ background:"var(--ss-input)", borderColor:"rgba(255,255,255,0.1)" }}>
                     <span className="text-slate-500 text-sm">Selecciona un alumno</span>
                   </div>
                 );
@@ -2760,7 +2771,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
         {[["marcar","✓ Marcar"],["stats","📊 Estadísticas"]].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)}
             className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
-            style={tab===id?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"rgba(255,255,255,0.05)",color:"#64748b"}}>
+            style={tab===id?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
             {label}
           </button>
         ))}
@@ -2772,7 +2783,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
           {["Todas",...SEDES].map(s=>(
             <button key={s} onClick={()=>setSede(s)}
               className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-              style={sede===s?{background:"rgba(30,58,123,0.4)",color:"white",border:"1px solid rgba(30,58,123,0.5)"}:{background:"rgba(255,255,255,0.05)",color:"#64748b",border:"1px solid transparent"}}>
+              style={sede===s?{background:"rgba(30,58,123,0.4)",color:"white",border:"1px solid rgba(30,58,123,0.5)"}:{background:"var(--ss-input)",color:"var(--ss-text2)",border:"1px solid transparent"}}>
               {s}
             </button>
           ))}
@@ -3353,132 +3364,200 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
   });
 
   const generarPDF = () => {
-    const { jsPDF } = window.jspdf;
+    const { jsPDF } = window.jspdf || {};
     if (!jsPDF) { alert("Cargando librería PDF, intenta en un momento..."); return; }
-    
+
     const doc = new jsPDF();
-    const mesActual = new Date().toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase();
+    const anio = new Date().getFullYear();
     const hoy = fmt(new Date());
-    
-    // Header
+    const mesIdx = new Date().getMonth();
+    const nombresMes = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    const money = (v) => `$${(v||0).toFixed(2)}`;
+
+    // ── Datos por mes (solo año actual) ──
+    const esDelAnio = (f) => f && f.startsWith(String(anio));
+    const porMes = nombresMes.map((nombre, i) => {
+      const mm = String(i+1).padStart(2,"0");
+      const esMes = (f) => esDelAnio(f) && f.slice(5,7) === mm;
+      const pagosM = (historialPagos||[]).filter(h=>esMes(h.fecha_pago)).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0);
+      const ventasM = (ventas||[]).filter(v=>esMes(v.fecha)).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0);
+      const ascensosM = (examenes||[]).filter(e=>esMes(e.fecha)&&!(e.tipo||"").includes("GAL")).reduce((a,e)=>a+parseFloat(e.monto_pagado||e.monto||0),0);
+      const galM = (examenes||[]).filter(e=>esMes(e.fecha)&&(e.tipo||"").includes("GAL")).reduce((a,e)=>a+parseFloat(e.monto_pagado||e.monto||0),0);
+      const gastosM = (gastos||[]).filter(g=>esMes(g.fecha)).reduce((a,g)=>a+parseFloat(g.monto||0),0);
+      const ingresosM = pagosM + ventasM + ascensosM + galM;
+      return { nombre, pagosM, ventasM, ascensosM, galM, ingresosM, gastosM, utilidadM: ingresosM - gastosM };
+    });
+    const tot = porMes.reduce((a,m)=>({
+      pagosM:a.pagosM+m.pagosM, ventasM:a.ventasM+m.ventasM, ascensosM:a.ascensosM+m.ascensosM,
+      galM:a.galM+m.galM, ingresosM:a.ingresosM+m.ingresosM, gastosM:a.gastosM+m.gastosM, utilidadM:a.utilidadM+m.utilidadM
+    }), {pagosM:0,ventasM:0,ascensosM:0,galM:0,ingresosM:0,gastosM:0,utilidadM:0});
+    const mesActualData = porMes[mesIdx];
+
+    // ── Encabezado ──
     doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('SPORTSYNC', 15, 18);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(156, 163, 175);
-    doc.text(`REPORTE MENSUAL — ${mesActual}`, 15, 30);
-    doc.text(`Generado: ${hoy}`, 150, 30);
-    
-    // Summary boxes
-    doc.setTextColor(37, 99, 235);
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RESUMEN DE INGRESOS', 15, 55);
-    
-    const resumen = [
-      ['Mensualidades', `$${totalMensual.toFixed(2)}`],
-      ['Ventas', `$${totalVentas.toFixed(2)}`],
-      ['Eventos', `$${totalEventos.toFixed(2)}`],
-      ['Exámenes / GAL', `$${totalExamenes.toFixed(2)}`],
-      ['TOTAL', `$${totalAnual.toFixed(2)}`],
-    ];
-    
-    let y = 65;
-    resumen.forEach(([label, value], i) => {
-      const isTotal = i === resumen.length - 1;
-      if (isTotal) {
-        doc.setFillColor(37, 99, 235);
-        doc.rect(15, y - 5, 180, 10, 'F');
-        doc.setTextColor(255, 255, 255);
-      } else {
-        doc.setFillColor(i % 2 === 0 ? 245 : 255, i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255);
-        doc.rect(15, y - 5, 180, 10, 'F');
-        doc.setTextColor(30, 30, 30);
-      }
-      doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
-      doc.setFontSize(11);
-      doc.text(label, 20, y + 1);
-      doc.text(value, 170, y + 1, { align: 'right' });
-      y += 12;
-    });
-    
-    // Por sede
-    y += 8;
-    doc.setTextColor(37, 99, 235);
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INGRESOS POR SEDE', 15, y);
-    y += 10;
-    
-    bySedeTotal.forEach(({ sede, total }, i) => {
-      doc.setFillColor(i % 2 === 0 ? 245 : 255, i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255);
-      doc.rect(15, y - 5, 180, 10, 'F');
-      doc.setTextColor(30, 30, 30);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
-      doc.text(sede, 20, y + 1);
-      doc.text(`$${total.toFixed(2)}`, 170, y + 1, { align: 'right' });
-      y += 12;
-    });
-    
-    // Historial de pagos del mes
-    y += 8;
-    doc.setTextColor(37, 99, 235);
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text('HISTORIAL DE PAGOS DEL MES', 15, y);
-    y += 10;
-    
-    // Header de tabla
+    doc.rect(0, 0, 210, 36, 'F');
     doc.setFillColor(37, 99, 235);
-    doc.rect(15, y - 5, 180, 10, 'F');
+    doc.rect(0, 36, 210, 1.5, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('ALUMNO', 20, y + 1);
-    doc.text('TIPO', 90, y + 1);
-    doc.text('FECHA', 140, y + 1);
-    doc.text('MONTO', 185, y + 1, { align: 'right' });
-    y += 12;
-    
-    const pagosMes = (historialPagos||[])
-      .filter(h => h.fecha_pago?.slice(0,7) === fmt(new Date()).slice(0,7))
-      .sort((a,b) => b.fecha_pago?.localeCompare(a.fecha_pago));
-    
-    pagosMes.forEach((h, i) => {
-      if (y > 270) { doc.addPage(); y = 20; }
-      doc.setFillColor(i % 2 === 0 ? 245 : 255, i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255);
-      doc.rect(15, y - 5, 180, 10, 'F');
-      doc.setTextColor(30, 30, 30);
+    doc.setFontSize(19);
+    doc.text('SportSync', 15, 16);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text('Administra, Conecta, Crece.', 15, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`REPORTE FINANCIERO ${anio}`, 195, 16, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Generado: ${hoy}`, 195, 22, { align: 'right' });
+
+    // ── Tarjetas resumen del mes actual ──
+    let y = 46;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`RESUMEN — ${nombresMes[mesIdx].toUpperCase()} ${anio}`, 15, y);
+    y += 5;
+    const cards = [
+      { label: 'INGRESOS DEL MES', value: money(mesActualData.ingresosM), bg: [37,99,235] },
+      { label: 'GASTOS DEL MES', value: money(mesActualData.gastosM), bg: [185,28,28] },
+      { label: 'UTILIDAD DEL MES', value: money(mesActualData.utilidadM), bg: mesActualData.utilidadM >= 0 ? [4,120,87] : [185,28,28] },
+    ];
+    const cardW = 58, gap = 3;
+    cards.forEach((card, i) => {
+      const x = 15 + i*(cardW+gap);
+      doc.setFillColor(...card.bg);
+      doc.roundedRect(x, y, cardW, 20, 2, 2, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(6.5);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text((h.alumno_nombre||'').substring(0, 25), 20, y + 1);
-      doc.text((h.tipo||'').substring(0, 20), 90, y + 1);
-      doc.text(h.fecha_pago||'', 140, y + 1);
-      doc.text(`$${parseFloat(h.monto_pagado||0).toFixed(2)}`, 185, y + 1, { align: 'right' });
-      y += 10;
+      doc.text(card.label, x+4, y+7);
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text(card.value, x+4, y+15.5);
     });
-    
-    if (pagosMes.length === 0) {
-      doc.setTextColor(150, 150, 150);
-      doc.setFontSize(10);
-      doc.text('Sin pagos registrados este mes', 20, y);
-    }
-    
-    // Footer
+    y += 30;
+
+    // ── Tabla mensual ──
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text('DETALLE MENSUAL', 15, y);
+    y += 4;
+
+    const cols = [
+      { h:'Mes',      w:26, align:'left'  },
+      { h:'Pagos',    w:23, align:'right' },
+      { h:'Ventas',   w:22, align:'right' },
+      { h:'Ascensos', w:22, align:'right' },
+      { h:'GAL',      w:18, align:'right' },
+      { h:'Ingresos', w:23, align:'right' },
+      { h:'Gastos',   w:23, align:'right' },
+      { h:'Utilidad', w:23, align:'right' },
+    ];
+    const tableX = 15;
+    const rowH = 7.5;
+
+    const drawHeader = () => {
+      doc.setFillColor(37, 99, 235);
+      doc.rect(tableX, y, 180, rowH, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      let x = tableX;
+      cols.forEach(col => {
+        doc.text(col.h, col.align==='right' ? x+col.w-2 : x+2, y+5, { align: col.align });
+        x += col.w;
+      });
+      y += rowH;
+    };
+    drawHeader();
+
+    const drawRow = (m, i, isTotal=false) => {
+      if (y > 270) { doc.addPage(); y = 20; drawHeader(); }
+      if (isTotal) {
+        doc.setFillColor(15, 23, 42);
+        doc.rect(tableX, y, 180, rowH+1, 'F');
+        doc.setTextColor(255,255,255);
+        doc.setFont('helvetica', 'bold');
+      } else {
+        doc.setFillColor(...(i%2===0 ? [248,250,252] : [255,255,255]));
+        doc.rect(tableX, y, 180, rowH, 'F');
+        doc.setTextColor(30,41,59);
+        doc.setFont('helvetica', i===mesIdx ? 'bold' : 'normal');
+      }
+      doc.setFontSize(7.5);
+      const vals = [m.nombre, money(m.pagosM), money(m.ventasM), money(m.ascensosM), money(m.galM), money(m.ingresosM), money(m.gastosM), money(m.utilidadM)];
+      let x = tableX;
+      cols.forEach((col, ci) => {
+        if (ci === 7 && !isTotal) {
+          doc.setTextColor(...(m.utilidadM >= 0 ? [4,120,87] : [185,28,28]));
+        }
+        doc.text(vals[ci], col.align==='right' ? x+col.w-2 : x+2, y+5, { align: col.align });
+        if (ci === 7 && !isTotal) doc.setTextColor(30,41,59);
+        x += col.w;
+      });
+      y += isTotal ? rowH+1 : rowH;
+    };
+
+    porMes.forEach((m,i)=>drawRow(m,i));
+    drawRow({ nombre:'TOTAL '+anio, ...tot }, 0, true);
+
+    // ── Resumen anual ──
+    y += 10;
+    if (y > 250) { doc.addPage(); y = 20; }
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text('RESUMEN ANUAL', 15, y);
+    y += 6;
+    doc.setFontSize(8.5);
+    const resumenAnual = [
+      ['Ingresos por pagos de membresías', money(tot.pagosM)],
+      ['Ingresos por ventas', money(tot.ventasM)],
+      ['Ingresos por ascensos de cinturón', money(tot.ascensosM)],
+      ['Ingresos por emisión de GAL', money(tot.galM)],
+      ['TOTAL INGRESOS', money(tot.ingresosM)],
+      ['TOTAL GASTOS', money(tot.gastosM)],
+      ['UTILIDAD NETA', money(tot.utilidadM)],
+    ];
+    resumenAnual.forEach(([label, value], i) => {
+      const destacado = i >= 4;
+      if (destacado) {
+        const colores = [[37,99,235],[185,28,28],[tot.utilidadM>=0?4:185, tot.utilidadM>=0?120:28, tot.utilidadM>=0?87:28]];
+        doc.setFillColor(...colores[i-4]);
+        doc.rect(15, y-4.5, 180, 7.5, 'F');
+        doc.setTextColor(255,255,255);
+        doc.setFont('helvetica', 'bold');
+      } else {
+        doc.setFillColor(...(i%2===0 ? [248,250,252] : [255,255,255]));
+        doc.rect(15, y-4.5, 180, 7, 'F');
+        doc.setTextColor(30,41,59);
+        doc.setFont('helvetica', 'normal');
+      }
+      doc.text(label, 19, y);
+      doc.text(value, 191, y, { align: 'right' });
+      y += destacado ? 8 : 7;
+    });
+
+    // ── Pie de página ──
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text(`SportSync — Administra, Conecta, Crece. — Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+      doc.setDrawColor(226,232,240);
+      doc.line(15, 285, 195, 285);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148,163,184);
+      doc.text('SportSync — Administra, Conecta, Crece.', 15, 290);
+      doc.text(`Página ${i} de ${pageCount}`, 195, 290, { align: 'right' });
     }
-    
-    doc.save(`Reporte_SportSync_${mesActual.replace(' ', '_')}.pdf`);
+
+    doc.save(`Reporte_Financiero_SportSync_${anio}.pdf`);
   };
 
   return (
@@ -4237,7 +4316,7 @@ const InventarioPage = ({ inventario, reload, isAdmin }) => {
         {cats.map(cat => (
           <button key={cat} onClick={()=>setFilterCat(cat)}
             className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all capitalize"
-            style={filterCat===cat?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"rgba(255,255,255,0.05)",color:"#64748b"}}>
+            style={filterCat===cat?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
             {cat}
           </button>
         ))}
@@ -4398,14 +4477,14 @@ const GastosPage = ({ gastos, reload, isAdmin }) => {
         {["Todos","fijo","variable"].map(t=>(
           <button key={t} onClick={()=>setFilterTipo(t)}
             className="px-3 py-2 rounded-xl text-xs font-semibold transition-all capitalize"
-            style={filterTipo===t?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"rgba(255,255,255,0.05)",color:"#64748b"}}>
+            style={filterTipo===t?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
             {t==="Todos"?"Todos":t==="fijo"?"Fijos":"Variables"}
           </button>
         ))}
         {["Todas",...SEDES].map(s=>(
           <button key={s} onClick={()=>setFilterSede(s)}
             className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-            style={filterSede===s?{background:"rgba(30,58,123,0.4)",color:"white",border:"1px solid rgba(30,58,123,0.5)"}:{background:"rgba(255,255,255,0.05)",color:"#64748b",border:"1px solid transparent"}}>
+            style={filterSede===s?{background:"rgba(30,58,123,0.4)",color:"white",border:"1px solid rgba(30,58,123,0.5)"}:{background:"var(--ss-input)",color:"var(--ss-text2)",border:"1px solid transparent"}}>
             {s}
           </button>
         ))}
@@ -4531,7 +4610,7 @@ const GastoForm = ({ gasto, reload, onClose }) => {
           {[["fijo","📌 Fijo"],["variable","📦 Variable"]].map(([id,label])=>(
             <button key={id} type="button" onClick={()=>setTipo(id)}
               className="py-3 rounded-xl border text-sm font-bold transition-all"
-              style={tipo===id?{background:"rgba(30,58,123,0.3)",borderColor:"rgba(30,58,123,0.6)",color:"white"}:{background:"rgba(255,255,255,0.03)",borderColor:"rgba(255,255,255,0.1)",color:"#64748b"}}>
+              style={tipo===id?{background:"rgba(30,58,123,0.3)",borderColor:"rgba(30,58,123,0.6)",color:"white"}:{background:"var(--ss-input)",borderColor:"rgba(255,255,255,0.1)",color:"var(--ss-text2)"}}>
               {label}
             </button>
           ))}
@@ -4543,7 +4622,7 @@ const GastoForm = ({ gasto, reload, onClose }) => {
             {categoriasDisponibles.map(([id,cat])=>(
               <button key={id} type="button" onClick={()=>setCategoria(id)}
                 className="py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-2"
-                style={categoria===id?{background:`${cat.color}25`,borderColor:cat.color,color:cat.color}:{background:"rgba(255,255,255,0.03)",borderColor:"rgba(255,255,255,0.1)",color:"#64748b"}}>
+                style={categoria===id?{background:`${cat.color}25`,borderColor:cat.color,color:cat.color}:{background:"var(--ss-input)",borderColor:"rgba(255,255,255,0.1)",color:"var(--ss-text2)"}}>
                 <span>{cat.icon}</span>{cat.label}
               </button>
             ))}
@@ -4569,7 +4648,7 @@ const GastoForm = ({ gasto, reload, onClose }) => {
           <Field label="¿Recurrente?">
             <button type="button" onClick={()=>setRecurrente(r=>!r)}
               className="w-full h-[42px] rounded-xl border text-sm font-semibold transition-all"
-              style={recurrente?{background:"rgba(16,185,129,0.2)",borderColor:"rgba(16,185,129,0.4)",color:"#10b981"}:{background:"rgba(255,255,255,0.05)",borderColor:"rgba(255,255,255,0.1)",color:"#64748b"}}>
+              style={recurrente?{background:"rgba(16,185,129,0.2)",borderColor:"rgba(16,185,129,0.4)",color:"#10b981"}:{background:"var(--ss-input)",borderColor:"rgba(255,255,255,0.1)",color:"var(--ss-text2)"}}>
               {recurrente?"✓ Sí, mensual":"No"}
             </button>
           </Field>
@@ -4629,7 +4708,7 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
         {[["examenes","🏆 Exámenes"],["gal","📄 GAL"],["membresias","💳 Membresías"],["productos","🛍️ Productos"]].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)}
             className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
-            style={tab===id?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"rgba(255,255,255,0.05)",color:"#64748b"}}>
+            style={tab===id?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
             {label}
           </button>
         ))}
@@ -5067,7 +5146,7 @@ export default function App() {
             <img src={LOGO_SRC} alt="Logo" className="w-12 h-12 rounded-xl object-contain bg-white p-1.5 shadow-lg" />
             <div>
               <p className="font-black text-white text-xs tracking-widest" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"0.08em" }}>SPORTSYNC</p>
-              <p className="text-[9px] font-medium" style={{ color:"#64748B" }}>Administra, Conecta, Crece.</p>
+              <p className="text-[9px] font-medium" style={{ color:"var(--ss-text2)" }}>Administra, Conecta, Crece.</p>
             </div>
           </div>
         </div>
