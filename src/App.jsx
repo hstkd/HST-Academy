@@ -31,20 +31,20 @@ const THEME_CSS = `
 .ss-light .text-slate-400 { color: #64748B !important; }
 .ss-light .text-slate-500 { color: #64748B !important; }
 .ss-light .text-slate-600 { color: #94A3B8 !important; }
-.ss-light .bg-white\/3  { background: #F1F5F9 !important; }
-.ss-light .bg-white\/5  { background: #F1F5F9 !important; }
-.ss-light .bg-white\/10 { background: #E2E8F0 !important; }
-.ss-light .hover\:bg-white\/5:hover  { background: #F1F5F9 !important; }
-.ss-light .hover\:bg-white\/10:hover { background: #E2E8F0 !important; }
-.ss-light .border-white\/5  { border-color: #E2E8F0 !important; }
-.ss-light .border-white\/8  { border-color: #E2E8F0 !important; }
-.ss-light .border-white\/10 { border-color: #E2E8F0 !important; }
-.ss-light .divide-white\/5 > * + * { border-color: #E2E8F0 !important; }
-.ss-light .bg-\[\#1e293b\] { background: #FFFFFF !important; color:#1E293B !important; }
+.ss-light .bg-white\\/3  { background: #F1F5F9 !important; }
+.ss-light .bg-white\\/5  { background: #F1F5F9 !important; }
+.ss-light .bg-white\\/10 { background: #E2E8F0 !important; }
+.ss-light .hover\:bg-white\\/5:hover  { background: #F1F5F9 !important; }
+.ss-light .hover\:bg-white\\/10:hover { background: #E2E8F0 !important; }
+.ss-light .border-white\\/5  { border-color: #E2E8F0 !important; }
+.ss-light .border-white\\/8  { border-color: #E2E8F0 !important; }
+.ss-light .border-white\\/10 { border-color: #E2E8F0 !important; }
+.ss-light .divide-white\\/5 > * + * { border-color: #E2E8F0 !important; }
+.ss-light .bg-\\[\\#1e293b\\] { background: #FFFFFF !important; color:#1E293B !important; }
 .ss-light select, .ss-light input, .ss-light textarea { color: #1E293B; }
 .ss-light select option { background: #FFFFFF !important; color:#1E293B; }
-.ss-light .bg-black\/60 { background: rgba(15,23,42,0.35) !important; }
-.ss-light .bg-black\/80 { background: rgba(15,23,42,0.45) !important; }
+.ss-light .bg-black\\/60 { background: rgba(15,23,42,0.35) !important; }
+.ss-light .bg-black\\/80 { background: rgba(15,23,42,0.45) !important; }
 .ss-light .text-blue-400, .ss-light .text-blue-300 { color: #1D4ED8 !important; }
 .ss-light .text-blue-500 { color: #1E40AF !important; }
 .ss-light .text-emerald-400, .ss-light .text-emerald-300 { color: #047857 !important; }
@@ -721,7 +721,7 @@ const SuperAdminPage = ({ currentUser, reload }) => {
           <p className="text-3xl font-black text-white">${mrr}</p>
           <p className="text-xs text-slate-500 mt-1">{activos} academias activas</p>
         </div>
-        <div className="rounded-2xl p-4 border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
+        <div className="rounded-2xl p-4 border" style={{ background:"rgba(37,99,235,0.07)", borderColor:"var(--ss-border)" }}>
           <p className="text-xs text-blue-400 font-semibold uppercase">Total Academias</p>
           <p className="text-3xl font-black text-white">{clubs.length}</p>
           <p className="text-xs text-slate-500 mt-1">{trial} en prueba · {suspendidos} suspendidas</p>
@@ -821,7 +821,7 @@ const SuscripcionForm = ({ club, reload, onClose }) => {
   return (
     <Modal title={`Pago — ${club.nombre}`} onClose={onClose}>
       <div className="space-y-4">
-        <div className="p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
+        <div className="p-3 rounded-xl border" style={{ background:"rgba(37,99,235,0.07)", borderColor:"var(--ss-border)" }}>
           <p className="text-xs text-slate-400">Plan: <span className="text-white font-bold">{club.plan==="pro"?"Pro $50/mes":"Básico $30/mes"}</span></p>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -923,7 +923,7 @@ const LoginScreen = ({ onLogin }) => {
             <div className="mt-4 pt-4 border-t" style={{ borderColor:"var(--ss-border)" }}>
               <button onClick={()=>{setMode("register");setErr("");}}
                 className="w-full py-3 rounded-xl border text-sm font-semibold transition-all"
-                style={{ borderColor:"var(--ss-border)", color:"#93c5fd", background:"rgba(30,58,123,0.1)" }}>
+                style={{ borderColor:"var(--ss-border)", color:"#93c5fd", background:"rgba(37,99,235,0.07)" }}>
                 🏫 Registrar mi academia — Prueba gratis 15 días
               </button>
             </div>
@@ -1528,7 +1528,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
                 <p className="text-xl font-black text-blue-400">{vExamenes.filter(e=>e.tipo?.includes("Ascenso")).length}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">Ascensos</p>
               </div>
-              <div className="rounded-2xl p-3 text-center border" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
+              <div className="rounded-2xl p-3 text-center border" style={{ background:"rgba(37,99,235,0.12)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xl font-black text-blue-400">{asistMes}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">Este mes</p>
               </div>
@@ -1540,10 +1540,10 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
 
             {/* Datos personales */}
             <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
-              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
+              <div className="px-4 py-3 border-b" style={{ background:"rgba(37,99,235,0.12)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Datos Personales</p>
               </div>
-              <div className="grid grid-cols-2 gap-px" style={{ background:"rgba(30,58,123,0.1)" }}>
+              <div className="grid grid-cols-2 gap-px" style={{ background:"rgba(37,99,235,0.07)" }}>
                 {[["Representante",viewStudent.representante],["Teléfono",viewStudent.telefono],["Usuario",viewStudent.correo],["Dirección",viewStudent.direccion],["Edad",`${viewStudent.edad} años`],["Nacimiento",viewStudent.fecha_nacimiento],["Inscripción",viewStudent.fecha_inscripcion],["Sede",viewStudent.sede]].map(([k,v])=>(
                   <div key={k} className="p-3" style={{ background:"var(--ss-card)" }}>
                     <p className="text-[10px] text-slate-500 uppercase">{k}</p>
@@ -1561,7 +1561,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
 
             {/* Pago actual */}
             <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
-              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
+              <div className="px-4 py-3 border-b" style={{ background:"rgba(37,99,235,0.12)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Membresía Actual</p>
               </div>
               {vPago ? (
@@ -1598,7 +1598,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
 
             {/* Asistencia */}
             <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
-              <div className="px-4 py-3 border-b flex justify-between items-center" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
+              <div className="px-4 py-3 border-b flex justify-between items-center" style={{ background:"rgba(37,99,235,0.12)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Asistencia</p>
                 <p className="text-xs text-slate-400">{vPresentes} totales</p>
               </div>
@@ -1614,7 +1614,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
 
             {/* Exámenes */}
             <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
-              <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
+              <div className="px-4 py-3 border-b" style={{ background:"rgba(37,99,235,0.12)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Exámenes y GAL</p>
               </div>
               <div className="p-3 space-y-2" style={{ background:"var(--ss-card)" }}>
@@ -1637,7 +1637,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
             {/* Compras/Ventas */}
             {vVentas.length > 0 && (
               <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
-                <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
+                <div className="px-4 py-3 border-b" style={{ background:"rgba(37,99,235,0.12)", borderColor:"var(--ss-border)" }}>
                   <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Compras</p>
                 </div>
                 <div className="p-3 space-y-2" style={{ background:"var(--ss-card)" }}>
@@ -1919,7 +1919,7 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
   return (
     <Modal title={`Renovar — ${pago.alumno_nombre}`} onClose={onClose} wide>
       {/* Ciclo actual → nuevo ciclo */}
-      <div className="mb-4 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
+      <div className="mb-4 p-3 rounded-xl border" style={{ background:"rgba(37,99,235,0.07)", borderColor:"var(--ss-border)" }}>
         <p className="text-xs text-slate-400 mb-2">📅 Ciclo de membresía</p>
         <div className="flex items-center gap-2 text-sm">
           <span className="text-red-400 font-bold">{pago.fecha_vencimiento || "Sin fecha"}</span>
@@ -2771,7 +2771,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
         {[["marcar","✓ Marcar"],["stats","📊 Estadísticas"]].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)}
             className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
-            style={tab===id?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
+            style={tab===id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
             {label}
           </button>
         ))}
@@ -2783,7 +2783,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
           {["Todas",...SEDES].map(s=>(
             <button key={s} onClick={()=>setSede(s)}
               className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-              style={sede===s?{background:"rgba(30,58,123,0.4)",color:"white",border:"1px solid rgba(30,58,123,0.5)"}:{background:"var(--ss-input)",color:"var(--ss-text2)",border:"1px solid transparent"}}>
+              style={sede===s?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white",border:"1px solid transparent"}:{background:"var(--ss-input)",color:"var(--ss-text2)",border:"1px solid transparent"}}>
               {s}
             </button>
           ))}
@@ -2798,7 +2798,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
               <p className="text-2xl font-black text-emerald-400">{statsAlumnos.reduce((a,s)=>a+s.estesMes,0)}</p>
               <p className="text-xs text-slate-400 mt-1">Asistencias este mes</p>
             </div>
-            <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
+            <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(37,99,235,0.07)", borderColor:"var(--ss-border)" }}>
               <p className="text-2xl font-black text-blue-400">{statsAlumnos.length}</p>
               <p className="text-xs text-slate-400 mt-1">Alumnos activos</p>
             </div>
@@ -2812,7 +2812,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
 
           {/* Ranking por alumno */}
           <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
-            <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
+            <div className="px-4 py-3 border-b" style={{ background:"rgba(37,99,235,0.12)", borderColor:"var(--ss-border)" }}>
               <p className="text-xs font-bold text-blue-300 uppercase tracking-wider">Ranking de Asistencia</p>
             </div>
             <div className="divide-y divide-white/5">
@@ -4233,7 +4233,7 @@ const GlobalSearchModal = ({ students, pagos, examenes, ventas, setPage, onClose
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border text-left transition-all hover:border-blue-500/40 active:scale-98"
                 style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                  style={{ background:"rgba(30,58,123,0.2)" }}>
+                  style={{ background:"rgba(37,99,235,0.12)" }}>
                   {r.icon}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -4297,7 +4297,7 @@ const InventarioPage = ({ inventario, reload, isAdmin }) => {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
+        <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(37,99,235,0.07)", borderColor:"var(--ss-border)" }}>
           <p className="text-2xl font-black text-blue-400">{inventario.length}</p>
           <p className="text-xs text-slate-400 mt-1">Productos</p>
         </div>
@@ -4316,7 +4316,7 @@ const InventarioPage = ({ inventario, reload, isAdmin }) => {
         {cats.map(cat => (
           <button key={cat} onClick={()=>setFilterCat(cat)}
             className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all capitalize"
-            style={filterCat===cat?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
+            style={filterCat===cat?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
             {cat}
           </button>
         ))}
@@ -4400,7 +4400,7 @@ const InventarioForm = ({ item, reload, onClose }) => {
           <Field label="Precio venta ($)"><Input type="number" value={precioVenta} onChange={e=>setPrecioVenta(e.target.value)} placeholder="0.00" /></Field>
           {item ? (
             <>
-              <div className="col-span-2 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
+              <div className="col-span-2 p-3 rounded-xl border" style={{ background:"rgba(37,99,235,0.07)", borderColor:"var(--ss-border)" }}>
                 <p className="text-xs text-slate-400 mb-1">Stock actual: <span className="font-bold text-white">{item.stock} unidades</span></p>
                 <Field label="Agregar stock (+)"><Input type="number" value={stockExtra} onChange={e=>setStockExtra(e.target.value)} placeholder="0" /></Field>
                 {stockExtra && <p className="text-xs text-emerald-400 mt-1">Nuevo total: {parseInt(item.stock||0) + parseInt(stockExtra||0)} unidades</p>}
@@ -4477,14 +4477,14 @@ const GastosPage = ({ gastos, reload, isAdmin }) => {
         {["Todos","fijo","variable"].map(t=>(
           <button key={t} onClick={()=>setFilterTipo(t)}
             className="px-3 py-2 rounded-xl text-xs font-semibold transition-all capitalize"
-            style={filterTipo===t?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
+            style={filterTipo===t?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
             {t==="Todos"?"Todos":t==="fijo"?"Fijos":"Variables"}
           </button>
         ))}
         {["Todas",...SEDES].map(s=>(
           <button key={s} onClick={()=>setFilterSede(s)}
             className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-            style={filterSede===s?{background:"rgba(30,58,123,0.4)",color:"white",border:"1px solid rgba(30,58,123,0.5)"}:{background:"var(--ss-input)",color:"var(--ss-text2)",border:"1px solid transparent"}}>
+            style={filterSede===s?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white",border:"1px solid transparent"}:{background:"var(--ss-input)",color:"var(--ss-text2)",border:"1px solid transparent"}}>
             {s}
           </button>
         ))}
@@ -4610,7 +4610,7 @@ const GastoForm = ({ gasto, reload, onClose }) => {
           {[["fijo","📌 Fijo"],["variable","📦 Variable"]].map(([id,label])=>(
             <button key={id} type="button" onClick={()=>setTipo(id)}
               className="py-3 rounded-xl border text-sm font-bold transition-all"
-              style={tipo===id?{background:"rgba(30,58,123,0.3)",borderColor:"rgba(30,58,123,0.6)",color:"white"}:{background:"var(--ss-input)",borderColor:"rgba(255,255,255,0.1)",color:"var(--ss-text2)"}}>
+              style={tipo===id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",borderColor:"transparent",color:"white"}:{background:"var(--ss-input)",borderColor:"rgba(255,255,255,0.1)",color:"var(--ss-text2)"}}>
               {label}
             </button>
           ))}
@@ -4708,7 +4708,7 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
         {[["examenes","🏆 Exámenes"],["gal","📄 GAL"],["membresias","💳 Membresías"],["productos","🛍️ Productos"]].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)}
             className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
-            style={tab===id?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
+            style={tab===id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
             {label}
           </button>
         ))}
@@ -4728,7 +4728,7 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
 
           {/* Tabla de precios */}
           <div className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
-            <div className="px-4 py-3 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
+            <div className="px-4 py-3 border-b" style={{ background:"rgba(37,99,235,0.12)", borderColor:"var(--ss-border)" }}>
               <div className="grid grid-cols-4 text-xs font-bold text-blue-300 uppercase">
                 <span>Desde</span><span>Hasta</span><span>Costo</span><span></span>
               </div>
@@ -4765,7 +4765,7 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
             <Field label="Costo del GAL ($)">
               <Input type="number" value={newGalCosto} onChange={e=>setNewGalCosto(e.target.value)} placeholder="13.00" step="0.01" />
             </Field>
-            <div className="mt-4 p-3 rounded-xl border" style={{ background:"rgba(30,58,123,0.1)", borderColor:"var(--ss-border)" }}>
+            <div className="mt-4 p-3 rounded-xl border" style={{ background:"rgba(37,99,235,0.07)", borderColor:"var(--ss-border)" }}>
               <p className="text-xs text-slate-400">Costo actual del sistema: <span className="text-white font-bold">${parseFloat(galCosto).toFixed(2)}</span></p>
             </div>
             <button onClick={saveGal} disabled={saving} className="w-full mt-4 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60"
@@ -4799,7 +4799,7 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, invent
             if (prods.length === 0) return null;
             return (
               <div key={cat} className="rounded-2xl border overflow-hidden" style={{ borderColor:"var(--ss-border)" }}>
-                <div className="px-4 py-2 border-b" style={{ background:"rgba(30,58,123,0.2)", borderColor:"var(--ss-border)" }}>
+                <div className="px-4 py-2 border-b" style={{ background:"rgba(37,99,235,0.12)", borderColor:"var(--ss-border)" }}>
                   <p className="text-xs font-bold text-blue-300 uppercase">{cat}</p>
                 </div>
                 {prods.map(p=>(
@@ -5154,7 +5154,7 @@ export default function App() {
           {navItems.map(item=>(
             <button key={item.id} onClick={()=>{ setPage(item.id); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${page===item.id?"text-white":"text-slate-400 hover:text-white hover:bg-white/5"}`}
-              style={page===item.id?{background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)",color:"white"}:{}}>
+              style={page===item.id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white"}:{}}>
               <Icon name={item.icon} className="w-5 h-5 flex-shrink-0" />{item.label}
               {item.id==="payments"&&alerts>0&&<span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{alerts}</span>}
             </button>
