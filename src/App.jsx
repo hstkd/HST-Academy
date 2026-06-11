@@ -24,25 +24,21 @@ const THEME_CSS = `
   --ss-border: #E2E8F0;
   --ss-input: #F1F5F9;
 }
-/* Overrides de utilidades Tailwind en modo claro */
 .ss-light .text-white { color: #1E293B !important; }
 .ss-light .text-slate-200 { color: #334155 !important; }
 .ss-light .text-slate-300 { color: #475569 !important; }
 .ss-light .text-slate-400 { color: #64748B !important; }
 .ss-light .text-slate-500 { color: #64748B !important; }
 .ss-light .text-slate-600 { color: #94A3B8 !important; }
-.ss-light .bg-white\\/3  { background: #F1F5F9 !important; }
-.ss-light .bg-white\\/5  { background: #F1F5F9 !important; }
+.ss-light .bg-white\\/3 { background: #F1F5F9 !important; }
+.ss-light .bg-white\\/5 { background: #F1F5F9 !important; }
 .ss-light .bg-white\\/10 { background: #E2E8F0 !important; }
-.ss-light .hover\:bg-white\\/5:hover  { background: #F1F5F9 !important; }
-.ss-light .hover\:bg-white\\/10:hover { background: #E2E8F0 !important; }
-.ss-light .border-white\\/5  { border-color: #E2E8F0 !important; }
-.ss-light .border-white\\/8  { border-color: #E2E8F0 !important; }
+.ss-light .hover\\:bg-white\\/5:hover { background: #E2E8F0 !important; }
+.ss-light .hover\\:bg-white\\/10:hover { background: #CBD5E1 !important; }
+.ss-light .border-white\\/5 { border-color: #E2E8F0 !important; }
+.ss-light .border-white\\/8 { border-color: #E2E8F0 !important; }
 .ss-light .border-white\\/10 { border-color: #E2E8F0 !important; }
 .ss-light .divide-white\\/5 > * + * { border-color: #E2E8F0 !important; }
-.ss-light .bg-\\[\\#1e293b\\] { background: #FFFFFF !important; color:#1E293B !important; }
-.ss-light select, .ss-light input, .ss-light textarea { color: #1E293B; }
-.ss-light select option { background: #FFFFFF !important; color:#1E293B; }
 .ss-light .bg-black\\/60 { background: rgba(15,23,42,0.35) !important; }
 .ss-light .bg-black\\/80 { background: rgba(15,23,42,0.45) !important; }
 .ss-light .text-blue-400, .ss-light .text-blue-300 { color: #1D4ED8 !important; }
@@ -53,6 +49,9 @@ const THEME_CSS = `
 .ss-light .text-purple-400, .ss-light .text-purple-300 { color: #7E22CE !important; }
 .ss-light .text-orange-400, .ss-light .text-orange-300 { color: #C2410C !important; }
 .ss-light .placeholder-slate-500::placeholder { color: #94A3B8 !important; }
+.ss-light select, .ss-light input, .ss-light textarea { color: #1E293B; }
+.ss-light option { background: #FFFFFF !important; color: #1E293B !important; }
+.ss-light [style*="135deg,#2563EB"], .ss-light [style*="135deg,#2563EB"] * { color: #FFFFFF !important; }
 * { transition: background-color .25s ease, border-color .25s ease, color .15s ease; }
 `;
 
@@ -305,7 +304,7 @@ const Spinner = () => (
 
 const Modal = ({ title, onClose, children, wide = false }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background:"rgba(0,0,0,0.75)", backdropFilter:"blur(4px)" }}>
-    <div className={`relative bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl w-full ${wide?"max-w-3xl":"max-w-lg"} max-h-[90vh] overflow-y-auto`}>
+    <div className={`relative border border-white/10 rounded-2xl shadow-2xl w-full ${wide?"max-w-3xl":"max-w-lg"} max-h-[90vh] overflow-y-auto`} style={{ background:"var(--ss-card)" }}>
       <div className="flex items-center justify-between p-6 border-b border-white/10">
         <h2 className="text-xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>{title}</h2>
         <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white"><Icon name="x" /></button>
@@ -327,7 +326,7 @@ const Input = (props) => <input className={inputCls} {...props} />;
 const Textarea = (props) => <textarea className={`${inputCls} resize-none`} rows={3} {...props} />;
 
 const Select = ({ options, ...props }) => (
-  <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50 transition-all" {...props}>
+  <select style={{ background:"var(--ss-card2)" }} className="w-full border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400/50 transition-all" {...props}>
     {options.map((o) => typeof o==="string" ? <option key={o} value={o}>{o}</option> : <option key={o.value} value={o.value}>{o.label}</option>)}
   </select>
 );
@@ -1288,18 +1287,18 @@ const StudentFormModal = ({ student, reload, onClose }) => {
         )}
         <Field label="Dirección" className="col-span-2"><Input value={direccion} onChange={e => setDireccion(e.target.value)} placeholder="Dirección" /></Field>
         <Field label="Sede">
-          <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={sede} onChange={e => setSede(e.target.value)}>
+          <select style={{ background:"var(--ss-card2)" }} className="w-full border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={sede} onChange={e => setSede(e.target.value)}>
             {SEDES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </Field>
         <Field label="Estado">
-          <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={estado} onChange={e => setEstado(e.target.value)}>
+          <select style={{ background:"var(--ss-card2)" }} className="w-full border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={estado} onChange={e => setEstado(e.target.value)}>
             <option value="activo">Activo</option>
             <option value="inactivo">Inactivo</option>
           </select>
         </Field>
         <Field label="Cinturón">
-          <select className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={cinturon} onChange={e => setCinturon(e.target.value)}>
+          <select style={{ background:"var(--ss-card2)" }} className="w-full border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm" value={cinturon} onChange={e => setCinturon(e.target.value)}>
             {CINTURONES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </Field>
@@ -3742,7 +3741,7 @@ const EventoDetail = ({ evento, students, reload, onClose }) => {
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {evento.tipo==="torneo" && (
-                  <select className="bg-[#1e293b] border border-white/10 rounded-lg px-2 py-1 text-xs text-white" value={p.medalla||""} onChange={async e=>{ const nuevos=participantes.map(x=>x.id===p.id?{...x,medalla:e.target.value}:x); await db.update("eventos",evento.id,{participantes:JSON.stringify(nuevos)}); setParticipantes(nuevos); reload(); }}>
+                  <select style={{ background:"var(--ss-card2)" }} className="border border-white/10 rounded-lg px-2 py-1 text-xs text-white" value={p.medalla||""} onChange={async e=>{ const nuevos=participantes.map(x=>x.id===p.id?{...x,medalla:e.target.value}:x); await db.update("eventos",evento.id,{participantes:JSON.stringify(nuevos)}); setParticipantes(nuevos); reload(); }}>
                     <option value="">Sin medalla</option>
                     <option value="🥇 Oro">🥇 Oro</option>
                     <option value="🥈 Plata">🥈 Plata</option>
@@ -3991,7 +3990,7 @@ const MiAsistenciaPage = ({ currentUser, students, asistencia }) => {
       {/* Selector de mes */}
       <div className="flex items-center gap-3">
         <button onClick={()=>{ const idx=mesesDisp.indexOf(mesSeleccionado); if(idx<mesesDisp.length-1) setMesSeleccionado(mesesDisp[idx+1]); }} className="p-2 rounded-xl bg-white/5 text-slate-400 hover:bg-white/10">◀</button>
-        <select className="flex-1 bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm text-center" value={mesSeleccionado} onChange={e=>setMesSeleccionado(e.target.value)}>
+        <select style={{ background:"var(--ss-card2)" }} className="flex-1 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm text-center" value={mesSeleccionado} onChange={e=>setMesSeleccionado(e.target.value)}>
           {mesesDisp.map(m=><option key={m} value={m}>{formatMes(m)}</option>)}
         </select>
         <button onClick={()=>{ const idx=mesesDisp.indexOf(mesSeleccionado); if(idx>0) setMesSeleccionado(mesesDisp[idx-1]); }} className="p-2 rounded-xl bg-white/5 text-slate-400 hover:bg-white/10">▶</button>
