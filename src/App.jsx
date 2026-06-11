@@ -195,9 +195,9 @@ const getCategoria = (fechaNac) => {
 
 let CONFIG_MEMBRESIAS = []; // membresías por academia, cargadas en loadAll
 const MEMB_PALETTE = ["#3b82f6","#2563EB","#a855f7","#22c55e","#06b6d4","#f43f5e","#f59e0b","#14b8a6"];
-const getMembresias = () => CONFIG_MEMBRESIAS.length > 0
-  ? CONFIG_MEMBRESIAS.map((m,i)=>({ id:m.id, nombre:m.nombre, sesiones:m.sesiones, color:MEMB_PALETTE[i%MEMB_PALETTE.length] }))
-  : [];
+const getMembresias = (sede) => CONFIG_MEMBRESIAS
+  .filter(m => !sede || !m.sede || m.sede === sede)
+  .map((m,i)=>({ id:m.id, nombre:m.nombre, sesiones:m.sesiones, sede:m.sede, color:MEMB_PALETTE[i%MEMB_PALETTE.length] }));
 
 const MEMBRESIAS = [
   { id: "basica",      nombre: "Básico",      sesiones: 8,   color: "#3b82f6" },
@@ -1342,7 +1342,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
         </Field>
         <Field label="Membresía">
           <div className="grid grid-cols-3 gap-2 mt-1">
-            {getMembresias().map(m => (
+            {getMembresias(sede).map(m => (
               <button key={m.id} type="button" onClick={() => setMembresia(m.id)}
                 className="p-3 rounded-xl border text-center transition-all"
                 style={{ background: membresia === m.id ? `${m.color}30` : "rgba(255,255,255,0.03)", borderColor: membresia === m.id ? m.color : "rgba(255,255,255,0.1)", color: membresia === m.id ? m.color : "#94a3b8" }}>
@@ -1891,7 +1891,7 @@ const ReanudirModal = ({ pago, students, reload, onClose }) => {
       <div className="space-y-5">
         <Field label="Nueva Membresía">
           <div className="grid grid-cols-3 gap-2">
-            {getMembresias().map(m=>(
+            {getMembresias(pago.sede).map(m=>(
               <button key={m.id} type="button" onClick={()=>setTipoPago(m.id)}
                 className="p-3 rounded-xl border text-center transition-all"
                 style={{ background:tipoPago===m.id?`${m.color}25`:"rgba(255,255,255,0.03)", borderColor:tipoPago===m.id?m.color:"rgba(255,255,255,0.1)" }}>
@@ -1968,7 +1968,7 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
       <div className="space-y-5">
         <Field label="Membresía">
           <div className="grid grid-cols-3 gap-2">
-            {getMembresias().map(m=>(
+            {getMembresias(pago.sede).map(m=>(
               <button key={m.id} type="button" onClick={()=>setTipoPago(m.id)}
                 className="p-3 rounded-xl border text-center transition-all"
                 style={{ background:tipoPago===m.id?`${m.color}25`:"rgba(255,255,255,0.03)", borderColor:tipoPago===m.id?m.color:"rgba(255,255,255,0.1)" }}>
@@ -2154,7 +2154,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
           </Field>
           <Field label="Membresía">
             <div className="grid grid-cols-3 gap-3 mt-1">
-              {getMembresias().map(m=>(
+              {getMembresias(alumno?.sede).map(m=>(
                 <button key={m.id} type="button" onClick={()=>{
                   setTipoPago(m.id);
                   if (fechaPago) setFechaVenc(calcVencimiento(fechaPago, m.id));
@@ -2448,6 +2448,7 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
 
   const VentaForm = ({ onClose, students, inventario }) => {
     const [carrito, setCarrito] = useState([]);
+    const [sedeVenta, setSedeVenta] = useState(SEDES[0]||"");
     const [catFilter, setCatFilter] = useState("todos");
     const [saving, setSaving] = useState(false);
     const [cliente, setCliente] = useState("");
@@ -2482,6 +2483,7 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
         cliente: alumnoSel ? `${alumnoSel.nombres} ${alumnoSel.apellidos}` : (cliente || "Sin nombre"),
         alumno_id: alumnoId || null,
         fecha: fechaVenta,
+        sede: sedeVenta,
         detalle: carrito.map(i=>`${i.qty}x ${i.nombre}`).join(", ")
       });
       // Descontar del inventario automáticamente
@@ -2498,8 +2500,8 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
       onClose();
     };
 
-    // Solo productos del inventario de la academia (sin valores por defecto)
-    const todosProductos = (inventario||[]).map(i=>({
+    // Solo productos del inventario de la academia, filtrados por sede de la venta
+    const todosProductos = (inventario||[]).filter(i => !i.sede || i.sede === sedeVenta).map(i=>({
       id: i.id,
       nombre: i.nombre,
       precio: parseFloat(i.precio_venta||0),
@@ -2531,6 +2533,17 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
             <Field label="Fecha"><Input type="date" value={fechaVenta} onChange={e=>setFechaVenta(e.target.value)} /></Field>
           </div>
 
+          {SEDES.length>1 && (
+            <div className="flex gap-2 flex-wrap">
+              {SEDES.map(s=>(
+                <button key={s} type="button" onClick={()=>setSedeVenta(s)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                  style={sedeVenta===s?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white"}:{background:"var(--ss-input)",color:"#64748b"}}>
+                  📍 {s}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2 flex-wrap">
             {[{id:"todos",label:"Todos"},{id:"bebidas",label:"🥤 Bebidas"},{id:"implementos",label:"🥋 Implementos"},{id:"uniformes",label:"👕 Uniformes"}].map(c=>(
               <button key={c.id} onClick={()=>setCatFilter(c.id)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${catFilter===c.id?"text-white":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={catFilter===c.id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{}}>
@@ -3057,16 +3070,19 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
 
   const selectedStudent = students.find(s => s.id === selectedId);
   const costoInfo = selectedStudent ? (() => {
-    const cfg = (configExamenes||[]).find(cfg => cfg.cinturon_desde === selectedStudent.cinturon);
+    const matches = (configExamenes||[]).filter(cfg => cfg.cinturon_desde === selectedStudent.cinturon);
+    const cfg = matches.find(m=>m.sede===selectedStudent.sede) || matches.find(m=>!m.sede);
     return cfg ? { siguiente: cfg.cinturon_hasta, costo: parseFloat(cfg.costo||0) } : null;
   })() : null;
 
   const handleSelectStudent = (id) => {
     setSelectedId(id);
     const st = students.find(s => s.id === id);
-    if (st && COSTOS_ASCENSO[st.cinturon]?.siguiente) {
-      setNewBelt(COSTOS_ASCENSO[st.cinturon].siguiente);
-    }
+    if (!st) return;
+    const matches = (configExamenes||[]).filter(cfg => cfg.cinturon_desde === st.cinturon);
+    const cfg = matches.find(m=>m.sede===st.sede) || matches.find(m=>!m.sede) || matches[0];
+    if (cfg) setNewBelt(cfg.cinturon_hasta);
+    else setNewBelt("");
   };
 
   const upgrade = async () => {
@@ -3106,7 +3122,9 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
     setSavingGal(true);
     const al = students.find(s => s.id === galAlumnoId);
     if (!configGal || configGal.length === 0) { alert("Configura el costo del GAL en Configuración → GAL antes de registrar."); return; }
-    const costoGal = parseFloat(configGal[0].costo||0);
+    const alSede = students.find(s => s.id === galAlumnoId)?.sede;
+    const cfgGalSel = configGal.find(g=>g.sede===alSede) || configGal.find(g=>!g.sede) || configGal[0];
+    const costoGal = parseFloat(cfgGalSel.costo||0);
     const pagado = parseFloat(galPagado) || 0;
     const saldo = Math.max(0, costoGal - pagado);
     const estadoPago = pagado >= costoGal ? "pagado" : pagado > 0 ? "parcial" : "pendiente";
@@ -4408,13 +4426,14 @@ const InventarioForm = ({ item, reload, onClose }) => {
   const [stockMinimo, setStockMinimo] = useState(item?.stock_minimo || 5);
   const [descripcion, setDescripcion] = useState(item?.descripcion || "");
   const [stockExtra, setStockExtra] = useState(""); // Para agregar stock sin reemplazar
+  const [sedeCfg, setSedeCfg] = useState(item?.sede || "");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     if (!nombre) return;
     setSaving(true);
     const stockFinal = item ? (parseInt(item.stock||0) + parseInt(stockExtra||0)) : parseInt(stock||0);
-    const data = { nombre, categoria, precio_venta: parseFloat(precioVenta)||0, stock: stockFinal, stock_minimo: parseInt(stockMinimo)||0, descripcion };
+    const data = { nombre, categoria, precio_venta: parseFloat(precioVenta)||0, stock: stockFinal, stock_minimo: parseInt(stockMinimo)||0, descripcion, sede: sedeCfg || null };
     if (item) await db.update("inventario", item.id, data);
     else await db.insert("inventario", data);
     await reload();
@@ -4447,6 +4466,13 @@ const InventarioForm = ({ item, reload, onClose }) => {
           <Field label="Stock mínimo (alerta)"><Input type="number" value={stockMinimo} onChange={e=>setStockMinimo(e.target.value)} placeholder="5" /></Field>
           <Field label="Descripción (opcional)" className="col-span-2"><Input value={descripcion} onChange={e=>setDescripcion(e.target.value)} placeholder="Descripción del producto" /></Field>
         </div>
+        <Field label="Sede (opcional)">
+            <select value={sedeCfg} onChange={e=>setSedeCfg(e.target.value)}
+              style={{ background:"var(--ss-card2)" }} className="w-full border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none">
+              <option value="">Todas las sedes</option>
+              {SEDES.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </Field>
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
@@ -4730,16 +4756,17 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, config
   const [showExamenForm, setShowExamenForm] = useState(false);
 
   // ── GAL config ──
-  const galCosto = configGal?.[0]?.costo || 13;
-  const [newGalCosto, setNewGalCosto] = useState(galCosto);
+  const [newGalCosto, setNewGalCosto] = useState("");
+  const [galSede, setGalSede] = useState("");
 
   const saveGal = async () => {
     setSaving(true);
-    if (configGal && configGal.length > 0) {
-      await db.update("config_gal", configGal[0].id, { costo: parseFloat(newGalCosto) });
-    } else {
-      await db.insert("config_gal", { costo: parseFloat(newGalCosto) });
-    }
+    const existente = (configGal||[]).find(g => (g.sede||"") === galSede);
+    let res;
+    if (existente) res = await db.update("config_gal", existente.id, { costo: parseFloat(newGalCosto)||0 });
+    else res = await db.insert("config_gal", { costo: parseFloat(newGalCosto)||0, sede: galSede || null });
+    if (!res) alert("No se pudo guardar.\nDetalle: " + (globalThis.__dbErr||"desconocido"));
+    setNewGalCosto("");
     await reload();
     setSaving(false);
   };
@@ -4815,7 +4842,7 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, config
             </div>
             {configExamenes.length > 0 ? configExamenes.map(cfg=>(
               <div key={cfg.id} className="grid grid-cols-4 items-center px-4 py-3 border-b" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
-                <span className="text-sm text-white">{cfg.cinturon_desde}</span>
+                <span className="text-sm text-white">{cfg.cinturon_desde}{cfg.sede && <span className="block text-[10px] text-blue-400">📍 {cfg.sede}</span>}</span>
                 <span className="text-sm text-white">{cfg.cinturon_hasta}</span>
                 <span className="text-sm font-bold text-blue-400">${parseFloat(cfg.costo||0).toFixed(2)}</span>
                 <div className="flex gap-1 justify-end">
@@ -4840,18 +4867,39 @@ const ConfiguracionPage = ({ configExamenes, configGal, configMembresias, config
       {/* GAL */}
       {tab==="gal" && (
         <div className="space-y-4">
-          <p className="text-sm text-slate-400">Define el costo de emisión del GAL para tu academia</p>
-          <div className="p-5 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
-            <Field label="Costo del GAL ($)">
-              <Input type="number" value={newGalCosto} onChange={e=>setNewGalCosto(e.target.value)} placeholder="13.00" step="0.01" />
-            </Field>
-            <div className="mt-4 p-3 rounded-xl border" style={{ background:"rgba(37,99,235,0.07)", borderColor:"var(--ss-border)" }}>
-              <p className="text-xs text-slate-400">Costo actual del sistema: <span className="text-white font-bold">${parseFloat(galCosto).toFixed(2)}</span></p>
+          <p className="text-sm text-slate-400">Define el costo de emisión del GAL. Puedes tener un precio general y precios distintos por sede.</p>
+          <div className="p-5 rounded-2xl border space-y-3" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Costo ($)">
+                <Input type="number" value={newGalCosto} onChange={e=>setNewGalCosto(e.target.value)} placeholder="13.00" step="0.01" />
+              </Field>
+              <Field label="Sede">
+                <select value={galSede} onChange={e=>setGalSede(e.target.value)}
+                  style={{ background:"var(--ss-card2)" }} className="w-full border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none">
+                  <option value="">Todas las sedes</option>
+                  {SEDES.map(s=><option key={s} value={s}>{s}</option>)}
+                </select>
+              </Field>
             </div>
-            <button onClick={saveGal} disabled={saving} className="w-full mt-4 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60"
+            <button onClick={saveGal} disabled={saving||newGalCosto===""} className="w-full py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60"
               style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
               {saving?"Guardando...":"Guardar precio GAL"}
             </button>
+          </div>
+          <div className="space-y-2">
+            {(configGal||[]).map(g=>(
+              <div key={g.id} className="flex items-center justify-between p-4 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+                <p className="font-bold text-white text-sm">{g.sede ? `📍 ${g.sede}` : "🌐 Todas las sedes"}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-lg font-black text-blue-400">${parseFloat(g.costo||0).toFixed(2)}</p>
+                  <button onClick={async()=>{ if(!confirm("¿Eliminar este precio de GAL?")) return; await db.delete("config_gal", g.id); await reload(); }}
+                    className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center"><Icon name="trash" className="w-3 h-3" /></button>
+                </div>
+              </div>
+            ))}
+            {(!configGal||configGal.length===0)&&(
+              <p className="text-center text-slate-500 text-sm py-4">Sin precios de GAL configurados</p>
+            )}
           </div>
         </div>
       )}
@@ -4923,12 +4971,13 @@ const ExamenPrecioForm = ({ item, reload, onClose }) => {
   const [cinturonDesde, setCinturonDesde] = useState(item?.cinturon_desde || CINTURONES[0]);
   const [cinturonHasta, setCinturonHasta] = useState(item?.cinturon_hasta || CINTURONES[1]);
   const [costo, setCosto] = useState(item?.costo || "");
+  const [sedeCfg, setSedeCfg] = useState(item?.sede || "");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     if (!costo) return;
     setSaving(true);
-    const data = { cinturon_desde: cinturonDesde, cinturon_hasta: cinturonHasta, costo: parseFloat(costo) };
+    const data = { cinturon_desde: cinturonDesde, cinturon_hasta: cinturonHasta, costo: parseFloat(costo), sede: sedeCfg || null };
     if (item) await db.update("config_examenes", item.id, data);
     else await db.insert("config_examenes", data);
     await reload();
@@ -4956,6 +5005,13 @@ const ExamenPrecioForm = ({ item, reload, onClose }) => {
         <Field label="Costo ($)">
           <Input type="number" value={costo} onChange={e=>setCosto(e.target.value)} placeholder="0.00" step="0.01" />
         </Field>
+        <Field label="Sede (opcional)">
+            <select value={sedeCfg} onChange={e=>setSedeCfg(e.target.value)}
+              style={{ background:"var(--ss-card2)" }} className="w-full border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none">
+              <option value="">Todas las sedes</option>
+              {SEDES.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </Field>
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cancelar</button>
@@ -4993,8 +5049,8 @@ const MembresiasConfig = ({ configMembresias, reload }) => {
         {configMembresias.map(m=>(
           <div key={m.id} className="flex items-center justify-between p-4 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
             <div>
-              <p className="font-bold text-white">{m.nombre}</p>
-              <p className="text-xs text-slate-500">{m.sesiones>=999?"Sesiones ilimitadas":`${m.sesiones} sesiones`}</p>
+              <p className="font-bold text-white">{m.nombre} {m.sede && <span className="text-[10px] text-blue-400 font-semibold">📍 {m.sede}</span>}</p>
+              <p className="text-xs text-slate-500">{m.sesiones>=999?"Sesiones ilimitadas":`${m.sesiones} sesiones`} · {m.duracion_meses||1} mes(es)</p>
             </div>
             <div className="flex items-center gap-2">
               <p className="text-lg font-black text-blue-400">${parseFloat(m.precio||0).toFixed(2)}</p>
@@ -5020,12 +5076,13 @@ const MembresiaForm = ({ item, reload, onClose }) => {
   const [precio, setPrecio] = useState(item?.precio || "");
   const [sesiones, setSesiones] = useState(item?.sesiones || 999);
   const [duracion, setDuracion] = useState(item?.duracion_meses || 1);
+  const [sedeCfg, setSedeCfg] = useState(item?.sede || "");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     if (!nombre||precio==="") return;
     setSaving(true);
-    const data = { nombre, precio: parseFloat(precio)||0, sesiones: parseInt(sesiones)||999, duracion_meses: parseInt(duracion)||1 };
+    const data = { nombre, precio: parseFloat(precio)||0, sesiones: parseInt(sesiones)||999, duracion_meses: parseInt(duracion)||1, sede: sedeCfg || null };
     let res;
     if (item) res = await db.update("config_membresias", item.id, data);
     else res = await db.insert("config_membresias", data);
@@ -5044,6 +5101,13 @@ const MembresiaForm = ({ item, reload, onClose }) => {
           <Field label="Sesiones (999=ilim.)"><Input type="number" value={sesiones} onChange={e=>setSesiones(e.target.value)} /></Field>
           <Field label="Duración (meses)"><Input type="number" value={duracion} onChange={e=>setDuracion(e.target.value)} min="1" /></Field>
         </div>
+        <Field label="Sede (opcional)">
+            <select value={sedeCfg} onChange={e=>setSedeCfg(e.target.value)}
+              style={{ background:"var(--ss-card2)" }} className="w-full border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none">
+              <option value="">Todas las sedes</option>
+              {SEDES.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </Field>
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cancelar</button>
