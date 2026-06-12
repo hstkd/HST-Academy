@@ -2623,7 +2623,20 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
   };
 
   const onDelete = async id => {
-    if (!confirm("¿Eliminar venta?")) return;
+    if (!confirm("¿Eliminar venta? El stock de los productos se restaurará automáticamente.")) return;
+    // Restaurar stock de los productos de esta venta
+    const venta = ventas.find(v => v.id === id);
+    if (venta?.items) {
+      try {
+        const items = JSON.parse(venta.items);
+        for (const item of items) {
+          const invItem = (inventario||[]).find(inv => inv.nombre.toLowerCase() === item.nombre.toLowerCase());
+          if (invItem) {
+            await db.update("inventario", invItem.id, { stock: parseInt(invItem.stock||0) + parseInt(item.qty||0) });
+          }
+        }
+      } catch (e) { console.error("No se pudo restaurar stock:", e); }
+    }
     await db.delete("ventas", id);
     await reload();
   };
