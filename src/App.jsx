@@ -2474,7 +2474,7 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
       if (carrito.length===0) return;
       setSaving(true);
       const alumnoSel = students.find(s=>s.id===alumnoId);
-      await db.insert("ventas", {
+      const ventaRes = await db.insert("ventas", {
         items: JSON.stringify(carrito),
         total,
         monto_pagado: pagado,
@@ -2486,6 +2486,12 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
         sede: sedeVenta,
         detalle: carrito.map(i=>`${i.qty}x ${i.nombre}`).join(", ")
       });
+      // Si la venta NO se guardó, abortar sin tocar el inventario
+      if (!ventaRes) {
+        alert("No se pudo registrar la venta.\nDetalle: " + (globalThis.__dbErr||"desconocido"));
+        setSaving(false);
+        return;
+      }
       // Descontar del inventario automáticamente
       if (inventario && inventario.length > 0) {
         for (const item of carrito) {
