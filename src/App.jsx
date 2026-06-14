@@ -61,8 +61,8 @@ const THEME_CSS = `
 * { transition: background-color .25s ease, border-color .25s ease, color .15s ease; }
 `;
 
-const SUPABASE_URL = "https://khmqgetdhjidpboniuoj.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtobXFnZXRkaGppZHBib25pdW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTk0OTYsImV4cCI6MjA5NDk3NTQ5Nn0.jIZzqrQAnObmFHixbvRxBcYijw3qxCT0bxWaC99EL68";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
 
 const HEADERS = {
   "Content-Type": "application/json",
@@ -884,6 +884,10 @@ const SuperAdminPage = ({ currentUser, reload }) => {
                   <button onClick={()=>setShowHistorial(club)}
                     className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold">
                     📋 Historial
+                  </button>
+                  <button onClick={()=>generarLink(club)}
+                    className="px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-400 text-xs font-semibold">
+                    🔗 Link acceso
                   </button>
                   <button onClick={()=>resetAdminPass(club)}
                     className="px-3 py-1.5 rounded-lg bg-slate-500/20 text-slate-300 text-xs font-semibold">
@@ -5436,7 +5440,63 @@ export default function App() {
     } else {
       setPage((PERMISOS[u.role]||[])[0]);
     }
+    // Limpiar token de la URL sin recargar
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("token")) {
+      url.searchParams.delete("token");
+      window.history.replaceState({}, "", url.toString());
+    }
   };
+
+  // ── Auto-login por token en URL ──
+  const [tokenChecked, setTokenChecked] = useState(false);
+  useEffect(() => {
+    const tryTokenLogin = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      if (!token) { setTokenChecked(true); return; }
+      try {
+        // Buscar token válido en Supabase
+        const tokens = await db.get("access_tokens",
+          `&token=eq.${encodeURIComponent(token)}&activo=eq.true`, true);
+        if (!tokens || tokens.length === 0) { setTokenChecked(true); return; }
+        const tk = tokens[0];
+        // Verificar expiración
+        const ahora = new Date().toISOString();
+        if (tk.expira_en && tk.expira_en < ahora) {
+          // Token expirado — desactivar
+          await db.update("access_tokens", tk.id, { activo: false });
+          setTokenChecked(true); return;
+        }
+        // Buscar el usuario admin de esa academia
+        const users = await db.get("users",
+          `&club_id=eq.${tk.club_id}&role=eq.admin&limit=1`, true);
+        if (!users || users.length === 0) { setTokenChecked(true); return; }
+        const u = users[0];
+        // Verificar que el club esté activo
+        const clubs = await db.get("clubs", `&id=eq.${tk.club_id}`, true);
+        const club = clubs?.[0];
+        if (!club || club.estado === "suspendido") { setTokenChecked(true); return; }
+        const hoy = new Date().toISOString().slice(0,10);
+        if (club.estado === "trial" && club.trial_hasta < hoy) { setTokenChecked(true); return; }
+        // Login automático
+        handleLogin(u);
+      } catch(e) {
+        console.error("Token login error:", e);
+      }
+      setTokenChecked(true);
+    };
+    tryTokenLogin();
+  }, []);
+
+  if (!tokenChecked) return (
+    <div style={{ height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#0a0f1e" }}>
+      <div style={{ textAlign:"center" }}>
+        <div style={{ width:40, height:40, border:"3px solid #2563EB", borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 12px" }}></div>
+        <p style={{ color:"#64748b", fontSize:14 }}>Verificando acceso...</p>
+      </div>
+    </div>
+  );
 
   if (!user) return <LoginScreen onLogin={handleLogin} />;
 
