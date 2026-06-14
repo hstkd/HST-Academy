@@ -688,32 +688,36 @@ const PrivacidadTexto = () => (
 const SuperAdminPage = ({ currentUser, reload }) => {
   const [clubs, setClubs] = useState([]);
   const [suscripciones, setSuscripciones] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedClub, setSelectedClub] = useState(null);
   const [showSuscForm, setShowSuscForm] = useState(false);
+  const [showNewClub, setShowNewClub] = useState(false);
+  const [showHistorial, setShowHistorial] = useState(null);
+  const [tempPassInfo, setTempPassInfo] = useState(null);
+  const [tab, setTab] = useState("academias");
+  const [search, setSearch] = useState("");
 
-  useEffect(()=>{
-    const load = async () => {
-      const [c, s] = await Promise.all([db.get("clubs","",true), db.get("suscripciones","",true)]);
-      setClubs(Array.isArray(c)?c:[]);
-      setSuscripciones(Array.isArray(s)?s:[]);
-      setLoading(false);
-    };
-    load();
-  },[]);
-
-  const reloadAll = async () => {
-    const [c,s] = await Promise.all([db.get("clubs","",true), db.get("suscripciones","",true)]);
+  const loadAll = async () => {
+    setLoading(true);
+    const [c, s, u] = await Promise.all([
+      db.get("clubs","&order=created_at.desc",true),
+      db.get("suscripciones","&order=fecha_vencimiento.desc",true),
+      db.get("users","",true)
+    ]);
     setClubs(Array.isArray(c)?c:[]);
     setSuscripciones(Array.isArray(s)?s:[]);
+    setUsers(Array.isArray(u)?u:[]);
+    setLoading(false);
   };
 
-  const [tempPassInfo, setTempPassInfo] = useState(null);
+  useEffect(()=>{ loadAll(); },[]);
+
   const resetAdminPass = async (club) => {
-    const admins = await db.get("users", `&club_id=eq.${club.id}&role=eq.admin`, true);
-    if (!admins || admins.length === 0) { alert("Esta academia no tiene usuario administrador."); return; }
+    const admins = users.filter(u=>u.club_id===club.id && u.role==="admin");
+    if (!admins.length) { alert("Esta academia no tiene usuario administrador."); return; }
     const admin = admins[0];
-    if (!confirm(`¿Generar nueva contraseña temporal para ${admin.nombre} (${admin.email})?`)) return;
+    if (!confirm(`¿Generar nueva contraseña temporal para ${admin.nombre}?`)) return;
     const temp = Math.random().toString(36).substring(2, 10);
     await db.update("users", admin.id, { password: await hashPassword(temp) });
     setTempPassInfo({ nombre: admin.nombre, email: admin.email, club: club.nombre, pass: temp });
@@ -721,99 +725,242 @@ const SuperAdminPage = ({ currentUser, reload }) => {
 
   const toggleEstado = async (club) => {
     const nuevoEstado = club.estado === "activo" ? "suspendido" : "activo";
+    if (!confirm(`¿${nuevoEstado === "suspendido" ? "Suspender" : "Activar"} la academia "${club.nombre}"?`)) return;
     await db.update("clubs", club.id, { estado: nuevoEstado });
-    await reloadAll();
+    await loadAll();
   };
 
   const hoy = new Date().toISOString().slice(0,10);
-  const activos   = clubs.filter(c=>c.estado==="activo").length;
-  const trial     = clubs.filter(c=>c.estado==="trial").length;
-  const suspendidos = clubs.filter(c=>c.estado==="suspendido").length;
-  const mrr = clubs.filter(c=>c.estado==="activo").reduce((a,c)=>a+(c.plan==="pro"?50:30),0);
+
+  // Métricas reales
+  const activos    = clubs.filter(c=>c.estado==="activo").length;
+  const enTrial    = clubs.filter(c=>c.estado==="trial").length;
+  const suspendidos= clubs.filter(c=>c.estado==="suspendido").length;
+  const mrr        = suscripciones
+    .filter(s=>s.fecha_vencimiento>=hoy && s.estado==="activo")
+    .reduce((a,s)=>a+parseFloat(s.monto||0),0);
+  const ingresoTotal = suscripciones.reduce((a,s)=>a+parseFloat(s.monto||0),0);
+
+  // Próximas a vencer (7 días)
+  const proxVencer = clubs.filter(club=>{
+    const s = suscripciones.filter(s=>s.club_id===club.id).sort((a,b)=>b.fecha_vencimiento?.localeCompare(a.fecha_vencimiento))[0];
+    if (!s) return false;
+    const diff = Math.ceil((new Date(s.fecha_vencimiento) - new Date()) / 86400000);
+    return diff >= 0 && diff <= 7 && club.estado==="activo";
+  });
+
+  const getDiasRestantes = (club_id) => {
+    const s = suscripciones.filter(s=>s.club_id===club_id).sort((a,b)=>b.fecha_vencimiento?.localeCompare(a.fecha_vencimiento))[0];
+    if (!s) return null;
+    return Math.ceil((new Date(s.fecha_vencimiento+"T23:59:59") - new Date()) / 86400000);
+  };
+
+  const getUltimaSusc = (club_id) => suscripciones
+    .filter(s=>s.club_id===club_id)
+    .sort((a,b)=>b.fecha_vencimiento?.localeCompare(a.fecha_vencimiento))[0];
+
+  const getAdminCount = (club_id) => users.filter(u=>u.club_id===club_id).length;
+
+  const clubsFiltrados = clubs.filter(c=>
+    !search ||
+    c.nombre?.toLowerCase().includes(search.toLowerCase()) ||
+    c.email?.toLowerCase().includes(search.toLowerCase()) ||
+    c.ciudad?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div className="space-y-6 p-4 max-w-2xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>SUPER ADMIN</h1>
-        <p className="text-slate-500 text-sm">Panel de control — SportSync</p>
+    <div className="space-y-6 p-4 max-w-3xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-black text-white" style={{ letterSpacing:"-0.02em" }}>SUPER ADMIN</h1>
+          <p className="text-slate-500 text-sm">SportSync · Panel de control</p>
+        </div>
+        <button onClick={()=>setShowNewClub(true)}
+          className="px-4 py-2.5 rounded-xl text-white text-sm font-bold"
+          style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
+          + Nueva Academia
+        </button>
       </div>
 
-      {/* Stats */}
+      {/* KPIs */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl p-4 border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.2)" }}>
-          <p className="text-xs text-emerald-400 font-semibold uppercase">MRR Estimado</p>
-          <p className="text-3xl font-black text-white">${mrr}</p>
-          <p className="text-xs text-slate-500 mt-1">{activos} academias activas</p>
+        <div className="rounded-2xl p-4 border col-span-2" style={{ background:"rgba(16,185,129,0.08)", borderColor:"rgba(16,185,129,0.2)" }}>
+          <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Ingresos totales</p>
+          <p className="text-4xl font-black text-white">${ingresoTotal.toFixed(2)}</p>
+          <p className="text-xs text-slate-500 mt-1">MRR activo estimado: <span className="text-emerald-400 font-bold">${mrr.toFixed(2)}</span></p>
         </div>
         <div className="rounded-2xl p-4 border" style={{ background:"rgba(37,99,235,0.07)", borderColor:"var(--ss-border)" }}>
           <p className="text-xs text-blue-400 font-semibold uppercase">Total Academias</p>
           <p className="text-3xl font-black text-white">{clubs.length}</p>
-          <p className="text-xs text-slate-500 mt-1">{trial} en prueba · {suspendidos} suspendidas</p>
+          <p className="text-xs text-slate-500 mt-1">{activos} activas · {enTrial} trial · {suspendidos} suspendidas</p>
+        </div>
+        <div className="rounded-2xl p-4 border" style={{ background: proxVencer.length>0?"rgba(234,179,8,0.08)":"rgba(37,99,235,0.07)", borderColor: proxVencer.length>0?"rgba(234,179,8,0.25)":"var(--ss-border)" }}>
+          <p className="text-xs font-semibold uppercase" style={{ color: proxVencer.length>0?"#facc15":"#60a5fa" }}>Por vencer (7 días)</p>
+          <p className="text-3xl font-black text-white">{proxVencer.length}</p>
+          <p className="text-xs text-slate-500 mt-1">{proxVencer.length>0?"Requieren atención":"Todo al día"}</p>
         </div>
       </div>
 
-      {/* Lista de clubes */}
-      <div className="space-y-3">
-        {loading && <p className="text-slate-500 text-center py-8">Cargando...</p>}
-        {clubs.sort((a,b)=>b.created_at?.localeCompare(a.created_at)).map(club=>{
-          const suscClub = suscripciones.filter(s=>s.club_id===club.id).sort((a,b)=>b.created_at?.localeCompare(a.created_at));
-          const ultimaSusc = suscClub[0];
-          return (
-            <div key={club.id} className="p-4 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <p className="font-black text-white">{club.nombre}</p>
-                  <p className="text-xs text-slate-500">{club.ciudad} · {club.email}</p>
-                  <p className="text-xs text-slate-500">{club.telefono}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                    club.estado==="activo"?"bg-emerald-500/20 text-emerald-400":
-                    club.estado==="trial"?"bg-blue-500/20 text-blue-400":
-                    "bg-red-500/20 text-red-400"}`}>
-                    {club.estado==="trial"?`Trial hasta ${club.trial_hasta}`:club.estado}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400">
-                    {club.plan==="pro"?"Pro $50":"Básico $30"}
-                  </span>
-                </div>
+      {/* Alertas vencimiento */}
+      {proxVencer.length>0 && (
+        <div className="rounded-2xl p-4 border space-y-2" style={{ background:"rgba(234,179,8,0.06)", borderColor:"rgba(234,179,8,0.2)" }}>
+          <p className="text-xs font-bold text-yellow-400 uppercase tracking-wider">⚠️ Próximas a vencer</p>
+          {proxVencer.map(club=>{
+            const dias = getDiasRestantes(club.id);
+            return (
+              <div key={club.id} className="flex items-center justify-between">
+                <p className="text-sm text-white font-medium">{club.nombre}</p>
+                <span className="text-xs font-bold text-yellow-400">{dias === 0 ? "Vence hoy" : `${dias} día(s)`}</span>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {ultimaSusc && (
-                <p className="text-xs text-slate-500 mb-2">Último pago: {ultimaSusc.fecha_pago} · Vence: {ultimaSusc.fecha_vencimiento}</p>
-              )}
-
-              <div className="flex gap-2 flex-wrap">
-                <button onClick={()=>{ setSelectedClub(club); setShowSuscForm(true); }}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold">
-                  💳 Registrar pago
-                </button>
-                <button onClick={()=>resetAdminPass(club)}
-                  className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold">
-                  🔑 Reset clave admin
-                </button>
-                <button onClick={()=>toggleEstado(club)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${club.estado==="suspendido"?"bg-emerald-500/20 text-emerald-400":"bg-red-500/20 text-red-400"}`}>
-                  {club.estado==="suspendido"?"▶ Activar":"⏸ Suspender"}
-                </button>
-                <select value={club.plan} onChange={async e=>{ await db.update("clubs",club.id,{plan:e.target.value}); reloadAll(); }}
-                  className="px-2 py-1 rounded-lg bg-white/5 text-white text-xs border border-white/10">
-                  <option value="basico" className="bg-slate-800">Básico $30</option>
-                  <option value="pro" className="bg-slate-800">Pro $50</option>
-                </select>
-              </div>
-            </div>
-          );
-        })}
-        {!loading && clubs.length===0 && (
-          <p className="text-center text-slate-500 py-8">Sin academias registradas aún</p>
-        )}
+      {/* Tabs */}
+      <div className="flex gap-2 p-1 rounded-xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+        {["academias","pagos"].map(t=>(
+          <button key={t} onClick={()=>setTab(t)}
+            className={`flex-1 py-2 rounded-lg text-sm font-bold capitalize transition-all ${tab===t?"text-white":"text-slate-500 hover:text-slate-300"}`}
+            style={tab===t?{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }:{}}>
+            {t==="academias"?"🏫 Academias":"💳 Pagos"}
+          </button>
+        ))}
       </div>
 
-      {/* Modal registrar pago suscripción */}
-      {showSuscForm && selectedClub && (
-        <SuscripcionForm club={selectedClub} reload={reloadAll} onClose={()=>{ setShowSuscForm(false); setSelectedClub(null); }} />
+      {tab==="academias" && (<>
+        {/* Buscador */}
+        <input value={search} onChange={e=>setSearch(e.target.value)}
+          placeholder="Buscar academia, email, ciudad..."
+          className="w-full px-4 py-3 rounded-xl border text-white text-sm outline-none"
+          style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }} />
+
+        {/* Lista academias */}
+        <div className="space-y-3">
+          {loading && <p className="text-slate-500 text-center py-8">Cargando...</p>}
+          {!loading && clubsFiltrados.length===0 && <p className="text-center text-slate-500 py-8">Sin academias</p>}
+          {clubsFiltrados.map(club=>{
+            const ult = getUltimaSusc(club.id);
+            const dias = getDiasRestantes(club.id);
+            const numUsers = getAdminCount(club.id);
+            const diasColor = dias===null?"text-slate-500": dias<=3?"text-red-400": dias<=7?"text-yellow-400":"text-emerald-400";
+            return (
+              <div key={club.id} className="p-4 rounded-2xl border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <div>
+                    <p className="font-black text-white">{club.nombre}</p>
+                    <p className="text-xs text-slate-500">{club.ciudad} · {club.email}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{numUsers} usuario(s) · Plan <span className="font-bold text-white">{club.plan==="pro"?"Pro $50":"Básico $30"}</span></p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                      club.estado==="activo"?"bg-emerald-500/20 text-emerald-400":
+                      club.estado==="trial"?"bg-blue-500/20 text-blue-400":
+                      "bg-red-500/20 text-red-400"}`}>
+                      {club.estado==="trial"?`Trial → ${club.trial_hasta}`:club.estado.toUpperCase()}
+                    </span>
+                    {dias!==null && (
+                      <span className={`text-xs font-bold ${diasColor}`}>
+                        {dias<0?`Vencido hace ${Math.abs(dias)}d`: dias===0?"Vence hoy":`${dias}d restantes`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {ult && (
+                  <div className="mb-3 p-2 rounded-lg text-xs" style={{ background:"rgba(255,255,255,0.03)" }}>
+                    <span className="text-slate-500">Último pago:</span> <span className="text-white">{ult.fecha_pago}</span>
+                    <span className="text-slate-500 ml-3">Vence:</span> <span className="text-white">{ult.fecha_vencimiento}</span>
+                    <span className="text-slate-500 ml-3">$</span><span className="text-emerald-400 font-bold">{ult.monto}</span>
+                  </div>
+                )}
+
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={()=>{ setSelectedClub(club); setShowSuscForm(true); }}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold">
+                    💳 Registrar pago
+                  </button>
+                  <button onClick={()=>setShowHistorial(club)}
+                    className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold">
+                    📋 Historial
+                  </button>
+                  <button onClick={()=>resetAdminPass(club)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-500/20 text-slate-300 text-xs font-semibold">
+                    🔑 Reset clave
+                  </button>
+                  <button onClick={()=>toggleEstado(club)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${club.estado==="suspendido"?"bg-emerald-500/20 text-emerald-400":"bg-red-500/20 text-red-400"}`}>
+                    {club.estado==="suspendido"?"▶ Activar":"⏸ Suspender"}
+                  </button>
+                  <select value={club.plan||"basico"} onChange={async e=>{ await db.update("clubs",club.id,{plan:e.target.value}); loadAll(); }}
+                    className="px-2 py-1 rounded-lg bg-white/5 text-white text-xs border border-white/10">
+                    <option value="basico" className="bg-slate-800">Básico $30</option>
+                    <option value="pro" className="bg-slate-800">Pro $50</option>
+                  </select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </>)}
+
+      {tab==="pagos" && (
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Todos los pagos registrados</p>
+          {suscripciones.length===0 && <p className="text-center text-slate-500 py-8">Sin pagos registrados</p>}
+          {suscripciones.sort((a,b)=>b.fecha_pago?.localeCompare(a.fecha_pago)).map(s=>{
+            const club = clubs.find(c=>c.id===s.club_id);
+            return (
+              <div key={s.id} className="p-3 rounded-xl border flex items-center justify-between gap-3" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+                <div>
+                  <p className="text-sm font-bold text-white">{club?.nombre||"Academia desconocida"}</p>
+                  <p className="text-xs text-slate-500">Pago: {s.fecha_pago} · Vence: {s.fecha_vencimiento}</p>
+                  {s.notas && <p className="text-xs text-slate-400 mt-0.5">{s.notas}</p>}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-lg font-black text-emerald-400">${s.monto}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${s.estado==="activo"?"bg-emerald-500/20 text-emerald-400":"bg-slate-500/20 text-slate-400"}`}>{s.estado}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
+
+      {/* Modal nuevo pago */}
+      {showSuscForm && selectedClub && (
+        <SuscripcionForm club={selectedClub} reload={loadAll} onClose={()=>{ setShowSuscForm(false); setSelectedClub(null); }} />
+      )}
+
+      {/* Modal historial */}
+      {showHistorial && (
+        <Modal title={`Historial — ${showHistorial.nombre}`} onClose={()=>setShowHistorial(null)}>
+          <div className="space-y-2 max-h-72 overflow-y-auto">
+            {suscripciones.filter(s=>s.club_id===showHistorial.id).sort((a,b)=>b.fecha_pago?.localeCompare(a.fecha_pago)).map(s=>(
+              <div key={s.id} className="p-3 rounded-xl border flex justify-between items-center" style={{ background:"rgba(255,255,255,0.03)", borderColor:"var(--ss-border)" }}>
+                <div>
+                  <p className="text-sm text-white font-bold">${s.monto} · {s.plan}</p>
+                  <p className="text-xs text-slate-500">Pago: {s.fecha_pago} · Vence: {s.fecha_vencimiento}</p>
+                  {s.notas && <p className="text-xs text-slate-400">{s.notas}</p>}
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${s.estado==="activo"?"bg-emerald-500/20 text-emerald-400":"bg-slate-500/20 text-slate-400"}`}>{s.estado}</span>
+              </div>
+            ))}
+            {suscripciones.filter(s=>s.club_id===showHistorial.id).length===0 && (
+              <p className="text-center text-slate-500 py-6 text-sm">Sin pagos registrados</p>
+            )}
+          </div>
+          <button onClick={()=>setShowHistorial(null)} className="w-full mt-4 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cerrar</button>
+        </Modal>
+      )}
+
+      {/* Modal nueva academia */}
+      {showNewClub && (
+        <NuevaAcademiaForm reload={loadAll} onClose={()=>setShowNewClub(false)} />
+      )}
+
+      {/* Modal clave temporal */}
       {tempPassInfo && (
         <Modal title="Contraseña temporal generada" onClose={()=>setTempPassInfo(null)}>
           <div className="space-y-4">
@@ -823,8 +970,8 @@ const SuperAdminPage = ({ currentUser, reload }) => {
               <p className="text-xs text-slate-400 mt-3 mb-1">Contraseña temporal:</p>
               <p className="text-2xl font-black text-emerald-400 tracking-wider select-all">{tempPassInfo.pass}</p>
             </div>
-            <p className="text-xs text-slate-500">⚠️ Compártela de forma segura con el administrador. No volverá a mostrarse.</p>
-            <button onClick={()=>{ navigator.clipboard?.writeText(tempPassInfo.pass); }} className="w-full py-2.5 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">📋 Copiar contraseña</button>
+            <p className="text-xs text-slate-500">⚠️ Compártela de forma segura. No volverá a mostrarse.</p>
+            <button onClick={()=>navigator.clipboard?.writeText(tempPassInfo.pass)} className="w-full py-2.5 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">📋 Copiar contraseña</button>
             <button onClick={()=>setTempPassInfo(null)} className="w-full py-3 rounded-xl text-white text-sm font-bold" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>Entendido</button>
           </div>
         </Modal>
@@ -833,53 +980,66 @@ const SuperAdminPage = ({ currentUser, reload }) => {
   );
 };
 
-const SuscripcionForm = ({ club, reload, onClose }) => {
-  const [monto, setMonto] = useState(club.plan==="pro"?"50":"30");
-  const [fechaPago, setFechaPago] = useState(new Date().toISOString().slice(0,10));
-  const [notas, setNotas] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const vencimiento = new Date(fechaPago+"T12:00:00");
-  vencimiento.setMonth(vencimiento.getMonth()+1);
-  const fechaVenc = vencimiento.toISOString().slice(0,10);
+const NuevaAcademiaForm = ({ reload, onClose }) => {
+  const [nombre, setNombre]   = useState("");
+  const [email, setEmail]     = useState("");
+  const [ciudad, setCiudad]   = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [plan, setPlan]       = useState("basico");
+  const [adminNombre, setAdminNombre] = useState("");
+  const [adminPass, setAdminPass]     = useState("");
+  const [trialDias, setTrialDias]     = useState("15");
+  const [saving, setSaving]   = useState(false);
+  const [err, setErr]         = useState("");
 
   const save = async () => {
-    setSaving(true);
-    await db.insert("suscripciones", {
-      club_id: club.id,
-      plan: club.plan,
-      monto: parseFloat(monto),
-      fecha_pago: fechaPago,
-      fecha_vencimiento: fechaVenc,
-      estado: "activo",
-      notas,
-    });
-    // Activar club
-    await db.update("clubs", club.id, { estado:"activo" });
+    if (!nombre||!email||!adminNombre||!adminPass) { setErr("Completa todos los campos obligatorios"); return; }
+    setSaving(true); setErr("");
+    const trialHasta = new Date();
+    trialHasta.setDate(trialHasta.getDate() + parseInt(trialDias||"15"));
+    const trialStr = trialHasta.toISOString().slice(0,10);
+    // Crear club
+    const clubs = await db.insert("clubs", { nombre, email, ciudad, telefono, plan, estado:"trial", trial_hasta: trialStr });
+    if (!clubs||!clubs[0]) { setErr("Error al crear la academia"); setSaving(false); return; }
+    const club = clubs[0];
+    // Crear admin
+    const hashed = await hashPassword(adminPass);
+    await db.insert("users", { club_id: club.id, nombre: adminNombre, email, password: hashed, role:"admin" });
     await reload();
     setSaving(false);
     onClose();
   };
 
   return (
-    <Modal title={`Pago — ${club.nombre}`} onClose={onClose}>
-      <div className="space-y-4">
-        <div className="p-3 rounded-xl border" style={{ background:"rgba(37,99,235,0.07)", borderColor:"var(--ss-border)" }}>
-          <p className="text-xs text-slate-400">Plan: <span className="text-white font-bold">{club.plan==="pro"?"Pro $50/mes":"Básico $30/mes"}</span></p>
+    <Modal title="Nueva Academia" onClose={onClose}>
+      <div className="space-y-3">
+        {err && <p className="text-red-400 text-sm p-3 rounded-xl bg-red-500/10">{err}</p>}
+        <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Datos de la academia</p>
+        <Field label="Nombre *"><Input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: TKD Champions" /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Email *"><Input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="admin@academia.com" /></Field>
+          <Field label="Teléfono"><Input value={telefono} onChange={e=>setTelefono(e.target.value)} placeholder="+593..." /></Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Monto ($)"><Input type="number" value={monto} onChange={e=>setMonto(e.target.value)} /></Field>
-          <Field label="Fecha de pago"><Input type="date" value={fechaPago} onChange={e=>setFechaPago(e.target.value)} /></Field>
+          <Field label="Ciudad"><Input value={ciudad} onChange={e=>setCiudad(e.target.value)} placeholder="Quito" /></Field>
+          <Field label="Plan">
+            <select value={plan} onChange={e=>setPlan(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border text-white text-sm outline-none" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+              <option value="basico" className="bg-slate-800">Básico $30/mes</option>
+              <option value="pro" className="bg-slate-800">Pro $50/mes</option>
+            </select>
+          </Field>
         </div>
-        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-          <p className="text-xs text-slate-400">Próximo vencimiento: <span className="text-emerald-400 font-bold">{fechaVenc}</span></p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Trial (días)"><Input type="number" value={trialDias} onChange={e=>setTrialDias(e.target.value)} /></Field>
         </div>
-        <Field label="Notas"><Input value={notas} onChange={e=>setNotas(e.target.value)} placeholder="Transferencia, referencia..." /></Field>
+        <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mt-2">Usuario Administrador</p>
+        <Field label="Nombre del admin *"><Input value={adminNombre} onChange={e=>setAdminNombre(e.target.value)} placeholder="Nombre completo" /></Field>
+        <Field label="Contraseña inicial *"><Input type="password" value={adminPass} onChange={e=>setAdminPass(e.target.value)} placeholder="Mínimo 6 caracteres" /></Field>
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm">Cancelar</button>
         <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60"
-          style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Registrar pago"}</button>
+          style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Creando...":"Crear Academia"}</button>
       </div>
     </Modal>
   );
