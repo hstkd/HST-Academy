@@ -1,3 +1,9 @@
+// ============================================================
+// SportSync — Sistema de Gestión de Academias Deportivas
+// Copyright © 2025 Henry Sigchos. Todos los derechos reservados.
+// Prohibida su reproducción, distribución o uso sin autorización
+// expresa del autor. Registro SENADI Ecuador en trámite.
+// ============================================================
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const LOGO_SRC = "https://i.imgur.com/fJdJygP.png";
@@ -913,14 +919,36 @@ const LoginScreen = ({ onLogin }) => {
     if (users&&users.length>0) {
       loginLimiter.reset();
       const u = users[0];
-      if (u.role === "superadmin") { onLogin(u); return; }
+      if (u.role === "superadmin") { onLogin(u); setLoading(false); return; }
       if (u.club_id) {
-        const clubs = await db.get("clubs",`&id=eq.${u.club_id}`, true);
-        const club = clubs?.[0];
-        if (club) {
-          const hoy = new Date().toISOString().slice(0,10);
-          if (club.estado === "suspendido") { setErr("Tu academia está suspendida. Contacta al equipo de SportSync."); setLoading(false); return; }
-          if (club.estado === "trial" && club.trial_hasta < hoy) { setErr("Tu período de prueba venció. Contacta a SportSync para activar tu plan."); setLoading(false); return; }
+        const clubRes = await db.get("clubs",`&id=eq.${u.club_id}`, true);
+        const club = clubRes?.[0];
+        if (!club) { setErr("Academia no encontrada. Contacta a SportSync."); setLoading(false); return; }
+        const hoy = new Date().toISOString().slice(0,10);
+        if (club.estado === "suspendido") {
+          setErr("Tu academia está suspendida. Contacta a SportSync para reactivarla.");
+          setLoading(false); return;
+        }
+        if (club.estado === "trial" && club.trial_hasta < hoy) {
+          setErr("Tu período de prueba venció. Contacta a SportSync para activar tu plan.");
+          setLoading(false); return;
+        }
+        if (club.estado === "activo") {
+          const suscs = await db.get("suscripciones", `&club_id=eq.${club.id}&order=fecha_vencimiento.desc&limit=1`, true);
+          if (suscs && suscs.length > 0) {
+            const ult = suscs[0];
+            const vencBase = new Date(ult.fecha_vencimiento + "T23:59:59");
+            const vencGracia = new Date(vencBase); vencGracia.setDate(vencGracia.getDate() + 3);
+            const vencGraciaStr = vencGracia.toISOString().slice(0,10);
+            if (hoy > vencGraciaStr) {
+              await db.update("clubs", club.id, { estado: "suspendido" });
+              setErr("Tu suscripcion vencio hace mas de 3 dias y fue suspendida automaticamente. Contacta a SportSync para renovar.");
+              setLoading(false); return;
+            }
+            if (hoy > ult.fecha_vencimiento) {
+              u._graciaDias = Math.ceil((vencGracia - new Date()) / 86400000);
+            }
+          }
         }
       }
       onLogin(u);
@@ -5362,6 +5390,14 @@ export default function App() {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+          {user?._graciaDias > 0 && (
+            <div className="mb-4 p-4 rounded-2xl border flex items-center justify-between gap-3 flex-wrap" style={{ background:"rgba(239,68,68,0.1)", borderColor:"rgba(239,68,68,0.35)" }}>
+              <div>
+                <p className="font-bold text-red-400 text-sm">⚠️ Suscripcion en periodo de gracia — {user._graciaDias} dia(s) restante(s)</p>
+                <p className="text-xs text-slate-400 mt-0.5">Tu plan vencio. Contacta a SportSync para renovar y evitar la suspension automatica.</p>
+              </div>
+            </div>
+          )}
           {isAdmin && SEDES.length===0 && page!=="configuracion" && page!=="superadmin" && (
             <div className="mb-4 p-4 rounded-2xl border flex items-center justify-between gap-3 flex-wrap" style={{ background:"rgba(245,158,11,0.1)", borderColor:"rgba(245,158,11,0.35)" }}>
               <div>
