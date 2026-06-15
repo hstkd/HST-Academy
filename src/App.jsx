@@ -2478,7 +2478,9 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                 </span>
               </div>
               {p.estado!=="pagado"&&<div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background:p.estado==="vencido"?"#ef4444":"#2563EB" }} /></div>}
-              <div className="flex justify-between items-center mt-3 flex-wrap gap-2{/* Pausar: disponible SIEMPRE excepto si ya está pausada */}
+                            <div className="flex justify-between items-center mt-3 flex-wrap gap-2">
+                {/* Pausar: disponible SIEMPRE excepto si ya está pausada */}
+
 {p.estado_membresia !== "Pausada" && (
   <button onClick={()=>setPausarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-500/20 text-slate-400 text-xs font-semibold hover:bg-slate-500/30">
     ⏸ Pausar
