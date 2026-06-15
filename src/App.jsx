@@ -2478,39 +2478,31 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                 </span>
               </div>
               {p.estado!=="pagado"&&<div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background:p.estado==="vencido"?"#ef4444":"#2563EB" }} /></div>}
-              <div className="flex justify-between items-center mt-3 flex-wrap gap-2">
-                {/* Estado Pausado */}
-                {p.estado_membresia === "Pausada" && (
-                  <button onClick={()=>setReanudarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-400 text-xs font-semibold hover:bg-purple-500/30">
-                    ▶️ Reanudar
-                  </button>
-                )}
-                {/* Al día */}
-                {p.estado === "al día" && (
-                  <button onClick={()=>setPausarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-500/20 text-slate-400 text-xs font-semibold hover:bg-slate-500/30">
-                    ⏸ Pausar
-                  </button>
-                )}
-                {/* Vencido → siempre tiene opción renovar */}
-                {p.estados && p.estados.includes("vencido") && (
-                  <>
-                    <button onClick={()=>setRenovarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/30">
-                      🔄 Renovar membresía
-                    </button>
-                    {/* Si además es parcial, mostrar completar pago */}
-                    {p.estados && p.estados.includes("parcial") && (
-                      <button onClick={()=>setCompletarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30">
-                        ✓ Completar pago
-                      </button>
-                    )}
-                  </>
-                )}
-                {/* Parcial sin vencer → completar pago */}
-                {p.estados && p.estados.includes("parcial") && !p.estados.includes("vencido") && (
-                  <button onClick={()=>setCompletarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30">
-                    ✓ Completar pago
-                  </button>
-                )}
+              <div className="flex justify-between items-center mt-3 flex-wrap gap-{/* Pausar: disponible SIEMPRE excepto si ya está pausada */}
+{p.estado_membresia !== "Pausada" && (
+  <button onClick={()=>setPausarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-500/20 text-slate-400 text-xs font-semibold hover:bg-slate-500/30">
+    ⏸ Pausar
+  </button>
+)}
+{/* Reanudar si está pausada */}
+{p.estado_membresia === "Pausada" && (
+  <button onClick={()=>setReanudarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-400 text-xs font-semibold hover:bg-purple-500/30">
+    ▶️ Reanudar
+  </button>
+)}
+{/* Renovar: solo si está vencido y NO pausado */}
+{p.estado_membresia !== "Pausada" && p.estados && p.estados.includes("vencido") && (
+  <button onClick={()=>setRenovarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/30">
+    🔄 Renovar membresía
+  </button>
+)}
+{/* Completar pago: si es parcial (vencido o no) y NO pausado */}
+{p.estado_membresia !== "Pausada" && p.estados && p.estados.includes("parcial") && (
+  <button onClick={()=>setCompletarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30">
+    ✓ Completar pago
+  </button>
+)}
+
                 {isAdmin&&<button onClick={()=>onDelete(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>}
               </div>
               {/* Historial de pagos recientes */}
