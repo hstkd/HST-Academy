@@ -1387,8 +1387,21 @@ const StudentFormModal = ({ student, reload, onClose }) => {
           console.log("Error creando usuario:", err);
         }
       }
-      await db.update("students", student.id, data);
+            await db.update("students", student.id, data);
+      // Sincronizar nombre en pagos, historial y exámenes si cambió
+      if (nombres !== student.nombres || apellidos !== student.apellidos) {
+        const nombreCompleto = `${nombres} ${apellidos}`;
+        try {
+          const pagosAlumno = await db.get("pagos", `&alumno_id=eq.${student.id}`);
+          for (const pg of (pagosAlumno||[])) await db.update("pagos", pg.id, { alumno_nombre: nombreCompleto });
+          const histAlumno = await db.get("historial_pagos", `&alumno_id=eq.${student.id}`);
+          for (const h of (histAlumno||[])) await db.update("historial_pagos", h.id, { alumno_nombre: nombreCompleto });
+          const examAlumno = await db.get("examenes", `&alumno_id=eq.${student.id}`);
+          for (const ex of (examAlumno||[])) await db.update("examenes", ex.id, { alumno_nombre: nombreCompleto });
+        } catch (e) { console.error("Error sincronizando nombre:", e); }
+      }
     } else {
+
       const newStudent = await db.insert("students", data);
       // Crear usuario automáticamente si tiene usuario asignado
       if (correo) {
