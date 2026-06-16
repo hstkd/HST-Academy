@@ -267,10 +267,11 @@ const PRODUCTOS = [
 
 const PERMISOS = {
   superadmin: ["superadmin"],
-  admin:    ["dashboard","students","payments","ventas","attendance","examenes","finance","events","users","inventario","gastos","configuracion"],
-  profesor: ["attendance","students","ventas","examenes"],
+  admin:    ["dashboard","students","clases_prueba","payments","ventas","attendance","examenes","finance","events","users","inventario","gastos","configuracion"],
+  profesor: ["attendance","students","clases_prueba","ventas","examenes"],
   alumno:   ["mi_asistencia","mis_pagos","mi_historial"],
 };
+
 
 const REFRESH_INTERVAL = 300000;
 
