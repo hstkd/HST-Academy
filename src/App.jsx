@@ -2248,6 +2248,200 @@ const EditarPagoModal = ({ pago, reload, onClose }) => {
   );
 };
 
+const PROSPECTO_ESTADOS = {
+  agendada:   { label:"Agendada",   bg:"bg-blue-500/20",    text:"text-blue-400",    dot:"#3b82f6" },
+  asistio:    { label:"Asistió",    bg:"bg-emerald-500/20", text:"text-emerald-400", dot:"#22c55e" },
+  no_asistio: { label:"No asistió", bg:"bg-amber-500/20",   text:"text-amber-400",   dot:"#f59e0b" },
+  convertido: { label:"Matriculado",bg:"bg-purple-500/20",  text:"text-purple-400",  dot:"#a855f7" },
+  descartado: { label:"Descartado", bg:"bg-slate-500/20",   text:"text-slate-400",   dot:"#64748b" },
+};
+const ORIGENES = ["Instagram","Facebook","WhatsApp","Referido","Pasó por la sede","Otro"];
+
+const ClasesPruebaPage = ({ students = [] }) => {
+  const [prospectos, setProspectos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filtro, setFiltro] = useState("Todos");
+  const [showForm, setShowForm] = useState(false);
+  const [editP, setEditP] = useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    const data = await db.get("prospectos", "&order=fecha_clase.asc");
+    setProspectos(Array.isArray(data) ? data : []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const setEstado = async (p, estado) => {
+    await db.update("prospectos", p.id, { estado });
+    await load();
+  };
+
+  const convertir = async (p) => {
+    if (p.convertido_alumno_id) { alert("Este prospecto ya fue matriculado."); return; }
+    if (!confirm(`¿Matricular a ${p.nombre} como alumno nuevo?`)) return;
+    const partes = (p.nombre || "").trim().split(" ");
+    const nombres = partes[0] || p.nombre;
+    const apellidos = partes.slice(1).join(" ") || "—";
+    const nuevo = await db.insert("students", {
+      nombres, apellidos, telefono: p.telefono || "", sede: p.sede || (SEDES[0] || "Quito"),
+      cinturon: "Blanco", membresia: "estandar", estado: "activo",
+      categoria: "Infantil", fecha_inscripcion: fmt(new Date()),
+      observaciones: `Vino de clase de prueba (${p.origen || "—"})`,
+    });
+    await db.update("prospectos", p.id, { estado: "convertido", convertido_alumno_id: nuevo?.id || "si" });
+    await load();
+    alert("✅ Alumno creado. Termina de completar sus datos en la sección Alumnos.");
+  };
+
+  const eliminar = async (p) => {
+    if (!confirm(`¿Eliminar el prospecto ${p.nombre}?`)) return;
+    await db.delete("prospectos", p.id);
+    await load();
+  };
+
+  const waLink = (tel) => {
+    const num = (tel || "").replace(/[^0-9]/g, "");
+    const full = num.startsWith("593") ? num : num.startsWith("0") ? "593" + num.slice(1) : num;
+    return `https://wa.me/${full}`;
+  };
+
+  const hoy = fmt(new Date());
+  const mes = hoy.slice(0, 7);
+  const agendadas = prospectos.filter(p => p.estado === "agendada");
+  const asistieron = prospectos.filter(p => p.estado === "asistio").length;
+  const convertidosMes = prospectos.filter(p => p.estado === "convertido" && p.created_at?.slice(0,7) === mes).length;
+  const totalAsistio = prospectos.filter(p => ["asistio","convertido"].includes(p.estado)).length;
+  const totalConv = prospectos.filter(p => p.estado === "convertido").length;
+  const tasa = totalAsistio > 0 ? Math.round((totalConv / totalAsistio) * 100) : 0;
+
+  const filtrados = filtro === "Todos" ? prospectos : prospectos.filter(p => p.estado === filtro);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white" style={{ letterSpacing:"-0.02em" }}>CLASES DE PRUEBA</h1>
+          <p className="text-slate-400 text-sm">{prospectos.length} prospectos · embudo de conversión</p>
+        </div>
+        <button onClick={()=>{ setEditP(null); setShowForm(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
+          <Icon name="plus" className="w-4 h-4" /> Nuevo prospecto
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Agendadas" value={agendadas.length} sub="próximas clases" icon="calendar" accent="blue" />
+        <StatCard title="Asistieron" value={asistieron} sub="por decidir" icon="check" accent="emerald" />
+        <StatCard title="Matriculados (mes)" value={convertidosMes} icon="trophy" accent="purple" />
+        <StatCard title="Tasa conversión" value={`${tasa}%`} sub="asistió → matrícula" icon="finance" accent="amber" />
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        {["Todos","agendada","asistio","no_asistio","convertido","descartado"].map(f=>(
+          <button key={f} onClick={()=>setFiltro(f)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filtro===f?"text-white":"text-slate-400 hover:text-white"}`}
+            style={filtro===f?{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }:{ background:"rgba(255,255,255,0.05)" }}>
+            {f==="Todos"?"Todos":PROSPECTO_ESTADOS[f].label}
+          </button>
+        ))}
+      </div>
+
+      {loading && <p className="text-slate-500 text-center py-8">Cargando...</p>}
+      {!loading && filtrados.length===0 && <p className="text-slate-500 text-center py-8">Sin prospectos en esta vista</p>}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {filtrados.map(p=>{
+          const cfg = PROSPECTO_ESTADOS[p.estado] || PROSPECTO_ESTADOS.agendada;
+          return (
+            <div key={p.id} className="rounded-2xl border p-4" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+              <div className="flex items-start justify-between mb-2 gap-2">
+                <div>
+                  <p className="font-bold text-white">{p.nombre}</p>
+                  <p className="text-xs text-slate-500">{p.edad?`${p.edad} años · `:""}{p.sede} · {p.origen||"—"}</p>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
+              </div>
+              <div className="text-xs text-slate-400 space-y-0.5 mb-3">
+                <p>📅 {p.fecha_clase || "Sin fecha"} {p.hora_clase?`· ${p.hora_clase}`:""}</p>
+                {p.telefono && <p>📱 {p.telefono}</p>}
+                {p.notas && <p className="text-slate-500">📝 {p.notas}</p>}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {p.telefono && <a href={waLink(p.telefono)} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/30">💬 WhatsApp</a>}
+                {p.estado==="agendada" && <>
+                  <button onClick={()=>setEstado(p,"asistio")} className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold">✓ Asistió</button>
+                  <button onClick={()=>setEstado(p,"no_asistio")} className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-semibold">✗ No asistió</button>
+                </>}
+                {p.estado==="asistio" && <>
+                  <button onClick={()=>convertir(p)} className="px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-400 text-xs font-semibold">🎓 Matricular</button>
+                  <button onClick={()=>setEstado(p,"descartado")} className="px-3 py-1.5 rounded-lg bg-slate-500/20 text-slate-400 text-xs font-semibold">Descartar</button>
+                </>}
+                {p.estado==="no_asistio" && <button onClick={()=>setEstado(p,"agendada")} className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold">↻ Reagendar</button>}
+                <button onClick={()=>{ setEditP(p); setShowForm(true); }} className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-semibold"><Icon name="edit" className="w-3 h-3 inline" /></button>
+                <button onClick={()=>eliminar(p)} className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold"><Icon name="trash" className="w-3 h-3 inline" /></button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {showForm && <ProspectoForm prospecto={editP} reload={load} onClose={()=>{ setShowForm(false); setEditP(null); }} />}
+    </div>
+  );
+};
+
+const ProspectoForm = ({ prospecto, reload, onClose }) => {
+  const [nombre, setNombre] = useState(prospecto?.nombre || "");
+  const [telefono, setTelefono] = useState(prospecto?.telefono || "");
+  const [edad, setEdad] = useState(prospecto?.edad || "");
+  const [sede, setSede] = useState(prospecto?.sede || (SEDES[0] || "Quito"));
+  const [origen, setOrigen] = useState(prospecto?.origen || "WhatsApp");
+  const [fechaClase, setFechaClase] = useState(prospecto?.fecha_clase || fmt(new Date()));
+  const [horaClase, setHoraClase] = useState(prospecto?.hora_clase || "");
+  const [notas, setNotas] = useState(prospecto?.notas || "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!nombre) return;
+    setSaving(true);
+    const data = { nombre, telefono, edad, sede, origen, fecha_clase: fechaClase, hora_clase: horaClase, notas };
+    if (prospecto) await db.update("prospectos", prospecto.id, data);
+    else await db.insert("prospectos", { ...data, estado: "agendada" });
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={prospecto ? "Editar prospecto" : "Nuevo prospecto"} onClose={onClose}>
+      <div className="space-y-4">
+        <Field label="Nombre del prospecto"><Input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Nombre y apellido" /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="WhatsApp / Teléfono"><Input value={telefono} onChange={e=>setTelefono(e.target.value)} placeholder="0991234567" /></Field>
+          <Field label="Edad (aprox.)"><Input value={edad} onChange={e=>setEdad(e.target.value)} placeholder="Ej: 8" /></Field>
+          <Field label="Sede">
+            <select value={sede} onChange={e=>setSede(e.target.value)} style={{ background:"var(--ss-card2)" }} className="w-full border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm">
+              {SEDES.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </Field>
+          <Field label="¿De dónde llegó?">
+            <select value={origen} onChange={e=>setOrigen(e.target.value)} style={{ background:"var(--ss-card2)" }} className="w-full border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm">
+              {ORIGENES.map(o=><option key={o} value={o}>{o}</option>)}
+            </select>
+          </Field>
+          <Field label="Fecha de la clase"><Input type="date" value={fechaClase} onChange={e=>setFechaClase(e.target.value)} /></Field>
+          <Field label="Hora"><Input value={horaClase} onChange={e=>setHoraClase(e.target.value)} placeholder="Ej: 17:00" /></Field>
+        </div>
+        <Field label="Notas"><Textarea value={notas} onChange={e=>setNotas(e.target.value)} placeholder="Ej: hermano de alumno actual, interesado en competencia..." /></Field>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+        <button onClick={save} disabled={saving||!nombre} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Guardar"}</button>
+      </div>
+    </Modal>
+  );
+};
+
 const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
