@@ -2255,6 +2255,8 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   const [completarPago, setCompletarPago] = useState(null);
   const [pausarPago, setPausarPago] = useState(null);
   const [reanudarPago, setReanudarPago] = useState(null);
+    const [editarPago, setEditarPago] = useState(null);
+
   // Estado determinado ÚNICAMENTE por fecha_vencimiento vs hoy
   const hoyPagos = fmt(new Date());
   // Retorna TODOS los estados aplicables (array)
