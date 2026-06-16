@@ -2443,6 +2443,112 @@ const ProspectoForm = ({ prospecto, reload, onClose }) => {
   );
 };
 
+const CobranzaPage = ({ students = [], pagos = [] }) => {
+  const [tab, setTab] = useState("cobranza");
+  const [tplCobranza, setTplCobranza] = useState(
+    "Hola {nombre} 👋, te saludamos de HSTKD. Te recordamos que tu mensualidad venció el {fecha} y queda un saldo de ${saldo}. Cualquier consulta estamos atentos. ¡Gracias! 🥋"
+  );
+  const [tplPorVencer, setTplPorVencer] = useState(
+    "Hola {nombre} 👋, de HSTKD. Tu mensualidad vence el {fecha}. Puedes acercarte a cancelarla para no interrumpir tus clases. ¡Gracias! 🥋"
+  );
+  const [tplCumple, setTplCumple] = useState(
+    "¡Feliz cumpleaños {nombre}! 🎉🥋 Todo el equipo de HSTKD te desea un gran día. ¡Seguimos entrenando fuerte!"
+  );
+  const [editTpl, setEditTpl] = useState(false);
+
+  const hoy = fmt(new Date());
+  const tel = (id) => students.find(s => s.id === id)?.telefono || "";
+  const waLink = (telefono, msg) => {
+    const n = (telefono || "").replace(/[^0-9]/g, "");
+    const full = n.startsWith("593") ? n : n.startsWith("0") ? "593" + n.slice(1) : n;
+    return `https://wa.me/${full}?text=${encodeURIComponent(msg)}`;
+  };
+  const fill = (tpl, p) => {
+    const saldo = Math.max(0, parseFloat(p.monto || 0) - parseFloat(p.monto_pagado || 0)).toFixed(2);
+    return tpl.replace(/{nombre}/g, p.alumno_nombre || "").replace(/{fecha}/g, p.fecha_vencimiento || "").replace(/{saldo}/g, saldo);
+  };
+  const dias = (f) => Math.ceil((new Date(f + "T00:00:00") - new Date(hoy + "T00:00:00")) / 86400000);
+
+  // 1 pago por alumno (el de vencimiento más reciente)
+  const pagosUnicos = pagos.reduce((acc, p) => {
+    const ex = acc.find(x => x.alumno_id === p.alumno_id);
+    if (!ex) acc.push(p);
+    else if ((p.fecha_vencimiento || "") > (ex.fecha_vencimiento || "")) acc[acc.indexOf(ex)] = p;
+    return acc;
+  }, []);
+
+  const vencidos = pagosUnicos.filter(p => p.estado_membresia !== "Pausada" && p.fecha_vencimiento && p.fecha_vencimiento <= hoy);
+  const porVencer = pagosUnicos.filter(p => p.estado_membresia !== "Pausada" && p.fecha_vencimiento && dias(p.fecha_vencimiento) > 0 && dias(p.fecha_vencimiento) <= 5);
+  const cumples = students.filter(s => {
+    if (!s.fecha_nacimiento) return false;
+    const b = new Date(s.fecha_nacimiento + "T12:00:00");
+    const t = new Date();
+    return b.getDate() === t.getDate() && b.getMonth() === t.getMonth();
+  });
+
+  const Card = ({ nombre, telefono, sub, msg, color }) => (
+    <div className="rounded-2xl border p-4 flex items-center justify-between gap-3" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+      <div className="min-w-0">
+        <p className="font-bold text-white truncate">{nombre}</p>
+        <p className="text-xs text-slate-500">{sub}</p>
+        {!telefono && <p className="text-xs text-red-400 mt-0.5">⚠️ Sin teléfono registrado</p>}
+      </div>
+      {telefono
+        ? <a href={waLink(telefono, msg)} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-xl text-white text-sm font-bold flex-shrink-0" style={{ background:"linear-gradient(135deg,#22c55e,#16a34a)" }}>💬 Enviar</a>
+        : <span className="px-4 py-2 rounded-xl text-slate-500 text-sm flex-shrink-0" style={{ background:"rgba(255,255,255,0.05)" }}>—</span>}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-bold text-white" style={{ letterSpacing:"-0.02em" }}>COBRANZA</h1>
+          <p className="text-slate-400 text-sm">Recordatorios por WhatsApp</p>
+        </div>
+        <button onClick={()=>setEditTpl(v=>!v)} className="px-4 py-2 rounded-xl text-sm font-semibold border border-white/10 text-slate-300 hover:bg-white/5">
+          {editTpl ? "✓ Listo" : "✏️ Editar mensajes"}
+        </button>
+      </div>
+
+      {editTpl && (
+        <div className="rounded-2xl border p-4 space-y-3" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+          <p className="text-xs text-slate-400">Usa {"{nombre}"}, {"{fecha}"} y {"{saldo}"} — se reemplazan solos.</p>
+          <Field label="Mensaje de vencidos"><Textarea value={tplCobranza} onChange={e=>setTplCobranza(e.target.value)} /></Field>
+          <Field label="Mensaje por vencer"><Textarea value={tplPorVencer} onChange={e=>setTplPorVencer(e.target.value)} /></Field>
+          <Field label="Mensaje de cumpleaños"><Textarea value={tplCumple} onChange={e=>setTplCumple(e.target.value)} /></Field>
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-4">
+        <StatCard title="Vencidos" value={vencidos.length} icon="payments" accent="red" />
+        <StatCard title="Por vencer (5d)" value={porVencer.length} icon="calendar" accent="amber" />
+        <StatCard title="Cumpleaños hoy" value={cumples.length} icon="trophy" accent="purple" />
+      </div>
+
+      <div className="flex gap-2">
+        {[["cobranza",`Vencidos (${vencidos.length})`],["porvencer",`Por vencer (${porVencer.length})`],["cumple",`Cumpleaños (${cumples.length})`]].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${tab===id?"text-white":"text-slate-400"}`} style={tab===id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{background:"rgba(255,255,255,0.05)"}}>{label}</button>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        {tab==="cobranza" && (vencidos.length ? vencidos.map(p=>(
+          <Card key={p.id} nombre={p.alumno_nombre} telefono={tel(p.alumno_id)} sub={`Venció el ${p.fecha_vencimiento} · saldo $${Math.max(0,parseFloat(p.monto||0)-parseFloat(p.monto_pagado||0)).toFixed(2)}`} msg={fill(tplCobranza,p)} />
+        )) : <p className="text-slate-500 text-center py-8">Nadie vencido 🎉</p>)}
+
+        {tab==="porvencer" && (porVencer.length ? porVencer.map(p=>(
+          <Card key={p.id} nombre={p.alumno_nombre} telefono={tel(p.alumno_id)} sub={`Vence en ${dias(p.fecha_vencimiento)} día(s) · ${p.fecha_vencimiento}`} msg={fill(tplPorVencer,p)} />
+        )) : <p className="text-slate-500 text-center py-8">Nada por vencer esta semana</p>)}
+
+        {tab==="cumple" && (cumples.length ? cumples.map(s=>(
+          <Card key={s.id} nombre={`${s.nombres} ${s.apellidos}`} telefono={s.telefono} sub={`🎂 Cumple hoy · ${s.edad} años`} msg={tplCumple.replace(/{nombre}/g, s.nombres)} />
+        )) : <p className="text-slate-500 text-center py-8">Sin cumpleaños hoy</p>)}
+      </div>
+    </div>
+  );
+};
+
 const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
