@@ -2471,10 +2471,31 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
     );
   };
 
-  const onDelete = async id => {
-    if (!confirm("¿Eliminar pago?")) return;
-    await db.delete("pagos", id);
-    await reload();
+   const onDelete = async (p) => {
+    const histAlumno = historialPagos
+      .filter(h => h.alumno_id === p.alumno_id)
+      .sort((a,b) => b.fecha_pago?.localeCompare(a.fecha_pago));
+
+    const opcion = prompt(
+      `¿Qué deseas eliminar de ${p.alumno_nombre}?\n\n` +
+      `1 = Solo el último abono ($${parseFloat(histAlumno[0]?.monto_pagado||0).toFixed(2)} del ${histAlumno[0]?.fecha_pago||"—"})\n` +
+      `2 = TODO el registro de pago y su historial\n\n` +
+      `Escribe 1 o 2 (o cancela):`
+    );
+
+    if (opcion === "1") {
+      const ultimo = histAlumno[0];
+      if (!ultimo) { alert("No hay abonos en el historial para eliminar."); return; }
+      await db.delete("historial_pagos", ultimo.id);
+      const nuevoPagado = Math.max(0, parseFloat(p.monto_pagado||0) - parseFloat(ultimo.monto_pagado||0));
+      await db.update("pagos", p.id, { monto_pagado: nuevoPagado });
+      await reload();
+    } else if (opcion === "2") {
+      if (!confirm(`¿Seguro? Se eliminará el pago y TODOS los abonos de ${p.alumno_nombre}. No se puede deshacer.`)) return;
+      for (const h of histAlumno) await db.delete("historial_pagos", h.id);
+      await db.delete("pagos", p.id);
+      await reload();
+    }
   };
 
   return (
