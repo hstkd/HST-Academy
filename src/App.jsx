@@ -2620,12 +2620,16 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
       {pausarPago && (
         <PausarModal pago={pausarPago} reload={reload} onClose={()=>setPausarPago(null)} />
       )}
-      {reanudarPago && (
+            {reanudarPago && (
         <ReanudirModal pago={reanudarPago} students={students} reload={reload} onClose={()=>setReanudarPago(null)} />
+      )}
+      {editarPago && (
+        <EditarPagoModal pago={editarPago} reload={reload} onClose={()=>setEditarPago(null)} />
       )}
     </div>
   );
 };
+
 
 const AbonoVentaModal = ({ venta, reload, onClose }) => {
   const [montoAbono, setMontoAbono] = useState("");
