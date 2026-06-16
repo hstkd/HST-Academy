@@ -2585,7 +2585,9 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   </button>
 )}
 
-                {isAdmin&&<button onClick={()=>onDelete(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>}
+                              {isAdmin&&<button onClick={()=>setEditarPago(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-semibold hover:bg-amber-500/30"><Icon name="edit" className="w-3 h-3" /> Editar</button>}
+                {isAdmin&&<button onClick={()=>onDelete(p)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /> Eliminar</button>}
+
               </div>
               {/* Historial de pagos recientes */}
               {(() => {
