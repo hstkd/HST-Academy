@@ -5778,9 +5778,10 @@ export default function App() {
   const isAdmin = user.role==="admin";
   const perms = PERMISOS[user.role]||[];
 
-  const allNavItems = [
+   const allNavItems = [
     { id:"dashboard",     label:"Dashboard",    icon:"dashboard"    },
     { id:"students",      label:"Alumnos",      icon:"students"     },
+    { id:"clases_prueba", label:"Clases de Prueba", icon:"calendar" },
     { id:"payments",      label:"Pagos",        icon:"payments"     },
     { id:"ventas",        label:"Ventas",       icon:"ventas"       },
     { id:"attendance",    label:"Asistencia",   icon:"attendance"   },
@@ -5795,6 +5796,7 @@ export default function App() {
     { id:"mis_pagos",     label:"Mis Pagos",    icon:"mis_pagos"    },
     { id:"mi_historial",  label:"Mi Historial", icon:"mi_historial" },
   ];
+
 
   const navItems = allNavItems.filter(n=>perms.includes(n.id));
   const hoyAlerts = fmt(new Date());
