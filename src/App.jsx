@@ -2204,6 +2204,50 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
   );
 };
 
+const EditarPagoModal = ({ pago, reload, onClose }) => {
+  const [montoTotal, setMontoTotal] = useState(pago.monto || "");
+  const [montoPagado, setMontoPagado] = useState(pago.monto_pagado || "");
+  const [fechaVenc, setFechaVenc] = useState(pago.fecha_vencimiento || "");
+  const [fechaPago, setFechaPago] = useState(pago.fecha_pago || fmt(today));
+  const [tipo, setTipo] = useState(pago.tipo || "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    await db.update("pagos", pago.id, {
+      monto: parseFloat(montoTotal) || 0,
+      monto_pagado: parseFloat(montoPagado) || 0,
+      fecha_vencimiento: fechaVenc,
+      fecha_pago: fechaPago,
+      tipo,
+    });
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={`Editar pago — ${pago.alumno_nombre}`} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+          ⚠️ Edita solo para corregir un error. Esto no toca el historial de abonos.
+        </div>
+        <Field label="Tipo / Membresía"><Input value={tipo} onChange={e=>setTipo(e.target.value)} placeholder="Ej: Mensual" /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Monto Total ($)"><Input type="number" value={montoTotal} onChange={e=>setMontoTotal(e.target.value)} step="0.01" /></Field>
+          <Field label="Monto Pagado ($)"><Input type="number" value={montoPagado} onChange={e=>setMontoPagado(e.target.value)} step="0.01" /></Field>
+          <Field label="Fecha de pago"><Input type="date" value={fechaPago} onChange={e=>setFechaPago(e.target.value)} /></Field>
+          <Field label="Fecha de vencimiento"><Input type="date" value={fechaVenc} onChange={e=>setFechaVenc(e.target.value)} /></Field>
+        </div>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+        <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Guardar cambios"}</button>
+      </div>
+    </Modal>
+  );
+};
+
 const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
