@@ -61,6 +61,14 @@ const THEME_CSS = `
 .ss-light select, .ss-light input, .ss-light textarea { color: #1E293B; }
 .ss-light option { background: #FFFFFF !important; color: #1E293B !important; }
 .ss-light [style*="135deg,#2563EB"], .ss-light [style*="135deg,#2563EB"] * { color: #FFFFFF !important; }
+/* Modo oscuro: texto atenuado y separadores con contraste legible (WCAG AA) */
+.ss-dark .text-slate-500 { color: #8593A8 !important; }
+.ss-dark .text-slate-600 { color: #7C8AA0 !important; }
+.ss-dark .placeholder-slate-500::placeholder { color: #7C8AA0 !important; }
+.ss-dark .placeholder-slate-600::placeholder { color: #7C8AA0 !important; }
+.ss-dark .border-white\\/8 { border-color: rgba(255,255,255,0.12) !important; }
+.ss-dark .border-white\\/10 { border-color: rgba(255,255,255,0.14) !important; }
+.ss-dark .divide-white\\/5 > * + * { border-color: rgba(255,255,255,0.10) !important; }
 * { transition: background-color .25s ease, border-color .25s ease, color .15s ease; }
 `;
 
