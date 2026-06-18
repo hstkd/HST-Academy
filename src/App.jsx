@@ -5,6 +5,9 @@
 // expresa del autor. Registro SENADI Ecuador en trámite.
 // ============================================================
 import { useState, useEffect, useCallback, useRef } from "react";
+import { fmt, addDays, calcEdad, getCategoria, calcVencimiento as _calcVencimiento, calcNuevoVencimiento as _calcNuevoVencimiento } from "./utils/dates.js";
+import { hashPassword, loginLimiter } from "./utils/auth.js";
+import { CINTURONES, COSTOS_ASCENSO, MEMBRESIAS, PERMISOS, CINTURON_COLOR as cinturonColor, PAGO_ESTADO_CONFIG as pagoEstadoConfig } from "./utils/constants.js";
 
 const LOGO_SRC = "https://i.imgur.com/fJdJygP.png";
 
@@ -75,38 +78,6 @@ const HEADERS = {
 let CURRENT_CLUB_ID = null;
 const GLOBAL_TABLES = ["clubs","suscripciones"]; // users SI se filtra por club_id
 
-// ── Seguridad: hash de contraseñas (SHA-256) ──────────────────────────────────
-const hashPassword = async (plain) => {
-  const data = new TextEncoder().encode("sportsync::" + plain);
-  const buf = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
-};
-
-// ── Seguridad: límite de intentos de login ────────────────────────────────────
-const loginLimiter = {
-  key: "ss-login-attempts",
-  max: 5,
-  lockMinutes: 5,
-  check() {
-    try {
-      const d = JSON.parse(localStorage.getItem(this.key) || "{}");
-      if (d.lockedUntil && Date.now() < d.lockedUntil) {
-        return Math.ceil((d.lockedUntil - Date.now()) / 60000);
-      }
-    } catch {}
-    return 0;
-  },
-  fail() {
-    try {
-      const d = JSON.parse(localStorage.getItem(this.key) || "{}");
-      const count = (d.count || 0) + 1;
-      const lockedUntil = count >= this.max ? Date.now() + this.lockMinutes*60000 : null;
-      localStorage.setItem(this.key, JSON.stringify({ count: lockedUntil?0:count, lockedUntil }));
-      return lockedUntil ? this.lockMinutes : 0;
-    } catch { return 0; }
-  },
-  reset() { try { localStorage.removeItem(this.key); } catch {} },
-};
 
 const db = {
   get: async (table, filters = "", bypassClub = false) => {
@@ -141,63 +112,9 @@ const db = {
 };
 
 const today = new Date();
-// Ecuador is UTC-5 — always use local date, not UTC
-const fmt = (d) => {
-  const local = new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
-  return local.toISOString().slice(0, 10);
-};
-const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-
-// Calcula NUEVA fecha de vencimiento desde la fecha de vencimiento ACTUAL (no desde fecha de pago)
-// Si no hay vencimiento previo, usa fechaBase (fecha inscripción/pago inicial)
-const calcVencimiento = (fechaBase, membresiaId) => {
-  if (!fechaBase) return fmt(addDays(today, 30));
-  const base = new Date(fechaBase + "T12:00:00");
-  const v = new Date(base);
-  // Membresía configurada por la academia → usar su duración en meses
-  const cfg = CONFIG_MEMBRESIAS.find(m => m.id === membresiaId);
-  if (cfg) { v.setMonth(v.getMonth() + (parseInt(cfg.duracion_meses)||1)); return fmt(v); }
-  if (membresiaId === "trimestral") v.setMonth(v.getMonth() + 3);
-  else if (membresiaId === "semestral") v.setMonth(v.getMonth() + 6);
-  else if (membresiaId === "anual") v.setFullYear(v.getFullYear() + 1);
-  else v.setMonth(v.getMonth() + 1);
-  return fmt(v);
-};
-
-// Calcula nueva fecha de vencimiento desde el vencimiento ANTERIOR
-// Regla: siempre extender desde fecha_vencimiento actual, no desde fecha de pago
-const calcNuevoVencimiento = (fechaVencActual, membresiaId) => {
-  // Si tiene vencimiento previo, extender desde ahí
-  if (fechaVencActual) {
-    return calcVencimiento(fechaVencActual, membresiaId);
-  }
-  // Si no hay vencimiento previo (primer pago), usar hoy
-  return calcVencimiento(fmt(new Date()), membresiaId);
-};
-
-const calcEdad = (fechaNac) => {
-  if (!fechaNac) return { years: 0, months: 0, days: 0, total: 0 };
-  const nac = new Date(fechaNac);
-  const hoy = new Date();
-  let years = hoy.getFullYear() - nac.getFullYear();
-  let months = hoy.getMonth() - nac.getMonth();
-  let days = hoy.getDate() - nac.getDate();
-  if (days < 0) { months--; days += new Date(hoy.getFullYear(), hoy.getMonth(), 0).getDate(); }
-  if (months < 0) { years--; months += 12; }
-  return { years, months, days, total: years };
-};
-
-const getCategoria = (fechaNac) => {
-  if (!fechaNac) return "Infantil";
-  const currentYear = new Date().getFullYear();
-  const birthYear = new Date(fechaNac).getFullYear();
-  const ageThisYear = currentYear - birthYear;
-  if (ageThisYear <= 11) return "Infantil";
-  if (ageThisYear <= 14) return "Cadete";
-  if (ageThisYear <= 17) return "Junior";
-  if (ageThisYear <= 30) return "Senior";
-  return "Máster";
-};
+// Wrappers that bind CONFIG_MEMBRESIAS (loaded at runtime) to the pure utils.
+const calcVencimiento = (fechaBase, membresiaId) => _calcVencimiento(fechaBase, membresiaId, CONFIG_MEMBRESIAS, today);
+const calcNuevoVencimiento = (fechaVencActual, membresiaId) => _calcNuevoVencimiento(fechaVencActual, membresiaId, CONFIG_MEMBRESIAS, today);
 
 let CONFIG_MEMBRESIAS = []; // membresías por academia, cargadas en loadAll
 const MEMB_PALETTE = ["#3b82f6","#2563EB","#a855f7","#22c55e","#06b6d4","#f43f5e","#f59e0b","#14b8a6"];
@@ -205,47 +122,7 @@ const getMembresias = (sede) => CONFIG_MEMBRESIAS
   .filter(m => !sede || !m.sede || m.sede === sede)
   .map((m,i)=>({ id:m.id, nombre:m.nombre, sesiones:m.sesiones, sede:m.sede, color:MEMB_PALETTE[i%MEMB_PALETTE.length] }));
 
-const MEMBRESIAS = [
-  { id: "basica",      nombre: "Básico",      sesiones: 8,   color: "#3b82f6" },
-  { id: "estandar",    nombre: "Estándar",    sesiones: 12,  color: "#2563EB" },
-  { id: "premium",     nombre: "Completo",    sesiones: 999, color: "#a855f7" },
-  { id: "trimestral",  nombre: "Trimestral",  sesiones: 999, color: "#22c55e" },
-  { id: "semestral",   nombre: "Semestral",   sesiones: 999, color: "#06b6d4" },
-  { id: "anual",       nombre: "Anual",       sesiones: 999, color: "#f43f5e" },
-];
-
-const CINTURONES = ["Blanco","Blanco/Amarillo","Amarillo","Amarillo/Verde","Verde","Verde/Azul","Azul","Azul/Rojo","Rojo","Rojo/Negro","Negro"];
 let SEDES = []; // se carga desde config_sedes por academia
-
-const COSTOS_ASCENSO = {
-  "Blanco":          { siguiente:"Blanco/Amarillo", costo:45  },
-  "Blanco/Amarillo": { siguiente:"Amarillo",        costo:50  },
-  "Amarillo":        { siguiente:"Amarillo/Verde",  costo:55  },
-  "Amarillo/Verde":  { siguiente:"Verde",           costo:60  },
-  "Verde":           { siguiente:"Verde/Azul",      costo:65  },
-  "Verde/Azul":      { siguiente:"Azul",            costo:70  },
-  "Azul":            { siguiente:"Azul/Rojo",       costo:75  },
-  "Azul/Rojo":       { siguiente:"Rojo",            costo:80  },
-  "Rojo":            { siguiente:"Rojo/Negro",      costo:90  },
-  "Rojo/Negro":      { siguiente:"Negro",           costo:100 },
-  "Negro":           { siguiente:null,              costo:0   },
-};
-
-const cinturonColor = {
-  Blanco:"#ffffff","Blanco/Amarillo":"#fef08a",Amarillo:"#fbbf24",
-  "Amarillo/Verde":"#a3e635",Verde:"#22c55e","Verde/Azul":"#34d399",
-  Azul:"#3b82f6","Azul/Rojo":"#a78bfa",Rojo:"#ef4444",
-  "Rojo/Negro":"#f97316",Negro:"#374151",
-};
-
-const pagoEstadoConfig = {
-  "pagado":   { bg:"bg-emerald-500/20", text:"text-emerald-400", border:"border-emerald-500/30", label:"Al día" },
-  "al día":   { bg:"bg-emerald-500/20", text:"text-emerald-400", border:"border-emerald-500/30", label:"Al día" },
-  "parcial":  { bg:"bg-amber-500/20",   text:"text-amber-400",   border:"border-amber-500/30",   label:"Parcial" },
-  "vencido":  { bg:"bg-red-500/20",     text:"text-red-400",     border:"border-red-500/30",     label:"Vencido" },
-  "pendiente":{ bg:"bg-slate-500/20",   text:"text-slate-400",   border:"border-slate-500/30",   label:"Pendiente" },
-  "pausado":  { bg:"bg-purple-500/20",  text:"text-purple-400",  border:"border-purple-500/30",  label:"Pausado" },
-};
 
 const PRODUCTOS = [
   { id:"agua_p",    nombre:"Agua pequeña",         precio:0.50,  cat:"bebidas"     },
@@ -264,14 +141,6 @@ const PRODUCTOS = [
   { id:"dobok_tr",  nombre:"Dobok tradicional",     precio:55.00, cat:"uniformes"   },
   { id:"dobok_po",  nombre:"Dobok poomsae",         precio:65.00, cat:"uniformes"   },
 ];
-
-const PERMISOS = {
-  superadmin: ["superadmin"],
-  admin:    ["dashboard","students","clases_prueba","payments","cobranza","ventas","attendance","examenes","finance","events","users","inventario","gastos","configuracion"],
-  profesor: ["attendance","students","clases_prueba","ventas","examenes"],
-  alumno:   ["mi_asistencia","mis_pagos","mi_historial"],
-};
-
 
 const REFRESH_INTERVAL = 300000;
 
