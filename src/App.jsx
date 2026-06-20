@@ -2092,13 +2092,28 @@ const EditarPagoModal = ({ pago, reload, onClose }) => {
 
   const save = async () => {
     setSaving(true);
+    const nuevoMontoPagado = parseFloat(montoPagado) || 0;
+    const diff = parseFloat((nuevoMontoPagado - parseFloat(pago.monto_pagado || 0)).toFixed(2));
     await db.update("pagos", pago.id, {
       monto: parseFloat(montoTotal) || 0,
-      monto_pagado: parseFloat(montoPagado) || 0,
+      monto_pagado: nuevoMontoPagado,
       fecha_vencimiento: fechaVenc,
       fecha_pago: fechaPago,
       tipo,
     });
+    // Si cambió el monto pagado, registrar la diferencia en historial para que
+    // los ingresos del mes queden cuadrados.
+    if (diff !== 0) {
+      await db.insert("historial_pagos", {
+        alumno_id: pago.alumno_id,
+        alumno_nombre: pago.alumno_nombre,
+        monto_pagado: diff,
+        fecha_pago: fechaPago,
+        nueva_fecha_vencimiento: fechaVenc,
+        tipo: tipo || pago.tipo,
+        observaciones: `Corrección de pago (${diff > 0 ? "+" : ""}${diff.toFixed(2)})`,
+      });
+    }
     await reload();
     setSaving(false);
     onClose();
@@ -2108,7 +2123,7 @@ const EditarPagoModal = ({ pago, reload, onClose }) => {
     <Modal title={`Editar pago — ${pago.alumno_nombre}`} onClose={onClose}>
       <div className="space-y-4">
         <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
-          ⚠️ Edita solo para corregir un error. Esto no toca el historial de abonos.
+          ⚠️ Edita solo para corregir un error. Si el monto cambia, se registra un ajuste en el historial de abonos.
         </div>
         <Field label="Tipo / Membresía"><Input value={tipo} onChange={e=>setTipo(e.target.value)} placeholder="Ej: Mensual" /></Field>
         <div className="grid grid-cols-2 gap-3">
