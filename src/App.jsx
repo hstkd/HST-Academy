@@ -3713,10 +3713,11 @@ const AbonoExamenModal = ({ examen, reload, onClose }) => {
   );
 };
 
-const KioscoPage = ({ students, pagos, asistencia, reload }) => {
+const KioscoPage = ({ students, pagos, asistencia }) => {
   const [input, setInput] = useState("");
   const [resultado, setResultado] = useState(null);
   const [registrando, setRegistrando] = useState(false);
+  const [checkedHoy, setCheckedHoy] = useState(new Set());
 
   const buscar = async (cod) => {
     setRegistrando(true);
@@ -3734,7 +3735,7 @@ const KioscoPage = ({ students, pagos, asistencia, reload }) => {
     const ultimoPago = pagosAlumno[0];
     const vencido = !ultimoPago || ultimoPago.fecha_vencimiento < hoy;
     const saldo = ultimoPago ? Math.max(0, (parseFloat(ultimoPago.monto) || 0) - (parseFloat(ultimoPago.monto_pagado) || 0)) : 0;
-    const yaHoy = asistencia.some(a => a.alumno_id === student.id && a.fecha === hoy);
+    const yaHoy = checkedHoy.has(student.id) || asistencia.some(a => a.alumno_id === student.id && a.fecha === hoy);
     if (!yaHoy) {
       await db.insert("asistencia", {
         alumno_id: student.id,
@@ -3743,7 +3744,7 @@ const KioscoPage = ({ students, pagos, asistencia, reload }) => {
         presente: true,
         sede: student.sede,
       });
-      await reload();
+      setCheckedHoy(prev => new Set([...prev, student.id]));
     }
     setResultado({ student, ultimoPago, vencido, saldo, yaHoy });
     setRegistrando(false);
