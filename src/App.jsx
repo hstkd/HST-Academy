@@ -1702,7 +1702,9 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
             <div className="flex items-center gap-2 mb-2 flex-wrap"><BeltBadge cinturon={s.cinturon} /><CategoriaBadge categoria={s.categoria||getCategoria(s.fecha_nacimiento)} /><MembresiaTag membresiaId={s.membresia} />
               {examenes && examenes.some(ex=>ex.alumno_id===s.id&&ex.tipo?.includes("GAL")) ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">✓ GAL</span> : <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400">Sin GAL</span>}
             </div>
-            <div className="text-xs text-slate-500 space-y-1"><p>📱 {s.telefono}</p><p>👤 {s.representante}</p></div>
+            <div className="text-xs text-slate-500 space-y-1"><p>📱 {s.telefono}</p><p>👤 {s.representante}</p>
+              {s.codigo && <p className="font-mono text-slate-600">🔑 Código kiosco: <span className="text-slate-400 font-bold tracking-widest">{s.codigo}</span></p>}
+            </div>
             <div className="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
               <button onClick={()=>setViewStudent(s)} className="flex-1 py-2 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/30 flex items-center justify-center gap-1"><Icon name="eye" className="w-3 h-3" /> Ver</button>
               {canEdit&&<button onClick={()=>{ setEditStudent(s); setShowForm(true); }} className="flex-1 py-2 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-semibold hover:bg-amber-500/30 flex items-center justify-center gap-1"><Icon name="edit" className="w-3 h-3" /> Editar</button>}
@@ -1795,6 +1797,13 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
                     <p className="text-sm font-semibold text-white mt-0.5">{v||"—"}</p>
                   </div>
                 ))}
+                <div className="col-span-2 p-3" style={{ background:"var(--ss-card)" }}>
+                  <p className="text-[10px] text-slate-500 uppercase">Código Kiosco</p>
+                  {viewStudent.codigo
+                    ? <p className="text-2xl font-black text-blue-400 tracking-[0.3em] mt-1">{viewStudent.codigo}</p>
+                    : <p className="text-sm text-slate-600 mt-0.5">Sin código — edita el alumno para asignar uno</p>
+                  }
+                </div>
               </div>
               {viewStudent.observaciones && (
                 <div className="p-3 border-t" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
