@@ -4,7 +4,7 @@
 // Prohibida su reproducción, distribución o uso sin autorización
 // expresa del autor. Registro SENADI Ecuador en trámite.
 // ============================================================
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Component } from "react";
 import { fmt, addDays, calcEdad, getCategoria, calcVencimiento as _calcVencimiento, calcNuevoVencimiento as _calcNuevoVencimiento } from "./utils/dates.js";
 import { hashPassword, loginLimiter } from "./utils/auth.js";
 import { CINTURONES, COSTOS_ASCENSO, MEMBRESIAS, PERMISOS, CINTURON_COLOR as cinturonColor, PAGO_ESTADO_CONFIG as pagoEstadoConfig } from "./utils/constants.js";
@@ -3713,6 +3713,23 @@ const AbonoExamenModal = ({ examen, reload, onClose }) => {
   );
 };
 
+class KioscoErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { err: null }; }
+  static getDerivedStateFromError(e) { return { err: e?.message || "Error inesperado" }; }
+  render() {
+    if (this.state.err) return (
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background:"var(--ss-bg)" }}>
+        <div className="w-full max-w-sm p-6 rounded-2xl border border-red-500/40 bg-red-500/10 text-center">
+          <p className="text-red-400 text-xl font-bold mb-2">Error en kiosco</p>
+          <p className="text-slate-400 text-sm font-mono mb-4">{this.state.err}</p>
+          <button onClick={()=>this.setState({ err: null })} className="px-4 py-2 rounded-xl bg-white/10 text-white text-sm">Reintentar</button>
+        </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 const KioscoPage = ({ students, pagos, asistencia }) => {
   const [input, setInput] = useState("");
   const [resultado, setResultado] = useState(null);
@@ -6169,7 +6186,7 @@ export default function App() {
       case "cobranza":      return <CobranzaPage students={students} pagos={pagos} />;
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
-      case "kiosco":        return <KioscoPage students={students} pagos={pagos} asistencia={asistencia} reload={loadAll} />;
+      case "kiosco":        return <KioscoErrorBoundary><KioscoPage students={students} pagos={pagos} asistencia={asistencia} /></KioscoErrorBoundary>;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} configExamenes={configExamenes} configGal={configGal} />;
       case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} configSedes={configSedes} inventario={inventario} reload={loadAll} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} />;
