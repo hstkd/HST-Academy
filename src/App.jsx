@@ -283,6 +283,123 @@ const MiniBarChart = ({ data, color="#2563EB" }) => {
   );
 };
 
+// ── BalanceChart — ingresos vs gastos + línea de utilidad ─────────────────────
+const BalanceChart = ({ data }) => {
+  // data = [{ label, ingresos, gastos, utilidad }]
+  // Only show months that have any data or are in the past (up to current month)
+  const currentMonth = new Date().getMonth(); // 0-indexed
+  const visible = data.slice(0, currentMonth + 1);
+
+  const maxIng   = Math.max(...visible.map(d => d.ingresos), 1);
+  const maxGas   = Math.max(...visible.map(d => d.gastos), 1);
+  const maxBar   = Math.max(maxIng, maxGas, 1);
+  const BAR_H    = 96; // px — height of the bar area
+
+  // Trend vs previous month
+  const cur  = visible[visible.length - 1];
+  const prev = visible[visible.length - 2];
+  const ingDelta  = prev && prev.ingresos > 0 ? ((cur.ingresos - prev.ingresos) / prev.ingresos) * 100 : null;
+  const utilDelta = prev && prev.utilidad !== 0 ? ((cur.utilidad - prev.utilidad) / Math.abs(prev.utilidad)) * 100 : null;
+
+  // SVG sparkline for utilidad trend
+  const sparkW = 100;
+  const sparkH = 32;
+  const utilMin = Math.min(...visible.map(d => d.utilidad));
+  const utilMax = Math.max(...visible.map(d => d.utilidad));
+  const utilRange = utilMax - utilMin || 1;
+  const sparkPoints = visible.map((d, i) => {
+    const x = (i / Math.max(visible.length - 1, 1)) * sparkW;
+    const y = sparkH - ((d.utilidad - utilMin) / utilRange) * sparkH;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const lastU  = visible[visible.length - 1]?.utilidad ?? 0;
+  const sparkColor = lastU >= 0 ? "#10b981" : "#ef4444";
+
+  const TrendBadge = ({ delta, label }) => {
+    if (delta === null) return null;
+    const up = delta >= 0;
+    return (
+      <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold ${up ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
+        <span>{up ? "▲" : "▼"}</span>
+        <span>{Math.abs(delta).toFixed(1)}%</span>
+        <span className="font-normal opacity-70">{label}</span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Trend summary row */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <TrendBadge delta={ingDelta}  label="ingresos vs mes ant." />
+        <TrendBadge delta={utilDelta} label="utilidad vs mes ant." />
+        <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background:"#10b981" }} /> Ingresos</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background:"#ef4444" }} /> Gastos</span>
+        </div>
+      </div>
+
+      {/* Bar chart */}
+      <div className="flex items-end gap-1" style={{ height: BAR_H + 38 }}>
+        {visible.map((d, i) => {
+          const isCur = i === visible.length - 1;
+          const hIng  = Math.max(2, (d.ingresos / maxBar) * BAR_H);
+          const hGas  = Math.max(d.gastos > 0 ? 2 : 0, (d.gastos / maxBar) * BAR_H);
+          const posU  = d.utilidad >= 0;
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${d.label}: Ing $${d.ingresos.toFixed(0)} · Gas $${d.gastos.toFixed(0)} · Util ${d.utilidad >= 0 ? "+" : ""}$${d.utilidad.toFixed(0)}`}>
+              {/* utilidad value */}
+              <span className={`text-[8px] font-bold leading-none mb-0.5 ${posU ? "text-emerald-400" : "text-red-400"}`}>
+                {posU ? "+" : ""}{d.utilidad >= 1000 ? `${(d.utilidad/1000).toFixed(1)}k` : d.utilidad.toFixed(0)}
+              </span>
+              {/* bars */}
+              <div className="w-full flex gap-px items-end" style={{ height: BAR_H }}>
+                <div className="flex-1 rounded-t-sm transition-all"
+                  style={{ height: hIng, background: isCur ? "#10b981" : "#10b98166" }} />
+                <div className="flex-1 rounded-t-sm transition-all"
+                  style={{ height: hGas, background: isCur ? "#ef4444" : "#ef444466" }} />
+              </div>
+              {/* month label */}
+              <span className={`text-[9px] mt-0.5 ${isCur ? "text-white font-bold" : "text-slate-500"}`}>{d.label}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Utilidad sparkline */}
+      <div className="pt-2 border-t" style={{ borderColor:"var(--ss-border)" }}>
+        <p className="text-[10px] text-slate-500 uppercase font-semibold mb-1">Tendencia utilidad</p>
+        <div className="flex items-center gap-3">
+          <svg viewBox={`0 0 ${sparkW} ${sparkH}`} className="flex-1" style={{ height: 32 }} preserveAspectRatio="none">
+            {/* Zero line */}
+            {utilMin < 0 && (
+              <line
+                x1="0" y1={sparkH - ((0 - utilMin) / utilRange) * sparkH}
+                x2={sparkW} y2={sparkH - ((0 - utilMin) / utilRange) * sparkH}
+                stroke="rgba(255,255,255,0.1)" strokeWidth="0.8" strokeDasharray="2,2"
+              />
+            )}
+            <polyline points={sparkPoints} fill="none" stroke={sparkColor} strokeWidth="1.5"
+              strokeLinejoin="round" strokeLinecap="round" />
+            {/* Dots for each month */}
+            {visible.map((d, i) => {
+              const x = (i / Math.max(visible.length - 1, 1)) * sparkW;
+              const y = sparkH - ((d.utilidad - utilMin) / utilRange) * sparkH;
+              return <circle key={i} cx={x} cy={y} r="2" fill={d.utilidad >= 0 ? "#10b981" : "#ef4444"} />;
+            })}
+          </svg>
+          <div className="text-right">
+            <p className={`text-lg font-black ${lastU >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+              {lastU >= 0 ? "+" : ""}${Math.abs(lastU).toFixed(0)}
+            </p>
+            <p className="text-[9px] text-slate-500">util. {visible[visible.length-1]?.label}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Selector de alumno con buscador ────────────────────────────────────────────
 const AlumnoSelector = ({ students, value, onChange, placeholder="Buscar alumno...", disabled=false, extraOption=null }) => {
   const [q, setQ] = useState("");
@@ -3858,6 +3975,17 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
     value: mensualByMonth[i] + ventasByMonth[i] + eventosByMonth[i] + examenesByMonth[i]
   }));
 
+  // Gastos por mes + datos de balance para BalanceChart
+  const gastosByMonth = meses.map((_,i)=>
+    (gastos||[]).filter(g=>parseInt(g.fecha?.slice(5,7))===i+1).reduce((a,g)=>a+parseFloat(g.monto||0),0)
+  );
+  const balanceByMonth = meses.map((label,i)=>({
+    label,
+    ingresos: totalByMonth[i].value,
+    gastos:   gastosByMonth[i],
+    utilidad: totalByMonth[i].value - gastosByMonth[i],
+  }));
+
   // Totales anuales por fuente
   const totalMensual  = mensualByMonth.reduce((a,v)=>a+v,0);
   const totalVentas   = ventasByMonth.reduce((a,v)=>a+v,0);
@@ -4168,6 +4296,12 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
             <p>Variables: <span className="text-red-300 font-bold">-${gastosVariables.toFixed(0)}</span></p>
           </div>
         </div>
+      </div>
+
+      {/* Balance mes a mes — ingresos vs gastos + tendencia utilidad */}
+      <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
+        <h3 className="text-lg font-bold text-white mb-5" style={{ fontFamily:"'Inter',sans-serif" }}>BALANCE MES A MES</h3>
+        <BalanceChart data={balanceByMonth} />
       </div>
 
       {/* Gráfico total ingresos por mes */}
