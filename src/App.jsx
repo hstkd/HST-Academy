@@ -2273,6 +2273,7 @@ const ClasesPruebaPage = ({ students = [] }) => {
   const [filtro, setFiltro] = useState("Todos");
   const [showForm, setShowForm] = useState(false);
   const [editP, setEditP] = useState(null);
+  const [reagendarP, setReagendarP] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -2381,12 +2382,13 @@ const ClasesPruebaPage = ({ students = [] }) => {
                 {p.estado==="agendada" && <>
                   <button onClick={()=>setEstado(p,"asistio")} className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold">✓ Asistió</button>
                   <button onClick={()=>setEstado(p,"no_asistio")} className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-semibold">✗ No asistió</button>
+                  <button onClick={()=>setReagendarP(p)} className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold">↻ Reagendar</button>
                 </>}
                 {p.estado==="asistio" && <>
                   <button onClick={()=>convertir(p)} className="px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-400 text-xs font-semibold">🎓 Matricular</button>
                   <button onClick={()=>setEstado(p,"descartado")} className="px-3 py-1.5 rounded-lg bg-slate-500/20 text-slate-400 text-xs font-semibold">Descartar</button>
                 </>}
-                {p.estado==="no_asistio" && <button onClick={()=>setEstado(p,"agendada")} className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold">↻ Reagendar</button>}
+                {p.estado==="no_asistio" && <button onClick={()=>setReagendarP(p)} className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-semibold">↻ Reagendar</button>}
                 <button onClick={()=>{ setEditP(p); setShowForm(true); }} className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-semibold"><Icon name="edit" className="w-3 h-3 inline" /></button>
                 <button onClick={()=>eliminar(p)} className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-semibold"><Icon name="trash" className="w-3 h-3 inline" /></button>
               </div>
@@ -2396,7 +2398,46 @@ const ClasesPruebaPage = ({ students = [] }) => {
       </div>
 
       {showForm && <ProspectoForm prospecto={editP} reload={load} onClose={()=>{ setShowForm(false); setEditP(null); }} />}
+      {reagendarP && <ReagendarModal prospecto={reagendarP} reload={load} onClose={()=>setReagendarP(null)} />}
     </div>
+  );
+};
+
+const ReagendarModal = ({ prospecto, reload, onClose }) => {
+  const [fechaClase, setFechaClase] = useState(prospecto?.fecha_clase || fmt(new Date()));
+  const [horaClase, setHoraClase] = useState(prospecto?.hora_clase || "");
+  const [nota, setNota] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    const notas = [prospecto.notas, nota ? `Reagendado: ${nota}` : ""].filter(Boolean).join(" | ");
+    await db.update("prospectos", prospecto.id, {
+      fecha_clase: fechaClase,
+      hora_clase: horaClase,
+      estado: "agendada",
+      notas,
+    });
+    await reload();
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={`Reagendar — ${prospecto.nombre}`} onClose={onClose}>
+      <p className="text-slate-400 text-sm mb-4">Elige la nueva fecha y hora. El estado volverá a <span className="text-blue-400 font-semibold">Agendada</span>.</p>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Nueva fecha"><Input type="date" value={fechaClase} onChange={e=>setFechaClase(e.target.value)} /></Field>
+          <Field label="Nueva hora"><Input value={horaClase} onChange={e=>setHoraClase(e.target.value)} placeholder="Ej: 17:00" /></Field>
+        </div>
+        <Field label="Motivo (opcional)"><Input value={nota} onChange={e=>setNota(e.target.value)} placeholder="Ej: no pudo asistir por enfermedad" /></Field>
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5">Cancelar</button>
+        <button onClick={save} disabled={saving||!fechaClase} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Confirmar"}</button>
+      </div>
+    </Modal>
   );
 };
 
