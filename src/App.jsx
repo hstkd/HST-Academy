@@ -3799,7 +3799,7 @@ const KioscoPage = ({ students, pagos, asistencia }) => {
     setInput(i => i.slice(0, -1));
   };
 
-  const cinturonColor = resultado?.student ? (CINTURON_COLOR[resultado.student.cinturon] || "#fff") : null;
+  const beltColor = resultado?.student ? (cinturonColor[resultado.student.cinturon] || "#fff") : null;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-10" style={{ background: "var(--ss-bg)" }}>
@@ -3821,7 +3821,7 @@ const KioscoPage = ({ students, pagos, asistencia }) => {
           ) : (
             <div className={`w-full rounded-2xl border p-6 text-center ${resultado.vencido ? "border-red-500/40 bg-red-500/10" : "border-emerald-500/40 bg-emerald-500/10"}`}>
               <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-black"
-                style={{ background: cinturonColor ? `${cinturonColor}30` : "#ffffff20", border: `3px solid ${cinturonColor || "#ffffff"}` }}>
+                style={{ background: beltColor ? `${beltColor}30` : "#ffffff20", border: `3px solid ${beltColor || "#ffffff"}` }}>
                 {(resultado.student.nombres?.[0] || "?")}{ resultado.student.apellidos?.[0] || ""}
               </div>
               {resultado.vencido ? (
@@ -3829,7 +3829,7 @@ const KioscoPage = ({ students, pagos, asistencia }) => {
               ) : (
                 <p className="text-emerald-400 text-lg font-bold">¡Bienvenido/a, {resultado.student.nombres || "Alumno"}!</p>
               )}
-              <p className="text-white text-sm mt-1" style={{ color: cinturonColor }}>● {resultado.student.cinturon || "—"}</p>
+              <p className="text-white text-sm mt-1" style={{ color: beltColor }}>● {resultado.student.cinturon || "—"}</p>
               {resultado.vencido ? (
                 <>
                   <p className="text-red-400 font-semibold mt-3">Membresía vencida</p>
