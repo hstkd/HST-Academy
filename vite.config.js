@@ -2,11 +2,16 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// En GitHub Pages la app vive en /HST-Academy/; en local y Vercel, en /
+const base = process.env.GITHUB_ACTIONS ? '/HST-Academy/' : '/'
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      base,
       includeAssets: ['icons/apple-touch-icon.png'],
       manifest: {
         name: 'SportSync — Academias Deportivas',
@@ -16,8 +21,8 @@ export default defineConfig({
         background_color: '#0B1220',
         display: 'standalone',
         orientation: 'portrait-primary',
-        start_url: '/',
-        scope: '/',
+        start_url: base,
+        scope: base,
         lang: 'es',
         icons: [
           {
@@ -39,9 +44,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Cache the app shell and all static assets
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // Network-first for API calls to Supabase; cache-first for static assets
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\//,
