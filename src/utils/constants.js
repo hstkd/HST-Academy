@@ -31,8 +31,8 @@ export const MEMBRESIAS = [
 
 export const PERMISOS = {
   superadmin: ["superadmin"],
-  admin:    ["dashboard","students","clases_prueba","payments","cobranza","ventas","attendance","examenes","finance","events","users","inventario","gastos","configuracion"],
-  profesor: ["attendance","students","clases_prueba","ventas","examenes"],
+  admin:    ["dashboard","students","clases_prueba","payments","cobranza","ventas","attendance","examenes","finance","events","users","inventario","gastos","configuracion","kiosco"],
+  profesor: ["attendance","students","clases_prueba","ventas","examenes","kiosco"],
   alumno:   ["mi_asistencia","mis_pagos","mi_historial"],
 };
 
