@@ -3721,32 +3721,36 @@ const KioscoPage = ({ students, pagos, asistencia }) => {
 
   const buscar = async (cod) => {
     setRegistrando(true);
-    const student = students.find(s => s.codigo === cod && s.estado === "activo");
-    if (!student) {
+    try {
+      const student = students.find(s => s.codigo === cod && s.estado === "activo");
+      if (!student) {
+        setResultado({ tipo: "error" });
+        setRegistrando(false);
+        setTimeout(() => { setResultado(null); setInput(""); }, 3000);
+        return;
+      }
+      const hoy = fmt(new Date());
+      const pagosAlumno = pagos
+        .filter(p => p.alumno_id === student.id && p.fecha_vencimiento)
+        .sort((a, b) => b.fecha_vencimiento.localeCompare(a.fecha_vencimiento));
+      const ultimoPago = pagosAlumno[0];
+      const vencido = !ultimoPago || ultimoPago.fecha_vencimiento < hoy;
+      const saldo = ultimoPago ? Math.max(0, (parseFloat(ultimoPago.monto) || 0) - (parseFloat(ultimoPago.monto_pagado) || 0)) : 0;
+      const yaHoy = checkedHoy.has(student.id) || asistencia.some(a => a.alumno_id === student.id && a.fecha === hoy);
+      if (!yaHoy) {
+        await db.insert("asistencia", {
+          alumno_id: student.id,
+          alumno_nombre: `${student.nombres} ${student.apellidos}`,
+          fecha: hoy,
+          presente: true,
+          sede: student.sede,
+        });
+        setCheckedHoy(prev => new Set([...prev, student.id]));
+      }
+      setResultado({ student, ultimoPago, vencido, saldo, yaHoy });
+    } catch (e) {
       setResultado({ tipo: "error" });
-      setRegistrando(false);
-      setTimeout(() => { setResultado(null); setInput(""); }, 3000);
-      return;
     }
-    const hoy = fmt(new Date());
-    const pagosAlumno = pagos
-      .filter(p => p.alumno_id === student.id && p.fecha_vencimiento)
-      .sort((a, b) => b.fecha_vencimiento.localeCompare(a.fecha_vencimiento));
-    const ultimoPago = pagosAlumno[0];
-    const vencido = !ultimoPago || ultimoPago.fecha_vencimiento < hoy;
-    const saldo = ultimoPago ? Math.max(0, (parseFloat(ultimoPago.monto) || 0) - (parseFloat(ultimoPago.monto_pagado) || 0)) : 0;
-    const yaHoy = checkedHoy.has(student.id) || asistencia.some(a => a.alumno_id === student.id && a.fecha === hoy);
-    if (!yaHoy) {
-      await db.insert("asistencia", {
-        alumno_id: student.id,
-        alumno_nombre: `${student.nombres} ${student.apellidos}`,
-        fecha: hoy,
-        presente: true,
-        sede: student.sede,
-      });
-      setCheckedHoy(prev => new Set([...prev, student.id]));
-    }
-    setResultado({ student, ultimoPago, vencido, saldo, yaHoy });
     setRegistrando(false);
     setTimeout(() => { setResultado(null); setInput(""); }, 5000);
   };
@@ -3801,14 +3805,14 @@ const KioscoPage = ({ students, pagos, asistencia }) => {
             <div className={`w-full rounded-2xl border p-6 text-center ${resultado.vencido ? "border-red-500/40 bg-red-500/10" : "border-emerald-500/40 bg-emerald-500/10"}`}>
               <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-black"
                 style={{ background: cinturonColor ? `${cinturonColor}30` : "#ffffff20", border: `3px solid ${cinturonColor || "#ffffff"}` }}>
-                {resultado.student.nombres.charAt(0)}{resultado.student.apellidos.charAt(0)}
+                {(resultado.student.nombres?.[0] || "?")}{ resultado.student.apellidos?.[0] || ""}
               </div>
               {resultado.vencido ? (
-                <p className="text-red-400 text-lg font-bold">¡Hola, {resultado.student.nombres}!</p>
+                <p className="text-red-400 text-lg font-bold">¡Hola, {resultado.student.nombres || "Alumno"}!</p>
               ) : (
-                <p className="text-emerald-400 text-lg font-bold">¡Bienvenido/a, {resultado.student.nombres}!</p>
+                <p className="text-emerald-400 text-lg font-bold">¡Bienvenido/a, {resultado.student.nombres || "Alumno"}!</p>
               )}
-              <p className="text-white text-sm mt-1" style={{ color: cinturonColor }}>● {resultado.student.cinturon}</p>
+              <p className="text-white text-sm mt-1" style={{ color: cinturonColor }}>● {resultado.student.cinturon || "—"}</p>
               {resultado.vencido ? (
                 <>
                   <p className="text-red-400 font-semibold mt-3">Membresía vencida</p>
