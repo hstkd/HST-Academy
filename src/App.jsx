@@ -1328,6 +1328,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
   const [estado, setEstado] = useState(student?.estado || "activo");
   const [observaciones, setObservaciones] = useState(student?.observaciones || "");
   const [fechaIns, setFechaIns] = useState(student?.fecha_inscripcion || "");
+  const [codigo, setCodigo] = useState(student?.codigo || "");
   // Contraseña se genera automáticamente
   const [saving, setSaving] = useState(false);
   const edadInfo = calcEdad(fechaNac);
@@ -1354,7 +1355,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
     }
     
     setSaving(true);
-    const data = { nombres, apellidos, edad: edadInfo.total, fecha_nacimiento: fechaNac, representante, telefono, correo, direccion, sede, cinturon, membresia, estado, categoria, observaciones, fecha_inscripcion: fechaIns };
+    const data = { nombres, apellidos, edad: edadInfo.total, fecha_nacimiento: fechaNac, representante, telefono, correo, direccion, sede, cinturon, membresia, estado, categoria, observaciones, fecha_inscripcion: fechaIns, codigo: codigo || null };
     if (student) {
       // Si cambió el usuario, actualizar en tabla users
       if (student.correo && correo !== student.correo) {
@@ -1557,6 +1558,13 @@ const StudentFormModal = ({ student, reload, onClose }) => {
           {!fechaIns && <p className="text-xs text-amber-400 mt-1">⚠️ Requerida para calcular el vencimiento del pago</p>}
         </Field>
         <Field label="Observaciones" className="col-span-2"><Textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} /></Field>
+        <Field label="Código de asistencia (4 dígitos)" className="col-span-2">
+          <div className="flex gap-2">
+            <Input value={codigo} onChange={e=>setCodigo(e.target.value.replace(/\D/g,"").slice(0,4))} placeholder="Ej: 1234" maxLength={4} style={{ fontFamily:"monospace", letterSpacing:"0.3em", fontSize:"1.2rem" }} />
+            <button type="button" onClick={()=>{ let c; do { c=String(Math.floor(1000+Math.random()*9000)); } while(false); setCodigo(c); }} className="px-4 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5 whitespace-nowrap">Generar</button>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">El alumno usará este código en el kiosco para registrar su asistencia</p>
+        </Field>
         {!student && (
           <div className="col-span-2 border border-white/10 rounded-2xl p-4 space-y-3">
             <div className="flex items-center gap-3">
@@ -3693,6 +3701,156 @@ const AbonoExamenModal = ({ examen, reload, onClose }) => {
         <button onClick={save} disabled={saving||abono<=0} className="flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-60" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{saving?"Guardando...":"Registrar abono"}</button>
       </div>
     </Modal>
+  );
+};
+
+const KioscoPage = ({ students, pagos, asistencia, reload }) => {
+  const [input, setInput] = useState("");
+  const [resultado, setResultado] = useState(null);
+  const [registrando, setRegistrando] = useState(false);
+
+  const buscar = async (cod) => {
+    setRegistrando(true);
+    const student = students.find(s => s.codigo === cod && s.estado === "activo");
+    if (!student) {
+      setResultado({ tipo: "error" });
+      setRegistrando(false);
+      setTimeout(() => { setResultado(null); setInput(""); }, 3000);
+      return;
+    }
+    const hoy = fmt(new Date());
+    const pagosAlumno = pagos
+      .filter(p => p.alumno_id === student.id && p.fecha_vencimiento)
+      .sort((a, b) => b.fecha_vencimiento.localeCompare(a.fecha_vencimiento));
+    const ultimoPago = pagosAlumno[0];
+    const vencido = !ultimoPago || ultimoPago.fecha_vencimiento < hoy;
+    const saldo = ultimoPago ? Math.max(0, (parseFloat(ultimoPago.monto) || 0) - (parseFloat(ultimoPago.monto_pagado) || 0)) : 0;
+    const yaHoy = asistencia.some(a => a.alumno_id === student.id && a.fecha === hoy);
+    if (!yaHoy) {
+      await db.insert("asistencia", {
+        alumno_id: student.id,
+        alumno_nombre: `${student.nombres} ${student.apellidos}`,
+        fecha: hoy,
+        presente: true,
+        sede: student.sede,
+      });
+      await reload();
+    }
+    setResultado({ student, ultimoPago, vencido, saldo, yaHoy });
+    setRegistrando(false);
+    setTimeout(() => { setResultado(null); setInput(""); }, 5000);
+  };
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (resultado || registrando) return;
+      if (e.key >= "0" && e.key <= "9" && input.length < 4) {
+        const next = input + e.key;
+        setInput(next);
+        if (next.length === 4) buscar(next);
+      } else if (e.key === "Backspace") {
+        setInput(i => i.slice(0, -1));
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [input, resultado, registrando]);
+
+  const presionar = (d) => {
+    if (resultado || registrando || input.length >= 4) return;
+    const next = input + d;
+    setInput(next);
+    if (next.length === 4) buscar(next);
+  };
+
+  const borrar = () => {
+    if (resultado || registrando) return;
+    setInput(i => i.slice(0, -1));
+  };
+
+  const cinturonColor = resultado?.student ? (CINTURON_COLOR[resultado.student.cinturon] || "#fff") : null;
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center py-10" style={{ background: "var(--ss-bg)" }}>
+      <div className="w-full max-w-sm flex flex-col items-center gap-6">
+        {/* Header */}
+        <div className="text-center">
+          <p className="text-white text-3xl font-black tracking-tight">HSTKD</p>
+          <p className="text-slate-400 text-sm mt-1">Registro de Asistencia</p>
+        </div>
+
+        {/* Resultado */}
+        {resultado && (
+          resultado.tipo === "error" ? (
+            <div className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 p-6 text-center animate-pulse">
+              <p className="text-5xl mb-3">✗</p>
+              <p className="text-red-400 text-xl font-bold">Código incorrecto</p>
+              <p className="text-slate-400 text-sm mt-1">Intenta nuevamente</p>
+            </div>
+          ) : (
+            <div className={`w-full rounded-2xl border p-6 text-center ${resultado.vencido ? "border-red-500/40 bg-red-500/10" : "border-emerald-500/40 bg-emerald-500/10"}`}>
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-black"
+                style={{ background: cinturonColor ? `${cinturonColor}30` : "#ffffff20", border: `3px solid ${cinturonColor || "#ffffff"}` }}>
+                {resultado.student.nombres.charAt(0)}{resultado.student.apellidos.charAt(0)}
+              </div>
+              {resultado.vencido ? (
+                <p className="text-red-400 text-lg font-bold">¡Hola, {resultado.student.nombres}!</p>
+              ) : (
+                <p className="text-emerald-400 text-lg font-bold">¡Bienvenido/a, {resultado.student.nombres}!</p>
+              )}
+              <p className="text-white text-sm mt-1" style={{ color: cinturonColor }}>● {resultado.student.cinturon}</p>
+              {resultado.vencido ? (
+                <>
+                  <p className="text-red-400 font-semibold mt-3">Membresía vencida</p>
+                  {resultado.ultimoPago && <p className="text-slate-400 text-xs mt-1">Venció el {resultado.ultimoPago.fecha_vencimiento}</p>}
+                  {resultado.saldo > 0 && <p className="text-amber-400 text-sm mt-1 font-semibold">Saldo pendiente: ${resultado.saldo.toFixed(2)}</p>}
+                  <p className="text-slate-500 text-xs mt-3">⚠️ Habla con el instructor</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-slate-400 text-xs mt-3">Membresía vigente hasta</p>
+                  <p className="text-white font-bold text-lg">{resultado.ultimoPago?.fecha_vencimiento || "—"}</p>
+                  <p className="text-emerald-400 text-xs mt-2">{resultado.yaHoy ? "✓ Ya registrado hoy" : "✓ Asistencia registrada"}</p>
+                </>
+              )}
+            </div>
+          )
+        )}
+
+        {/* Indicador de dígitos */}
+        {!resultado && (
+          <>
+            <p className="text-slate-400 text-sm">Ingresa tu código de 4 dígitos</p>
+            <div className="flex gap-4">
+              {[0,1,2,3].map(i => (
+                <div key={i} className={`w-5 h-5 rounded-full transition-all ${i < input.length ? "bg-blue-500" : "bg-white/15"}`} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Teclado numérico */}
+        {!resultado && (
+          <div className="grid grid-cols-3 gap-3 w-full">
+            {["1","2","3","4","5","6","7","8","9","←","0","✓"].map(k => (
+              <button key={k} onClick={() => k === "←" ? borrar() : k === "✓" ? null : presionar(k)}
+                disabled={registrando}
+                className={`py-5 rounded-2xl text-xl font-bold transition-all active:scale-95 disabled:opacity-40
+                  ${k === "←" ? "bg-white/5 text-slate-400 hover:bg-white/10"
+                  : k === "✓" ? "bg-white/5 text-slate-600 cursor-default"
+                  : "text-white hover:bg-white/15"}`}
+                style={{ background: k === "←" || k === "✓" ? undefined : "rgba(255,255,255,0.08)" }}>
+                {registrando && k === "✓" ? "..." : k}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {resultado && !resultado.tipo && (
+          <p className="text-slate-600 text-xs">Volviendo al inicio en unos segundos...</p>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -5959,6 +6117,7 @@ export default function App() {
     { id:"cobranza",      label:"Cobranza",     icon:"payments"     },
    { id:"ventas",        label:"Ventas",       icon:"ventas"       },
     { id:"attendance",    label:"Asistencia",   icon:"attendance"   },
+    { id:"kiosco",        label:"Kiosco",        icon:"attendance"   },
     { id:"examenes",      label:"Exámenes",     icon:"examenes"     },
     { id:"finance",       label:"Finanzas",     icon:"finance"      },
     { id:"events",        label:"Eventos",      icon:"calendar"     },
@@ -5996,6 +6155,7 @@ export default function App() {
       case "cobranza":      return <CobranzaPage students={students} pagos={pagos} />;
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
+      case "kiosco":        return <KioscoPage students={students} pagos={pagos} asistencia={asistencia} reload={loadAll} />;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} configExamenes={configExamenes} configGal={configGal} />;
       case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} configSedes={configSedes} inventario={inventario} reload={loadAll} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} />;
