@@ -3730,7 +3730,7 @@ class KioscoErrorBoundary extends Component {
   }
 }
 
-const KioscoPage = ({ students, pagos, asistencia }) => {
+const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
   const [input, setInput] = useState("");
   const [resultado, setResultado] = useState(null);
   const [registrando, setRegistrando] = useState(false);
@@ -3752,7 +3752,11 @@ const KioscoPage = ({ students, pagos, asistencia }) => {
         .sort((a, b) => b.fecha_vencimiento.localeCompare(a.fecha_vencimiento));
       const ultimoPago = pagosAlumno[0];
       const vencido = !ultimoPago || ultimoPago.fecha_vencimiento < hoy;
-      const saldo = ultimoPago ? Math.max(0, (parseFloat(ultimoPago.monto) || 0) - (parseFloat(ultimoPago.monto_pagado) || 0)) : 0;
+      const saldoMembresia = ultimoPago ? Math.max(0, (parseFloat(ultimoPago.monto) || 0) - (parseFloat(ultimoPago.monto_pagado) || 0)) : 0;
+      const saldoVentas = (ventas || [])
+        .filter(v => v.alumno_id === student.id && parseFloat(v.saldo_pendiente || 0) > 0)
+        .reduce((acc, v) => acc + parseFloat(v.saldo_pendiente || 0), 0);
+      const saldo = saldoMembresia + saldoVentas;
       const yaHoy = checkedHoy.has(student.id) || asistencia.some(a => a.alumno_id === student.id && a.fecha === hoy);
       if (!yaHoy) {
         await db.insert("asistencia", {
@@ -6204,7 +6208,7 @@ export default function App() {
       case "cobranza":      return <CobranzaPage students={students} pagos={pagos} />;
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
-      case "kiosco":        return <KioscoErrorBoundary><KioscoPage students={students} pagos={pagos} asistencia={asistencia} /></KioscoErrorBoundary>;
+      case "kiosco":        return <KioscoErrorBoundary><KioscoPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} /></KioscoErrorBoundary>;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} configExamenes={configExamenes} configGal={configGal} />;
       case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} configSedes={configSedes} inventario={inventario} reload={loadAll} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} />;
