@@ -4373,6 +4373,50 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
     + (examenes||[]).filter(e=>e.fecha?.slice(0,7)===mesFin).reduce((a,e)=>a+parseFloat(e.monto_pagado||e.monto||0),0);
   const utilidadMes    = ingresosMes - gastosMes;
 
+  // ── Proyección próximo mes ────────────────────────────────────────────────
+  const todayDate = new Date();
+  const mesActualIdx = todayDate.getMonth();
+  const anioActual = todayDate.getFullYear();
+
+  // Últimos 6 meses en formato YYYY-MM (más reciente primero)
+  const ultimos6Meses = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(anioActual, mesActualIdx - 1 - i, 1);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  });
+
+  const pesos = [3, 3, 2, 2, 1, 1]; // más peso a meses recientes
+
+  const ponderado = (vals) => {
+    let suma = 0, pesoTotal = 0;
+    vals.forEach((v, i) => { suma += v * pesos[i]; pesoTotal += pesos[i]; });
+    return pesoTotal > 0 ? suma / pesoTotal : 0;
+  };
+
+  const ingMensPorMes  = ultimos6Meses.map(ym => (historialPagos||[]).filter(h=>h.fecha_pago?.startsWith(ym)).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0));
+  const ingVentPorMes  = ultimos6Meses.map(ym => (ventas||[]).filter(v=>v.fecha?.startsWith(ym)).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0));
+  const ingExamPorMes  = ultimos6Meses.map(ym => (examenes||[]).filter(e=>e.fecha?.startsWith(ym)).reduce((a,e)=>a+parseFloat(e.monto_pagado||e.monto||0),0));
+  const ingEvtPorMes   = ultimos6Meses.map(ym => (eventos||[]).filter(e=>e.fecha?.startsWith(ym)).reduce((a,e)=>{ try { return a+JSON.parse(e.participantes||"[]").filter(p=>p.pagado).reduce((s,p)=>s+parseFloat(p.valor||0),0); } catch { return a; } },0));
+  const gastPorMes     = ultimos6Meses.map(ym => (gastos||[]).filter(g=>g.fecha?.startsWith(ym)).reduce((a,g)=>a+parseFloat(g.monto||0),0));
+
+  const proyMens  = ponderado(ingMensPorMes);
+  const proyVent  = ponderado(ingVentPorMes);
+  const proyExam  = ponderado(ingExamPorMes);
+  const proyEvt   = ponderado(ingEvtPorMes);
+  const proyGast  = ponderado(gastPorMes);
+  const proyIng   = proyMens + proyVent + proyExam + proyEvt;
+  const proyUtil  = proyIng - proyGast;
+
+  // Trend vs último mes real con datos
+  const lastMesConDatos = ultimos6Meses.findIndex((ym, i) => (ingMensPorMes[i]+ingVentPorMes[i]+ingExamPorMes[i]+ingEvtPorMes[i]) > 0);
+  const lastIngReal = lastMesConDatos >= 0 ? ingMensPorMes[lastMesConDatos]+ingVentPorMes[lastMesConDatos]+ingExamPorMes[lastMesConDatos]+ingEvtPorMes[lastMesConDatos] : 0;
+  const trendPct = lastIngReal > 0 ? ((proyIng - lastIngReal) / lastIngReal * 100) : 0;
+
+  const proxyMesNombre = (() => {
+    const d = new Date(anioActual, mesActualIdx + 1, 1);
+    return d.toLocaleString("es", { month: "long", year: "numeric" });
+  })();
+  const mesesConDatos = ultimos6Meses.filter((ym, i) => (ingMensPorMes[i]+ingVentPorMes[i]+ingExamPorMes[i]+ingEvtPorMes[i]+gastPorMes[i]) > 0).length;
+
   // Por sede — suma todas las fuentes
   const ingresosPorSede = SEDES.map(sede => {
     const mensual  = pagos.filter(p=>p.sede===sede).reduce((a,p)=>a+parseFloat(p.monto_pagado||0),0);
@@ -4664,6 +4708,81 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
             <p>Variables: <span className="text-red-300 font-bold">-${gastosVariables.toFixed(0)}</span></p>
           </div>
         </div>
+      </div>
+
+      {/* Proyección próximo mes */}
+      <div className="rounded-2xl p-5 border" style={{ background:"linear-gradient(135deg,rgba(37,99,235,0.12),rgba(124,58,237,0.08))", borderColor:"rgba(99,102,241,0.3)" }}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-xs text-indigo-400 font-bold uppercase tracking-wider">Proyección</p>
+            <h3 className="text-lg font-black text-white capitalize" style={{ fontFamily:"'Inter',sans-serif" }}>
+              {proxyMesNombre}
+            </h3>
+          </div>
+          <div className="text-right">
+            {mesesConDatos === 0
+              ? <span className="text-xs text-slate-500 bg-white/5 px-2 py-1 rounded-lg">Sin datos históricos</span>
+              : <span className="text-xs text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded-lg">{mesesConDatos} {mesesConDatos===1?"mes":"meses"} de historial</span>
+            }
+            {trendPct !== 0 && lastIngReal > 0 && (
+              <p className={`text-xs font-bold mt-1 ${trendPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                {trendPct >= 0 ? "▲" : "▼"} {Math.abs(trendPct).toFixed(1)}% vs mes anterior
+              </p>
+            )}
+          </div>
+        </div>
+
+        {mesesConDatos === 0 ? (
+          <p className="text-slate-500 text-sm text-center py-4">Registra ingresos y gastos para ver la proyección</p>
+        ) : (
+          <>
+            {/* Métricas principales */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="rounded-xl p-3 text-center" style={{ background:"rgba(16,185,129,0.1)", border:"1px solid rgba(16,185,129,0.2)" }}>
+                <p className="text-[10px] text-emerald-400 font-bold uppercase mb-1">Ingresos</p>
+                <p className="text-xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>~${proyIng.toFixed(0)}</p>
+              </div>
+              <div className="rounded-xl p-3 text-center" style={{ background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.2)" }}>
+                <p className="text-[10px] text-red-400 font-bold uppercase mb-1">Gastos</p>
+                <p className="text-xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>~${proyGast.toFixed(0)}</p>
+              </div>
+              <div className="rounded-xl p-3 text-center" style={{ background:proyUtil>=0?"rgba(16,185,129,0.15)":"rgba(239,68,68,0.15)", border:`1px solid ${proyUtil>=0?"rgba(16,185,129,0.3)":"rgba(239,68,68,0.3)"}` }}>
+                <p className={`text-[10px] font-bold uppercase mb-1 ${proyUtil>=0?"text-emerald-400":"text-red-400"}`}>Utilidad</p>
+                <p className={`text-xl font-black ${proyUtil>=0?"text-emerald-400":"text-red-400"}`} style={{ fontFamily:"'Inter',sans-serif" }}>
+                  {proyUtil>=0?"+":""}{proyUtil.toFixed(0)}
+                </p>
+              </div>
+            </div>
+
+            {/* Desglose de ingresos proyectados */}
+            {proyIng > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] text-slate-500 uppercase font-bold">Desglose ingresos proyectados</p>
+                {[
+                  { label:"Mensualidades", val:proyMens, color:"#f59e0b" },
+                  { label:"Ventas",        val:proyVent, color:"#a855f7" },
+                  { label:"Exámenes/GAL",  val:proyExam, color:"#f97316" },
+                  { label:"Eventos",       val:proyEvt,  color:"#3b82f6" },
+                ].filter(x=>x.val>0.5).map(({ label, val, color }) => {
+                  const pct = proyIng > 0 ? (val / proyIng * 100) : 0;
+                  return (
+                    <div key={label} className="flex items-center gap-3">
+                      <p className="text-xs text-slate-400 w-28 flex-shrink-0">{label}</p>
+                      <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width:`${pct}%`, background:color }} />
+                      </div>
+                      <p className="text-xs font-bold text-white w-14 text-right">~${val.toFixed(0)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="text-[10px] text-slate-600 mt-4">
+              * Promedio ponderado de los últimos {mesesConDatos} meses (meses recientes tienen mayor peso).
+            </p>
+          </>
+        )}
       </div>
 
       {/* Balance mes a mes — ingresos vs gastos + tendencia utilidad */}
