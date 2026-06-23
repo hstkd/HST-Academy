@@ -8,6 +8,8 @@ import { useState, useEffect, useCallback, useRef, Component } from "react";
 import { fmt, addDays, calcEdad, getCategoria, calcVencimiento as _calcVencimiento, calcNuevoVencimiento as _calcNuevoVencimiento } from "./utils/dates.js";
 import { hashPassword, loginLimiter } from "./utils/auth.js";
 import { CINTURONES, COSTOS_ASCENSO, MEMBRESIAS, PERMISOS, CINTURON_COLOR as cinturonColor, PAGO_ESTADO_CONFIG as pagoEstadoConfig } from "./utils/constants.js";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const LOGO_SRC = "https://i.imgur.com/fJdJygP.png";
 
@@ -3372,7 +3374,86 @@ const AttendancePage = ({ students, asistencia, reload }) => {
   const [saving, setSaving] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [expanded, setExpanded] = useState(null);
-  const [tab, setTab] = useState("marcar"); // "marcar" | "stats"
+  const [tab, setTab] = useState("marcar"); // "marcar" | "stats" | "reporte"
+  const [mesReporte, setMesReporte] = useState(fmt(today).slice(0,7));
+  const [sedeReporte, setSedeReporte] = useState("Todas");
+
+  const generarPDF = () => {
+    // Filtrar asistencias del mes seleccionado
+    const asistMes = asistencia.filter(a => a.fecha?.startsWith(mesReporte) && a.presente);
+    // Fechas únicas ordenadas
+    const fechas = [...new Set(asistMes.map(a => a.fecha))].sort();
+    if (fechas.length === 0) { alert("No hay asistencias registradas en ese mes."); return; }
+    // Alumnos activos filtrados por sede
+    const alumnos = students
+      .filter(s => s.estado === "activo" && (sedeReporte === "Todas" || s.sede === sedeReporte))
+      .sort((a, b) => `${a.apellidos} ${a.nombres}`.localeCompare(`${b.apellidos} ${b.nombres}`));
+    // Construir tabla: columna "Alumno" + una columna por fecha
+    const headers = ["Alumno", ...fechas.map(f => {
+      const [,, d] = f.split("-"); return d; // Solo el día
+    })];
+    const presMap = new Set(asistMes.map(a => `${a.alumno_id}_${a.fecha}`));
+    const rows = alumnos.map(s => [
+      `${s.apellidos}, ${s.nombres}`,
+      ...fechas.map(f => presMap.has(`${s.id}_${f}`) ? "✓" : ""),
+    ]);
+    // Total por alumno en la última columna
+    const headersConTotal = [...headers, "Total"];
+    const rowsConTotal = rows.map(r => {
+      const total = r.slice(1).filter(c => c === "✓").length;
+      return [...r, String(total)];
+    });
+    // Totales por fecha (pie)
+    const totalesFecha = ["Total", ...fechas.map(f =>
+      String(alumnos.filter(s => presMap.has(`${s.id}_${f}`)).length)
+    ), String(asistMes.length)];
+
+    const [anio, mes] = mesReporte.split("-");
+    const nombreMes = new Date(Number(anio), Number(mes)-1, 1)
+      .toLocaleString("es", { month: "long" });
+    const titulo = `Registro de Asistencia — ${nombreMes.charAt(0).toUpperCase()+nombreMes.slice(1)} ${anio}`;
+    const subtitulo = sedeReporte !== "Todas" ? `Sede: ${sedeReporte}` : "Todas las sedes";
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(titulo, 14, 16);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(subtitulo, 14, 22);
+
+    autoTable(doc, {
+      head: [headersConTotal],
+      body: [...rowsConTotal, totalesFecha],
+      startY: 26,
+      styles: { fontSize: 7, cellPadding: 1.5, halign: "center", valign: "middle" },
+      columnStyles: { 0: { halign: "left", cellWidth: 45 } },
+      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
+      footStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      didParseCell: (data) => {
+        // Última fila = totales → fondo oscuro
+        if (data.row.index === rowsConTotal.length) {
+          data.cell.styles.fillColor = [30, 58, 138];
+          data.cell.styles.textColor = [255, 255, 255];
+          data.cell.styles.fontStyle = "bold";
+        }
+        // Columna "Total" → destaca
+        if (data.column.index === headersConTotal.length - 1 && data.row.section !== "head") {
+          data.cell.styles.fillColor = [219, 234, 254];
+          data.cell.styles.textColor = [30, 64, 175];
+          data.cell.styles.fontStyle = "bold";
+        }
+        // Checkmarks en verde
+        if (data.cell.raw === "✓") {
+          data.cell.styles.textColor = [22, 163, 74];
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+
+    doc.save(`asistencia-${mesReporte}${sedeReporte !== "Todas" ? `-${sedeReporte}` : ""}.pdf`);
+  };
 
   const fs = students.filter(s=>s.estado==="activo"&&(sede==="Todas"||s.sede===sede));
 
@@ -3476,7 +3557,7 @@ const AttendancePage = ({ students, asistencia, reload }) => {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {[["marcar","✓ Marcar"],["stats","📊 Estadísticas"]].map(([id,label])=>(
+        {[["marcar","✓ Marcar"],["stats","📊 Estadísticas"],["reporte","📄 Reporte PDF"]].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)}
             className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
             style={tab===id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"white"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
@@ -3565,6 +3646,41 @@ const AttendancePage = ({ students, asistencia, reload }) => {
               {statsAlumnos.length===0 && (
                 <div className="p-8 text-center text-slate-500 text-sm">Sin alumnos activos</div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab==="reporte" && (
+        <div className="space-y-6">
+          <div className="rounded-2xl border p-6 space-y-5" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+            <div>
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Mes del reporte</p>
+              <input
+                type="month"
+                value={mesReporte}
+                onChange={e => setMesReporte(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50"
+              />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Sede</p>
+              <Select options={["Todas",...SEDES]} value={sedeReporte} onChange={e=>setSedeReporte(e.target.value)} />
+            </div>
+            <div className="pt-2 border-t border-white/5">
+              <p className="text-xs text-slate-500 mb-4">
+                El PDF tendrá una fila por alumno y una columna por día con asistencia. Los días sin registros no aparecen como columnas.
+              </p>
+              <button
+                onClick={generarPDF}
+                className="w-full py-3 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2"
+                style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Descargar PDF
+              </button>
             </div>
           </div>
         </div>
