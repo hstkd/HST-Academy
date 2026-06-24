@@ -3847,7 +3847,7 @@ class KioscoErrorBoundary extends Component {
   }
 }
 
-const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
+const KioscoPage = ({ students, pagos, asistencia, ventas, darkMode }) => {
   const [input, setInput] = useState("");
   const [resultado, setResultado] = useState(null);
   const [registrando, setRegistrando] = useState(false);
@@ -3924,23 +3924,27 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
 
   // ── Pantalla completa de resultado ───────────────────────────────────────
   if (resultado) {
+    const baseBg = darkMode ? "#0B1220" : "#F8FAFC";
+    const baseText = darkMode ? "#F1F5F9" : "#1E293B";
+    const subText  = darkMode ? "#94A3B8" : "#64748B";
+
     if (resultado.tipo === "error") {
       return (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center text-center"
-          style={{ background:"#0f172a" }}>
+          style={{ background: baseBg }}>
           <div className="text-[8rem] leading-none mb-6">✗</div>
           <p className="text-red-400 text-4xl font-black mb-3">Código incorrecto</p>
-          <p className="text-slate-400 text-xl">Intenta nuevamente</p>
+          <p className="text-xl" style={{ color: subText }}>Intenta nuevamente</p>
         </div>
       );
     }
 
     const debeSaldo = (resultado.saldo || 0) > 0;
     const bg = resultado.vencido
-      ? "linear-gradient(160deg,#1a0a0a 0%,#2d0f0f 60%,#0f172a 100%)"
+      ? darkMode ? "linear-gradient(160deg,#1a0a0a 0%,#2d0f0f 60%,#0B1220 100%)" : "linear-gradient(160deg,#fff0f0 0%,#ffe4e4 60%,#F8FAFC 100%)"
       : debeSaldo
-      ? "linear-gradient(160deg,#1a1200 0%,#2d1f00 60%,#0f172a 100%)"
-      : "linear-gradient(160deg,#001a0f 0%,#002d1a 60%,#0f172a 100%)";
+      ? darkMode ? "linear-gradient(160deg,#1a1200 0%,#2d1f00 60%,#0B1220 100%)" : "linear-gradient(160deg,#fffbeb 0%,#fef3c7 60%,#F8FAFC 100%)"
+      : darkMode ? "linear-gradient(160deg,#001a0f 0%,#002d1a 60%,#0B1220 100%)" : "linear-gradient(160deg,#f0fdf4 0%,#dcfce7 60%,#F8FAFC 100%)";
 
     const accentColor = resultado.vencido ? "#ef4444" : debeSaldo ? "#f59e0b" : "#10b981";
     const statusIcon  = resultado.vencido ? "⛔" : debeSaldo ? "⚠️" : "✓";
@@ -3959,7 +3963,7 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
         <p className="font-black mb-2 leading-tight" style={{ fontSize:"clamp(2rem,6vw,3.5rem)", color: accentColor }}>
           ¡Bienvenido/a,
         </p>
-        <p className="font-black mb-4 leading-tight text-white" style={{ fontSize:"clamp(2.2rem,7vw,4rem)" }}>
+        <p className="font-black mb-4 leading-tight" style={{ fontSize:"clamp(2.2rem,7vw,4rem)", color: baseText }}>
           {resultado.student.nombres} {resultado.student.apellidos}!
         </p>
 
@@ -3979,12 +3983,12 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
             style={{ background:"rgba(239,68,68,0.15)", border:"2px solid rgba(239,68,68,0.4)" }}>
             <p className="text-red-400 font-black text-2xl mb-2">⛔ Membresía vencida</p>
             {resultado.ultimoPago && (
-              <p className="text-slate-300 text-lg">Venció el <span className="font-bold text-white">{resultado.ultimoPago.fecha_vencimiento}</span></p>
+              <p className="text-lg" style={{ color: subText }}>Venció el <span className="font-bold" style={{ color: baseText }}>{resultado.ultimoPago.fecha_vencimiento}</span></p>
             )}
             {debeSaldo && (
               <p className="text-amber-400 font-black text-3xl mt-3">${resultado.saldo.toFixed(2)} pendiente</p>
             )}
-            <p className="text-slate-400 text-base mt-3">Habla con el instructor para renovar</p>
+            <p className="text-base mt-3" style={{ color: subText }}>Habla con el instructor para renovar</p>
           </div>
         )}
 
@@ -3993,8 +3997,8 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
           <div className="w-full max-w-md rounded-3xl p-6 mb-6"
             style={{ background:"rgba(245,158,11,0.15)", border:"2px solid rgba(245,158,11,0.4)" }}>
             <p className="text-amber-400 font-black text-2xl mb-2">⚠️ Tienes un saldo pendiente</p>
-            <p className="text-white font-black" style={{ fontSize:"clamp(2.5rem,8vw,4rem)" }}>${resultado.saldo.toFixed(2)}</p>
-            <p className="text-slate-400 text-base mt-3">Habla con el instructor para ponerte al día</p>
+            <p className="font-black" style={{ fontSize:"clamp(2.5rem,8vw,4rem)", color: baseText }}>${resultado.saldo.toFixed(2)}</p>
+            <p className="text-base mt-3" style={{ color: subText }}>Habla con el instructor para ponerte al día</p>
           </div>
         )}
 
@@ -4002,12 +4006,12 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
         {!resultado.vencido && !debeSaldo && resultado.ultimoPago && (
           <div className="rounded-3xl px-8 py-4 mb-6"
             style={{ background:"rgba(16,185,129,0.1)", border:"2px solid rgba(16,185,129,0.3)" }}>
-            <p className="text-slate-400 text-lg">Membresía vigente hasta</p>
-            <p className="text-white font-black text-3xl mt-1">{resultado.ultimoPago.fecha_vencimiento}</p>
+            <p className="text-lg" style={{ color: subText }}>Membresía vigente hasta</p>
+            <p className="font-black text-3xl mt-1" style={{ color: baseText }}>{resultado.ultimoPago.fecha_vencimiento}</p>
           </div>
         )}
 
-        <p className="text-slate-600 text-base mt-4">Volviendo al inicio en unos segundos…</p>
+        <p className="text-base mt-4" style={{ color: subText }}>Volviendo al inicio en unos segundos…</p>
       </div>
     );
   }
@@ -4017,8 +4021,8 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
         {/* Header */}
         <div className="text-center">
-          <p className="text-white text-3xl font-black tracking-tight">HSTKD</p>
-          <p className="text-slate-400 text-sm mt-1">Registro de Asistencia</p>
+          <p className="text-3xl font-black tracking-tight" style={{ color:"var(--ss-text)" }}>HSTKD</p>
+          <p className="text-sm mt-1" style={{ color:"var(--ss-text2)" }}>Registro de Asistencia</p>
         </div>
 
         {/* Resultado */}
@@ -4029,7 +4033,7 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
             <p className="text-slate-400 text-sm">Ingresa tu código de 4 dígitos</p>
             <div className="flex gap-4">
               {[0,1,2,3].map(i => (
-                <div key={i} className={`w-5 h-5 rounded-full transition-all ${i < input.length ? "bg-blue-500" : "bg-white/15"}`} />
+                <div key={i} className="w-5 h-5 rounded-full transition-all" style={{ background: i < input.length ? "#3b82f6" : "var(--ss-border)" }} />
               ))}
             </div>
           </>
@@ -4041,11 +4045,13 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
             {["1","2","3","4","5","6","7","8","9","←","0","✓"].map(k => (
               <button key={k} onClick={() => k === "←" ? borrar() : k === "✓" ? null : presionar(k)}
                 disabled={registrando}
-                className={`py-5 rounded-2xl text-xl font-bold transition-all active:scale-95 disabled:opacity-40
-                  ${k === "←" ? "bg-white/5 text-slate-400 hover:bg-white/10"
-                  : k === "✓" ? "bg-white/5 text-slate-600 cursor-default"
-                  : "text-white hover:bg-white/15"}`}
-                style={{ background: k === "←" || k === "✓" ? undefined : "rgba(255,255,255,0.08)" }}>
+                className="py-5 rounded-2xl text-xl font-bold transition-all active:scale-95 disabled:opacity-40"
+                style={{
+                  background: k === "✓" ? "var(--ss-input)" : k === "←" ? "var(--ss-input)" : "var(--ss-card2)",
+                  color: k === "✓" ? "var(--ss-text2)" : k === "←" ? "var(--ss-text2)" : "var(--ss-text)",
+                  border: "1px solid var(--ss-border)",
+                  cursor: k === "✓" ? "default" : undefined,
+                }}>
                 {registrando && k === "✓" ? "..." : k}
               </button>
             ))}
@@ -6478,7 +6484,7 @@ export default function App() {
       case "cobranza":      return <CobranzaPage students={students} pagos={pagos} />;
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
-      case "kiosco":        return <KioscoErrorBoundary><KioscoPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} /></KioscoErrorBoundary>;
+      case "kiosco":        return <KioscoErrorBoundary><KioscoPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} darkMode={darkMode} /></KioscoErrorBoundary>;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} configExamenes={configExamenes} configGal={configGal} />;
       case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} configSedes={configSedes} inventario={inventario} reload={loadAll} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} />;
