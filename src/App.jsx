@@ -10,6 +10,7 @@ import { hashPassword, loginLimiter } from "./utils/auth.js";
 import { CINTURONES, COSTOS_ASCENSO, MEMBRESIAS, PERMISOS, CINTURON_COLOR as cinturonColor, PAGO_ESTADO_CONFIG as pagoEstadoConfig } from "./utils/constants.js";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useRegisterSW } from "virtual:pwa-register/react";
 
 const LOGO_SRC = "https://i.imgur.com/fJdJygP.png";
 
@@ -6458,9 +6459,29 @@ export default function App() {
     }
   };
 
+  const {
+    needRefresh: [needRefresh],
+    updateServiceWorker,
+  } = useRegisterSW();
+
   return (
     <div className="min-h-screen flex" style={{ background:"var(--ss-bg)", fontFamily:"'DM Sans',sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      {needRefresh && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-sm rounded-2xl shadow-2xl flex items-center gap-3 px-4 py-3"
+          style={{ background:"linear-gradient(135deg,#1e3a8a,#1d4ed8)", border:"1px solid rgba(99,102,241,0.4)" }}>
+          <div className="flex-1">
+            <p className="text-white text-sm font-bold">Nueva versión disponible</p>
+            <p className="text-blue-200 text-xs">Actualiza para ver los últimos cambios</p>
+          </div>
+          <button
+            onClick={() => updateServiceWorker(true)}
+            className="flex-shrink-0 px-4 py-2 rounded-xl bg-white text-blue-700 text-xs font-black hover:bg-blue-50 transition-colors"
+          >
+            Actualizar
+          </button>
+        </div>
+      )}
       <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 flex flex-col border-r transition-transform duration-300 ${sidebarOpen?"translate-x-0":"-translate-x-full lg:translate-x-0"}`} style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
         <div className="p-5 border-b" style={{ borderColor:"var(--ss-border)" }}>
           <div className="flex items-center gap-3">
