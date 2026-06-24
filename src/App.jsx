@@ -6227,6 +6227,7 @@ const MembresiaForm = ({ item, reload, onClose }) => {
 };
 
 export default function App() {
+  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
   const [user, setUser] = useState(null);
   
   // Load jsPDF on mount
@@ -6458,11 +6459,6 @@ export default function App() {
       default:              return <Spinner />;
     }
   };
-
-  const {
-    needRefresh: [needRefresh],
-    updateServiceWorker,
-  } = useRegisterSW();
 
   return (
     <div className="min-h-screen flex" style={{ background:"var(--ss-bg)", fontFamily:"'DM Sans',sans-serif" }}>
