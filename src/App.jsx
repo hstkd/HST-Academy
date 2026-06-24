@@ -3920,7 +3920,97 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
     setInput(i => i.slice(0, -1));
   };
 
-  const beltColor = resultado?.student ? (cinturonColor[resultado.student.cinturon] || "#fff") : null;
+  const beltColor = resultado?.student ? (cinturonColor[resultado.student.cinturon] || "#ffffff") : null;
+
+  // ── Pantalla completa de resultado ───────────────────────────────────────
+  if (resultado) {
+    if (resultado.tipo === "error") {
+      return (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center text-center"
+          style={{ background:"#0f172a" }}>
+          <div className="text-[8rem] leading-none mb-6">✗</div>
+          <p className="text-red-400 text-4xl font-black mb-3">Código incorrecto</p>
+          <p className="text-slate-400 text-xl">Intenta nuevamente</p>
+        </div>
+      );
+    }
+
+    const debeSaldo = (resultado.saldo || 0) > 0;
+    const bg = resultado.vencido
+      ? "linear-gradient(160deg,#1a0a0a 0%,#2d0f0f 60%,#0f172a 100%)"
+      : debeSaldo
+      ? "linear-gradient(160deg,#1a1200 0%,#2d1f00 60%,#0f172a 100%)"
+      : "linear-gradient(160deg,#001a0f 0%,#002d1a 60%,#0f172a 100%)";
+
+    const accentColor = resultado.vencido ? "#ef4444" : debeSaldo ? "#f59e0b" : "#10b981";
+    const statusIcon  = resultado.vencido ? "⛔" : debeSaldo ? "⚠️" : "✓";
+
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center text-center px-8"
+        style={{ background: bg }}>
+
+        {/* Avatar enorme */}
+        <div className="w-40 h-40 rounded-full flex items-center justify-center mb-8 text-6xl font-black"
+          style={{ background:`${beltColor}25`, border:`5px solid ${beltColor}`, color: beltColor, boxShadow:`0 0 60px ${beltColor}40` }}>
+          {resultado.student.nombres?.[0] || "?"}{resultado.student.apellidos?.[0] || ""}
+        </div>
+
+        {/* Nombre */}
+        <p className="font-black mb-2 leading-tight" style={{ fontSize:"clamp(2rem,6vw,3.5rem)", color: accentColor }}>
+          ¡Bienvenido/a,
+        </p>
+        <p className="font-black mb-4 leading-tight text-white" style={{ fontSize:"clamp(2.2rem,7vw,4rem)" }}>
+          {resultado.student.nombres} {resultado.student.apellidos}!
+        </p>
+
+        {/* Cinturón */}
+        <p className="text-2xl font-bold mb-6" style={{ color: beltColor }}>
+          ● {resultado.student.cinturon || "—"}
+        </p>
+
+        {/* Asistencia */}
+        <p className="text-2xl font-semibold mb-8" style={{ color: accentColor }}>
+          {statusIcon} {resultado.yaHoy ? "Ya registrado hoy" : "Asistencia registrada"}
+        </p>
+
+        {/* Alerta de membresía vencida */}
+        {resultado.vencido && (
+          <div className="w-full max-w-md rounded-3xl p-6 mb-6"
+            style={{ background:"rgba(239,68,68,0.15)", border:"2px solid rgba(239,68,68,0.4)" }}>
+            <p className="text-red-400 font-black text-2xl mb-2">⛔ Membresía vencida</p>
+            {resultado.ultimoPago && (
+              <p className="text-slate-300 text-lg">Venció el <span className="font-bold text-white">{resultado.ultimoPago.fecha_vencimiento}</span></p>
+            )}
+            {debeSaldo && (
+              <p className="text-amber-400 font-black text-3xl mt-3">${resultado.saldo.toFixed(2)} pendiente</p>
+            )}
+            <p className="text-slate-400 text-base mt-3">Habla con el instructor para renovar</p>
+          </div>
+        )}
+
+        {/* Alerta de saldo pendiente */}
+        {!resultado.vencido && debeSaldo && (
+          <div className="w-full max-w-md rounded-3xl p-6 mb-6"
+            style={{ background:"rgba(245,158,11,0.15)", border:"2px solid rgba(245,158,11,0.4)" }}>
+            <p className="text-amber-400 font-black text-2xl mb-2">⚠️ Tienes un saldo pendiente</p>
+            <p className="text-white font-black" style={{ fontSize:"clamp(2.5rem,8vw,4rem)" }}>${resultado.saldo.toFixed(2)}</p>
+            <p className="text-slate-400 text-base mt-3">Habla con el instructor para ponerte al día</p>
+          </div>
+        )}
+
+        {/* Vigencia cuando todo está bien */}
+        {!resultado.vencido && !debeSaldo && resultado.ultimoPago && (
+          <div className="rounded-3xl px-8 py-4 mb-6"
+            style={{ background:"rgba(16,185,129,0.1)", border:"2px solid rgba(16,185,129,0.3)" }}>
+            <p className="text-slate-400 text-lg">Membresía vigente hasta</p>
+            <p className="text-white font-black text-3xl mt-1">{resultado.ultimoPago.fecha_vencimiento}</p>
+          </div>
+        )}
+
+        <p className="text-slate-600 text-base mt-4">Volviendo al inicio en unos segundos…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-10" style={{ background: "var(--ss-bg)" }}>
@@ -3932,60 +4022,6 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
         </div>
 
         {/* Resultado */}
-        {resultado && (
-          resultado.tipo === "error" ? (
-            <div className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 p-6 text-center animate-pulse">
-              <p className="text-5xl mb-3">✗</p>
-              <p className="text-red-400 text-xl font-bold">Código incorrecto</p>
-              <p className="text-slate-400 text-sm mt-1">Intenta nuevamente</p>
-            </div>
-          ) : (
-            (() => {
-              const debeSaldo = (resultado.saldo || 0) > 0;
-              const borderCls = resultado.vencido
-                ? "border-red-500/40 bg-red-500/10"
-                : debeSaldo
-                ? "border-amber-500/40 bg-amber-500/10"
-                : "border-emerald-500/40 bg-emerald-500/10";
-              const nombreColor = resultado.vencido ? "text-red-400" : debeSaldo ? "text-amber-400" : "text-emerald-400";
-              return (
-                <div className={`w-full rounded-2xl border p-6 text-center ${borderCls}`}>
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-black"
-                    style={{ background: beltColor ? `${beltColor}30` : "#ffffff20", border: `3px solid ${beltColor || "#ffffff"}` }}>
-                    {resultado.student.nombres?.[0] || "?"}{resultado.student.apellidos?.[0] || ""}
-                  </div>
-                  <p className={`text-lg font-bold ${nombreColor}`}>¡Bienvenido/a, {resultado.student.nombres || "Alumno"}!</p>
-                  <p className="text-sm mt-1" style={{ color: beltColor || "#fff" }}>● {resultado.student.cinturon || "—"}</p>
-                  <p className="text-emerald-400 text-xs mt-2">{resultado.yaHoy ? "✓ Ya registrado hoy" : "✓ Asistencia registrada"}</p>
-
-                  {resultado.vencido && (
-                    <div className="mt-3 p-3 rounded-xl bg-red-500/20 border border-red-500/30">
-                      <p className="text-red-400 font-semibold text-sm">⛔ Membresía vencida</p>
-                      {resultado.ultimoPago && <p className="text-slate-400 text-xs mt-1">Venció el {resultado.ultimoPago.fecha_vencimiento}</p>}
-                      {debeSaldo && <p className="text-amber-400 text-xs mt-1 font-bold">Saldo pendiente: ${resultado.saldo.toFixed(2)}</p>}
-                      <p className="text-slate-500 text-xs mt-1">Habla con el instructor para renovar</p>
-                    </div>
-                  )}
-
-                  {!resultado.vencido && debeSaldo && (
-                    <div className="mt-3 p-3 rounded-xl bg-amber-500/20 border border-amber-500/30">
-                      <p className="text-amber-400 font-semibold text-sm">⚠️ Tienes un saldo pendiente</p>
-                      <p className="text-white font-bold text-lg">${resultado.saldo.toFixed(2)}</p>
-                      <p className="text-slate-400 text-xs mt-1">Habla con el instructor para ponerte al día</p>
-                    </div>
-                  )}
-
-                  {!resultado.vencido && !debeSaldo && (
-                    <div className="mt-3">
-                      <p className="text-slate-400 text-xs">Membresía vigente hasta</p>
-                      <p className="text-white font-bold text-lg">{resultado.ultimoPago?.fecha_vencimiento || "—"}</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })()
-          )
-        )}
 
         {/* Indicador de dígitos */}
         {!resultado && (
@@ -4016,9 +4052,6 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
           </div>
         )}
 
-        {resultado && !resultado.tipo && (
-          <p className="text-slate-600 text-xs">Volviendo al inicio en unos segundos...</p>
-        )}
       </div>
     </div>
   );
