@@ -1316,9 +1316,10 @@ const DashboardPage = ({ students, pagos, historialPagos, asistencia, ventas, ev
   );
 };
 
-const StudentFormModal = ({ student, reload, onClose }) => {
+const StudentFormModal = ({ student, students = [], reload, onClose }) => {
   const [nombres, setNombres] = useState(student?.nombres || "");
   const [apellidos, setApellidos] = useState(student?.apellidos || "");
+  const [identificacion, setIdentificacion] = useState(student?.identificacion || "");
   const [fechaNac, setFechaNac] = useState(student?.fecha_nacimiento || "");
   const [representante, setRepresentante] = useState(student?.representante || "");
   const [telefono, setTelefono] = useState(student?.telefono || "");
@@ -1347,6 +1348,10 @@ const StudentFormModal = ({ student, reload, onClose }) => {
 
   const save = async () => {
     if (!nombres || !apellidos) return;
+    if (identificacion) {
+      const dup = students.find(s => s.identificacion && s.identificacion === identificacion.trim() && s.id !== student?.id);
+      if (dup) { alert(`⚠️ Ya existe un alumno con esa identificación:\n${dup.nombres} ${dup.apellidos}`); return; }
+    }
     if (registrarPago && !fechaIns) { alert("Debes ingresar la fecha de inscripción para registrar el pago."); return; }
     
     // Si es nuevo alumno y tiene usuario, generar contraseña y mostrar credenciales
@@ -1358,7 +1363,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
     }
     
     setSaving(true);
-    const data = { nombres, apellidos, edad: edadInfo.total, fecha_nacimiento: fechaNac, representante, telefono, correo, direccion, sede, cinturon, membresia, estado, categoria, observaciones, fecha_inscripcion: fechaIns, codigo: codigo || null };
+    const data = { nombres, apellidos, identificacion: identificacion.trim() || null, edad: edadInfo.total, fecha_nacimiento: fechaNac, representante, telefono, correo, direccion, sede, cinturon, membresia, estado, categoria, observaciones, fecha_inscripcion: fechaIns, codigo: codigo || null };
     if (student) {
       // Si cambió el usuario, actualizar en tabla users
       if (student.correo && correo !== student.correo) {
@@ -1512,6 +1517,9 @@ const StudentFormModal = ({ student, reload, onClose }) => {
       <div className="grid grid-cols-2 gap-4">
         <Field label="Nombres"><Input value={nombres} onChange={e => setNombres(e.target.value)} placeholder="Nombres" /></Field>
         <Field label="Apellidos"><Input value={apellidos} onChange={e => setApellidos(e.target.value)} placeholder="Apellidos" /></Field>
+        <Field label="Identificación (cédula / pasaporte)" className="col-span-2">
+          <Input value={identificacion} onChange={e => setIdentificacion(e.target.value)} placeholder="Opcional — ej: 1712345678" maxLength={20} />
+        </Field>
         <Field label="Fecha de Nacimiento"><Input type="date" value={fechaNac} onChange={e => setFechaNac(e.target.value)} /></Field>
         <Field label="Edad y Categoría (auto)">
           <div className="flex items-center gap-2 h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
@@ -1716,7 +1724,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
           </div>
         ))}
       </div>
-      {showForm && <StudentFormModal student={editStudent} reload={reload} onClose={()=>{ setShowForm(false); setEditStudent(null); }} />}
+      {showForm && <StudentFormModal student={editStudent} students={students} reload={reload} onClose={()=>{ setShowForm(false); setEditStudent(null); }} />}
       {viewStudent && (() => {
         // Datos del alumno
         const vId = viewStudent.id;
@@ -2622,6 +2630,9 @@ const CobranzaPage = ({ students = [], pagos = [] }) => {
 const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
+  const [busqueda, setBusqueda] = useState("");
+  const [filtrSede, setFiltrSede] = useState("Todas");
+  const [orden, setOrden] = useState("vencimiento");
   const [renovarPago, setRenovarPago] = useState(null);
   const [completarPago, setCompletarPago] = useState(null);
   const [pausarPago, setPausarPago] = useState(null);
@@ -2686,7 +2697,17 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
     const estados = getEstadosReal(p);
     return { ...p, estado: estados[0], estados };
   });
-  const filtered = filter==="Todos" ? pagosReal : pagosReal.filter(p => p.estados && p.estados.includes(filter));
+
+  const filtered = pagosReal
+    .filter(p => filter === "Todos" || (p.estados && p.estados.includes(filter)))
+    .filter(p => filtrSede === "Todas" || p.sede === filtrSede)
+    .filter(p => !busqueda || (p.alumno_nombre || "").toLowerCase().includes(busqueda.toLowerCase()))
+    .sort((a, b) => {
+      if (orden === "nombre")      return (a.alumno_nombre || "").localeCompare(b.alumno_nombre || "");
+      if (orden === "vencimiento") return (a.fecha_vencimiento || "9999").localeCompare(b.fecha_vencimiento || "9999");
+      if (orden === "deuda")       return Math.max(0, parseFloat(b.monto||0) - parseFloat(b.monto_pagado||0)) - Math.max(0, parseFloat(a.monto||0) - parseFloat(a.monto_pagado||0));
+      return 0;
+    });
   const getDays = f => {
     const hoyMs = new Date(hoyPagos + "T00:00:00").getTime();
     const vencMs = new Date(f + "T00:00:00").getTime();
@@ -2882,12 +2903,44 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
           <StatCard title="Vencidos" value={pagos.filter(p=> p.fecha_vencimiento && p.fecha_vencimiento<=fmt(new Date())).length} icon="payments" accent="amber" />
         </div>
       )}
-      <div className="flex gap-2 flex-wrap">
-        {["Todos","al día","parcial","vencido","pendiente","pausado"].map(f=>(
-          <button key={f} onClick={()=>setFilter(f)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-white":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={filter===f?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{}}>
-            {f==="Todos"?"Todos":f==="al día"?"Al día":f==="pausado"?"Pausado":f.charAt(0).toUpperCase()+f.slice(1)}
-          </button>
-        ))}
+      {/* Barra de búsqueda y filtros */}
+      <div className="rounded-2xl border p-4 space-y-3" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+        {/* Búsqueda por nombre */}
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+          <input
+            value={busqueda} onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar alumno por nombre…"
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm"
+            style={{ background:"var(--ss-input)", border:"1px solid var(--ss-border)", color:"var(--ss-text)" }}
+          />
+          {busqueda && <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-lg leading-none">×</button>}
+        </div>
+
+        {/* Filtros estado + sede + orden */}
+        <div className="flex gap-2 flex-wrap items-center">
+          <Select options={["Todas", ...SEDES]} value={filtrSede} onChange={e => setFiltrSede(e.target.value)} style={{ width:"auto" }} />
+          <select value={orden} onChange={e => setOrden(e.target.value)}
+            className="px-3 py-2 rounded-xl text-sm"
+            style={{ background:"var(--ss-input)", border:"1px solid var(--ss-border)", color:"var(--ss-text)" }}>
+            <option value="vencimiento">Ordenar: próx. a vencer</option>
+            <option value="nombre">Ordenar: nombre A-Z</option>
+            <option value="deuda">Ordenar: mayor deuda</option>
+          </select>
+        </div>
+
+        {/* Chips de estado */}
+        <div className="flex gap-2 flex-wrap">
+          {["Todos","al día","parcial","vencido","pendiente","pausado"].map(f=>(
+            <button key={f} onClick={()=>setFilter(f)} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${filter===f?"text-white":"text-slate-400 hover:text-white"}`}
+              style={filter===f?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{background:"var(--ss-input)"}}>
+              {f==="Todos"?"Todos":f==="al día"?"Al día":f==="pausado"?"Pausado":f.charAt(0).toUpperCase()+f.slice(1)}
+            </button>
+          ))}
+          <span className="ml-auto text-xs" style={{ color:"var(--ss-text2)" }}>{filtered.length} resultados</span>
+        </div>
       </div>
       {/* Alumnos activos sin pago registrado */}
       {filter === "Todos" || filter === "pendiente" ? (
