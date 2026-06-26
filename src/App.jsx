@@ -3152,6 +3152,9 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
     const [montoPagado, setMontoPagado] = useState("");
     const [fechaVenta, setFechaVenta] = useState(fmt(today));
 
+    const [descTipo, setDescTipo] = useState("pct"); // "pct" | "fijo"
+    const [descValor, setDescValor] = useState("");
+
     const addToCart = (prod) => {
       setCarrito(prev => {
         const ex = prev.find(i=>i.id===prod.id);
@@ -3161,7 +3164,10 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
     };
 
     const removeFromCart = (id) => setCarrito(prev=>prev.map(i=>i.id===id?{...i,qty:Math.max(0,i.qty-1)}:i).filter(i=>i.qty>0));
-    const total = carrito.reduce((a,i)=>a+i.precio*i.qty,0);
+    const subtotal = carrito.reduce((a,i)=>a+i.precio*i.qty,0);
+    const descNum = parseFloat(descValor) || 0;
+    const descMonto = descTipo === "pct" ? subtotal * Math.min(descNum, 100) / 100 : Math.min(descNum, subtotal);
+    const total = Math.max(0, subtotal - descMonto);
     const pagado = parseFloat(montoPagado) || 0;
     const estadoVenta = pagado <= 0 ? "credito" : pagado >= total ? "pagado" : "parcial";
     const saldo = Math.max(0, total - pagado);
@@ -3172,6 +3178,9 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
       const alumnoSel = students.find(s=>s.id===alumnoId);
       const ventaRes = await db.insert("ventas", {
         items: JSON.stringify(carrito),
+        subtotal,
+        descuento: descMonto > 0 ? descMonto : null,
+        descuento_detalle: descMonto > 0 ? (descTipo === "pct" ? `${descNum}%` : `$${descMonto.toFixed(2)} fijo`) : null,
         total,
         monto_pagado: pagado,
         saldo_pendiente: saldo,
@@ -3286,9 +3295,50 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
                   </div>
                 ))}
               </div>
-              <div className="border-t border-white/10 mt-3 pt-3">
-                <div className="flex justify-between mb-3">
-                  <span className="font-bold text-white">TOTAL</span>
+              <div className="border-t border-white/10 mt-3 pt-3 space-y-3">
+                {/* Descuento */}
+                <div className="rounded-xl p-3 space-y-2" style={{ background:"rgba(99,102,241,0.08)", border:"1px solid rgba(99,102,241,0.2)" }}>
+                  <p className="text-xs font-bold text-indigo-400 uppercase">Descuento (opcional)</p>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={()=>setDescTipo("pct")}
+                      className="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
+                      style={descTipo==="pct"?{background:"rgba(99,102,241,0.3)",color:"#a5b4fc"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
+                      % Porcentaje
+                    </button>
+                    <button type="button" onClick={()=>setDescTipo("fijo")}
+                      className="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
+                      style={descTipo==="fijo"?{background:"rgba(99,102,241,0.3)",color:"#a5b4fc"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
+                      $ Monto fijo
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" min="0" max={descTipo==="pct"?"100":undefined}
+                      value={descValor} onChange={e=>setDescValor(e.target.value)}
+                      placeholder={descTipo==="pct"?"0 – 100":"0.00"}
+                      className="flex-1 px-3 py-2 rounded-lg text-sm"
+                      style={{ background:"var(--ss-input)", border:"1px solid var(--ss-border)", color:"var(--ss-text)" }}
+                    />
+                    <span className="text-sm font-bold text-indigo-400 w-6">{descTipo==="pct"?"%":"$"}</span>
+                    {descValor && <button type="button" onClick={()=>setDescValor("")} className="text-slate-500 hover:text-red-400 text-lg leading-none">×</button>}
+                  </div>
+                  {descMonto > 0 && (
+                    <p className="text-xs text-indigo-300">
+                      Descuento: <span className="font-black">−${descMonto.toFixed(2)}</span>
+                      {descTipo==="pct" && ` (${descNum}% de $${subtotal.toFixed(2)})`}
+                    </p>
+                  )}
+                </div>
+
+                {/* Resumen */}
+                {descMonto > 0 && (
+                  <div className="flex justify-between text-sm" style={{ color:"var(--ss-text2)" }}>
+                    <span>Subtotal</span>
+                    <span>${subtotal.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="font-bold" style={{ color:"var(--ss-text)" }}>TOTAL</span>
                   <span className="text-2xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>${total.toFixed(2)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -3367,10 +3417,12 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
               <div>
                 <p className="font-bold text-white text-sm">{v.cliente || "Sin nombre"}</p>
                 <p className="text-xs text-slate-500 mt-0.5">{v.fecha} · {v.detalle}</p>
+                {v.descuento > 0 && <p className="text-xs text-indigo-400 font-semibold">Descuento {v.descuento_detalle}: −${parseFloat(v.descuento).toFixed(2)}</p>}
               </div>
               <div className="flex items-center gap-2">
                 <div className="text-right">
                   <p className="text-lg font-black text-amber-400">${parseFloat(v.total||0).toFixed(2)}</p>
+                  {v.descuento > 0 && <p className="text-xs line-through" style={{ color:"var(--ss-text2)" }}>${parseFloat(v.subtotal||v.total||0).toFixed(2)}</p>}
                   {(v.estado==="parcial"||v.estado==="credito") && (
                     <p className="text-xs text-red-400">Debe: ${parseFloat(v.saldo_pendiente||v.total||0).toFixed(2)}</p>
                   )}
