@@ -135,6 +135,19 @@ const getMembresias = (sede) => CONFIG_MEMBRESIAS
 
 let SEDES = []; // se carga desde config_sedes por academia
 
+// Sesiones del ciclo actual de un pago. La membresía caduca por fecha O por
+// número de sesiones, lo que ocurra primero. Cuenta las asistencias desde
+// fecha_pago (inicio del ciclo, que se reinicia en cada renovación).
+// Devuelve { ilimitado, total, usadas, restantes }.
+const getSesiones = (pago, asistencia = []) => {
+  const plan = getMembresias(pago?.sede).find(m => m.nombre === pago?.tipo || m.id === pago?.tipo);
+  const total = plan?.sesiones ?? 999;
+  if (!total || total >= 999) return { ilimitado: true, total, usadas: 0, restantes: Infinity };
+  const desde = pago?.fecha_pago || "0000-00-00";
+  const usadas = (asistencia || []).filter(a => a.alumno_id === pago?.alumno_id && a.presente && (a.fecha || "") >= desde).length;
+  return { ilimitado: false, total, usadas, restantes: Math.max(0, total - usadas) };
+};
+
 const PRODUCTOS = [
   { id:"agua_p",    nombre:"Agua pequeña",         precio:0.50,  cat:"bebidas"     },
   { id:"agua_g",    nombre:"Agua grande",           precio:0.75,  cat:"bebidas"     },
@@ -2164,6 +2177,7 @@ const RenovarModal = ({ pago, students, reload, onClose }) => {
     await db.update("pagos", pago.id, {
       monto: total,
       monto_pagado: pagado,
+      fecha_pago: fechaPago, // reinicia el ciclo de sesiones
       fecha_vencimiento: nuevaFechaVenc,
       tipo: memb?.nombre || tipoPago,
     });
@@ -2649,7 +2663,7 @@ const CobranzaPage = ({ students = [], pagos = [] }) => {
   );
 };
 
-const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
+const PaymentsPage = ({ students, pagos, historialPagos, asistencia = [], reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
   const [busqueda, setBusqueda] = useState("");
@@ -2718,7 +2732,12 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
 
   const pagosReal = pagosUnicosPorAlumno.map(p => {
     const estados = getEstadosReal(p);
-    return { ...p, estado: estados[0], estados };
+    // Caducidad por sesiones: si se agotaron las sesiones del plan, cuenta como vencido.
+    const ses = getSesiones(p, asistencia);
+    if (!ses.ilimitado && ses.restantes <= 0 && p.estado_membresia !== "Pausada" && !estados.includes("vencido")) {
+      estados.push("vencido");
+    }
+    return { ...p, estado: estados[0], estados, ses };
   });
 
   const filtered = pagosReal
@@ -2768,6 +2787,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
         await db.update("pagos", pagoExistente.id, {
           monto: total,
           monto_pagado: pagado,
+          fecha_pago: fechaPago, // reinicia el ciclo de sesiones
           fecha_vencimiento: nuevaFechaVenc,
           tipo: memb?.nombre || tipoPago,
         });
@@ -3009,6 +3029,14 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                   {dias<0?`Vencido hace ${Math.abs(dias)} día(s)`:`${dias} día(s) restantes`}
                 </span>
               </div>
+              {p.ses && !p.ses.ilimitado && (
+                <div className="mt-1.5 flex items-center justify-between text-xs">
+                  <span className="text-slate-500">Sesiones: {p.ses.usadas}/{p.ses.total}</span>
+                  <span className={p.ses.restantes<=0?"text-red-400 font-bold":p.ses.restantes<=2?"text-amber-400 font-bold":"text-emerald-400"}>
+                    {p.ses.restantes<=0?"Sin sesiones":`Quedan ${p.ses.restantes} sesión(es)`}
+                  </span>
+                </div>
+              )}
               {p.estado!=="pagado"&&<div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background:p.estado==="vencido"?"#ef4444":"#2563EB" }} /></div>}
               {expandidoId===p.id && (<>
                             <div className="flex justify-between items-center mt-3 flex-wrap gap-2">
@@ -4003,13 +4031,19 @@ const KioscoPage = ({ students, pagos, asistencia, ventas, darkMode }) => {
         .filter(p => p.alumno_id === student.id && p.fecha_vencimiento)
         .sort((a, b) => b.fecha_vencimiento.localeCompare(a.fecha_vencimiento));
       const ultimoPago = pagosAlumno[0];
-      const vencido = !ultimoPago || ultimoPago.fecha_vencimiento < hoy;
+      const yaHoy = checkedHoy.has(student.id) || asistencia.some(a => a.alumno_id === student.id && a.fecha === hoy);
+      // Sesiones disponibles ANTES de registrar la de hoy
+      const ses = ultimoPago ? getSesiones(ultimoPago, asistencia) : { ilimitado: true, restantes: Infinity };
+      const sinSesiones = !ses.ilimitado && ses.restantes <= 0;
+      const vencidoFecha = !ultimoPago || ultimoPago.fecha_vencimiento < hoy;
+      const vencido = vencidoFecha || sinSesiones;
+      // Lo que le quedará tras registrar la asistencia de hoy
+      const restantesHoy = ses.ilimitado ? null : Math.max(0, ses.restantes - (yaHoy ? 0 : 1));
       const saldoMembresia = ultimoPago ? Math.max(0, (parseFloat(ultimoPago.monto) || 0) - (parseFloat(ultimoPago.monto_pagado) || 0)) : 0;
       const saldoVentas = (ventas || [])
         .filter(v => v.alumno_id === student.id && parseFloat(v.saldo_pendiente || 0) > 0)
         .reduce((acc, v) => acc + parseFloat(v.saldo_pendiente || 0), 0);
       const saldo = saldoMembresia + saldoVentas;
-      const yaHoy = checkedHoy.has(student.id) || asistencia.some(a => a.alumno_id === student.id && a.fecha === hoy);
       if (!yaHoy) {
         await db.insert("asistencia", {
           alumno_id: student.id,
@@ -4020,7 +4054,7 @@ const KioscoPage = ({ students, pagos, asistencia, ventas, darkMode }) => {
         });
         setCheckedHoy(prev => new Set([...prev, student.id]));
       }
-      setResultado({ student, ultimoPago, vencido, saldo, yaHoy });
+      setResultado({ student, ultimoPago, vencido, vencidoFecha, sinSesiones, ilimitado: ses.ilimitado, restantesHoy, saldo, yaHoy });
     } catch (e) {
       setResultado({ tipo: "error" });
     }
@@ -4112,14 +4146,18 @@ const KioscoPage = ({ students, pagos, asistencia, ventas, darkMode }) => {
           {statusIcon} {resultado.yaHoy ? "Ya registrado hoy" : "Asistencia registrada"}
         </p>
 
-        {/* Alerta de membresía vencida */}
+        {/* Alerta de membresía vencida (por fecha o por sesiones agotadas) */}
         {resultado.vencido && (
           <div className="w-full max-w-md rounded-3xl p-6 mb-6"
             style={{ background:"rgba(239,68,68,0.15)", border:"2px solid rgba(239,68,68,0.4)" }}>
-            <p className="text-red-400 font-black text-2xl mb-2">⛔ Membresía vencida</p>
-            {resultado.ultimoPago && (
-              <p className="text-lg" style={{ color: subText }}>Venció el <span className="font-bold" style={{ color: baseText }}>{resultado.ultimoPago.fecha_vencimiento}</span></p>
-            )}
+            <p className="text-red-400 font-black text-2xl mb-2">
+              {resultado.sinSesiones && !resultado.vencidoFecha ? "⛔ Sin sesiones disponibles" : "⛔ Membresía vencida"}
+            </p>
+            {resultado.sinSesiones && !resultado.vencidoFecha
+              ? <p className="text-lg" style={{ color: subText }}>Agotaste las sesiones de tu plan</p>
+              : resultado.ultimoPago && (
+                  <p className="text-lg" style={{ color: subText }}>Venció el <span className="font-bold" style={{ color: baseText }}>{resultado.ultimoPago.fecha_vencimiento}</span></p>
+                )}
             {debeSaldo && (
               <p className="text-amber-400 font-black text-3xl mt-3">${resultado.saldo.toFixed(2)} pendiente</p>
             )}
@@ -4143,6 +4181,11 @@ const KioscoPage = ({ students, pagos, asistencia, ventas, darkMode }) => {
             style={{ background:"rgba(16,185,129,0.1)", border:"2px solid rgba(16,185,129,0.3)" }}>
             <p className="text-lg" style={{ color: subText }}>Membresía vigente hasta</p>
             <p className="font-black text-3xl mt-1" style={{ color: baseText }}>{resultado.ultimoPago.fecha_vencimiento}</p>
+            {!resultado.ilimitado && resultado.restantesHoy != null && (
+              <p className="font-bold text-xl mt-2" style={{ color: resultado.restantesHoy<=2 ? "#f59e0b" : "#10b981" }}>
+                🎯 Te quedan {resultado.restantesHoy} sesión(es)
+              </p>
+            )}
           </div>
         )}
 
@@ -6304,10 +6347,32 @@ const ExamenPrecioForm = ({ item, reload, onClose }) => {
   );
 };
 
+// Planes oficiales HSTKD por sede. Mensuales caducan por fecha O por sesiones
+// (lo que ocurra primero); los planes largos solo por fecha (sesiones ilimitadas).
+const PLANES_HSTKD = {
+  cumbaya: [
+    { nombre:"Mensual básica",   precio:60,  sesiones:8,   duracion_meses:1  },
+    { nombre:"Mensual estándar", precio:80,  sesiones:12,  duracion_meses:1  },
+    { nombre:"Mensual premium",  precio:100, sesiones:999, duracion_meses:1  },
+    { nombre:"Trimestral",       precio:270, sesiones:999, duracion_meses:3  },
+    { nombre:"Semestral",        precio:500, sesiones:999, duracion_meses:6  },
+    { nombre:"Anual",            precio:890, sesiones:999, duracion_meses:12 },
+  ],
+  quito: [
+    { nombre:"Mensual básica",   precio:50,  sesiones:8,   duracion_meses:1  },
+    { nombre:"Mensual estándar", precio:60,  sesiones:12,  duracion_meses:1  },
+    { nombre:"Mensual premium",  precio:70,  sesiones:999, duracion_meses:1  },
+    { nombre:"Trimestral",       precio:185, sesiones:999, duracion_meses:3  },
+    { nombre:"Semestral",        precio:350, sesiones:999, duracion_meses:6  },
+    { nombre:"Anual",            precio:620, sesiones:999, duracion_meses:12 },
+  ],
+};
+
 const MembresiasConfig = ({ configMembresias, reload }) => {
   const [showForm, setShowForm] = useState(false);
   const [editMemb, setEditMemb] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   const deleteMemb = async (id) => {
     if (!confirm("¿Eliminar esta membresía?")) return;
@@ -6315,15 +6380,42 @@ const MembresiasConfig = ({ configMembresias, reload }) => {
     await reload();
   };
 
+  // Resuelve el nombre real de la sede (respeta acentos/mayúsculas del usuario)
+  const sedeReal = (clave) => SEDES.find(s => s.toLowerCase().replace(/[áä]/g,"a") === clave) || (clave==="cumbaya"?"Cumbayá":"Quito");
+
+  const cargarPlanesHSTKD = async () => {
+    if (!confirm("Se agregarán los planes de Cumbayá y Quito (precios y sesiones).\nLos planes que ya existan con el mismo nombre y sede se omiten.\n¿Continuar?")) return;
+    setSeeding(true);
+    let creados = 0;
+    for (const clave of ["cumbaya","quito"]) {
+      const sede = sedeReal(clave);
+      for (const plan of PLANES_HSTKD[clave]) {
+        const existe = configMembresias.some(m => (m.nombre||"").toLowerCase()===plan.nombre.toLowerCase() && (m.sede||"")===sede);
+        if (existe) continue;
+        const res = await db.insert("config_membresias", { ...plan, sede });
+        if (res) creados++;
+      }
+    }
+    await reload();
+    setSeeding(false);
+    alert(creados>0 ? `✅ Se agregaron ${creados} plan(es).` : "Todos los planes ya existían. No se agregó nada.");
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-2">
         <p className="text-sm text-slate-400">Define tus planes de membresía y precios</p>
-        <button onClick={()=>{ setEditMemb(null); setShowForm(true); }}
-          className="px-4 py-2 rounded-xl text-sm font-bold text-white"
-          style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
-          + Membresía
-        </button>
+        <div className="flex gap-2">
+          <button onClick={cargarPlanesHSTKD} disabled={seeding}
+            className="px-4 py-2 rounded-xl text-sm font-bold border border-white/10 text-slate-200 hover:bg-white/5 disabled:opacity-60">
+            {seeding ? "Cargando…" : "⚡ Cargar planes HSTKD"}
+          </button>
+          <button onClick={()=>{ setEditMemb(null); setShowForm(true); }}
+            className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+            style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>
+            + Membresía
+          </button>
+        </div>
       </div>
       <div className="space-y-2">
         {configMembresias.map(m=>(
@@ -6615,7 +6707,7 @@ export default function App() {
       case "dashboard":     return <DashboardPage students={students} pagos={pagos} historialPagos={historialPagos} asistencia={asistencia} ventas={ventas} eventos={eventos} examenes={examenes} />;
       case "students":      return <StudentsPage students={students} reload={loadAll} canEdit={isAdmin} asistencia={asistencia} examenes={examenes} eventos={eventos} pagos={pagos} historialPagos={historialPagos} ventas={ventas} />;
       case "clases_prueba": return <ClasesPruebaPage students={students} />;
-      case "payments":      return <PaymentsPage students={students} pagos={pagos} historialPagos={historialPagos} reload={loadAll} isAdmin={isAdmin} />;
+      case "payments":      return <PaymentsPage students={students} pagos={pagos} historialPagos={historialPagos} asistencia={asistencia} reload={loadAll} isAdmin={isAdmin} />;
       case "cobranza":      return <CobranzaPage students={students} pagos={pagos} />;
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
