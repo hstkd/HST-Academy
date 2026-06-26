@@ -100,6 +100,14 @@ describe("loginLimiter", () => {
       expect(data.count).toBe(0);
       expect(data.lockedUntil).toBeGreaterThan(Date.now());
     });
+
+    it("returns 0 when localStorage.setItem throws", () => {
+      const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("QuotaExceededError");
+      });
+      expect(loginLimiter.fail()).toBe(0);
+      spy.mockRestore();
+    });
   });
 
   describe("reset()", () => {
@@ -113,6 +121,14 @@ describe("loginLimiter", () => {
       for (let i = 0; i < loginLimiter.max; i++) loginLimiter.fail();
       loginLimiter.reset();
       expect(loginLimiter.check()).toBe(0);
+    });
+
+    it("does not throw when localStorage.removeItem throws", () => {
+      const spy = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+        throw new Error("SecurityError");
+      });
+      expect(() => loginLimiter.reset()).not.toThrow();
+      spy.mockRestore();
     });
   });
 });
