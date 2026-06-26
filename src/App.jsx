@@ -2299,6 +2299,7 @@ const ClasesPruebaPage = ({ students = [] }) => {
   const [prospectos, setProspectos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("Todos");
+  const [busqueda, setBusqueda] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editP, setEditP] = useState(null);
   const [reagendarP, setReagendarP] = useState(null);
@@ -2354,7 +2355,13 @@ const ClasesPruebaPage = ({ students = [] }) => {
   const totalConv = prospectos.filter(p => p.estado === "convertido").length;
   const tasa = totalAsistio > 0 ? Math.round((totalConv / totalAsistio) * 100) : 0;
 
-  const filtrados = filtro === "Todos" ? prospectos : prospectos.filter(p => p.estado === filtro);
+  const filtrados = prospectos
+    .filter(p => filtro === "Todos" || p.estado === filtro)
+    .filter(p => {
+      if (!busqueda.trim()) return true;
+      const q = busqueda.trim().toLowerCase();
+      return (p.nombre || "").toLowerCase().includes(q) || (p.telefono || "").replace(/\s/g, "").includes(q);
+    });
 
   return (
     <div className="space-y-6">
@@ -2375,14 +2382,29 @@ const ClasesPruebaPage = ({ students = [] }) => {
         <StatCard title="Tasa conversión" value={`${tasa}%`} sub="asistió → matrícula" icon="finance" accent="amber" />
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {["Todos","agendada","asistio","no_asistio","convertido","descartado"].map(f=>(
-          <button key={f} onClick={()=>setFiltro(f)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filtro===f?"text-white":"text-slate-400 hover:text-white"}`}
-            style={filtro===f?{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }:{ background:"rgba(255,255,255,0.05)" }}>
-            {f==="Todos"?"Todos":PROSPECTO_ESTADOS[f].label}
-          </button>
-        ))}
+      <div className="rounded-2xl border p-4 space-y-3" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+          <input
+            value={busqueda} onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar prospecto por nombre o teléfono…"
+            className="w-full pl-9 pr-9 py-2.5 rounded-xl text-sm"
+            style={{ background:"var(--ss-input)", border:"1px solid var(--ss-border)", color:"var(--ss-text)" }}
+          />
+          {busqueda && <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-lg leading-none">×</button>}
+        </div>
+        <div className="flex gap-2 flex-wrap items-center">
+          {["Todos","agendada","asistio","no_asistio","convertido","descartado"].map(f=>(
+            <button key={f} onClick={()=>setFiltro(f)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filtro===f?"text-white":"text-slate-400 hover:text-white"}`}
+              style={filtro===f?{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }:{ background:"rgba(255,255,255,0.05)" }}>
+              {f==="Todos"?"Todos":PROSPECTO_ESTADOS[f].label}
+            </button>
+          ))}
+          <span className="ml-auto text-xs" style={{ color:"var(--ss-text2)" }}>{filtrados.length} resultados</span>
+        </div>
       </div>
 
       {loading && <p className="text-slate-500 text-center py-8">Cargando...</p>}
@@ -2638,6 +2660,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   const [pausarPago, setPausarPago] = useState(null);
   const [reanudarPago, setReanudarPago] = useState(null);
     const [editarPago, setEditarPago] = useState(null);
+  const [expandidoId, setExpandidoId] = useState(null);
 
   // Estado determinado ÚNICAMENTE por fecha_vencimiento vs hoy
   const hoyPagos = fmt(new Date());
@@ -2963,16 +2986,21 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
           const dias = getDays(p.fecha_vencimiento);
           return (
             <div key={p.id} className="bg-white/3 border border-white/8 rounded-2xl p-4 hover:border-white/15 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{p.alumno_nombre?.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
-                  <div><p className="font-bold text-white text-sm">{p.alumno_nombre}</p><p className="text-xs text-slate-500">{p.tipo} · {p.sede} · {p.fecha_pago}</p></div>
+              <div className="flex items-center justify-between cursor-pointer" onClick={()=>setExpandidoId(expandidoId===p.id?null:p.id)}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{p.alumno_nombre?.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
+                  <div className="min-w-0"><p className="font-bold text-white text-sm truncate">{p.alumno_nombre}</p><p className="text-xs text-slate-500 truncate">{p.tipo} · {p.sede} · {p.fecha_pago}</p></div>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-black text-white">${parseFloat(p.monto_pagado).toFixed(2)}<span className="text-sm text-slate-500">/${parseFloat(p.monto).toFixed(2)}</span></p>
-                  <div className="flex gap-1.5 justify-end mt-1 flex-wrap">
-                    {p.estados && p.estados.map(est => <StatusBadge key={est} estado={est} />)}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="text-right">
+                    <p className="text-lg font-black text-white">${parseFloat(p.monto_pagado).toFixed(2)}<span className="text-sm text-slate-500">/${parseFloat(p.monto).toFixed(2)}</span></p>
+                    <div className="flex gap-1.5 justify-end mt-1 flex-wrap">
+                      {p.estados && p.estados.map(est => <StatusBadge key={est} estado={est} />)}
+                    </div>
                   </div>
+                  <svg className={`w-4 h-4 text-slate-500 transition-transform ${expandidoId===p.id?"rotate-180":""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
               </div>
               <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
@@ -2982,6 +3010,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                 </span>
               </div>
               {p.estado!=="pagado"&&<div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,(parseFloat(p.monto_pagado)/parseFloat(p.monto))*100)}%`, background:p.estado==="vencido"?"#ef4444":"#2563EB" }} /></div>}
+              {expandidoId===p.id && (<>
                             <div className="flex justify-between items-center mt-3 flex-wrap gap-2">
                 {/* Pausar: disponible SIEMPRE excepto si ya está pausada */}
 
@@ -3030,6 +3059,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
                   </div>
                 ) : null;
               })()}
+              </>)}
             </div>
           );
         })}
