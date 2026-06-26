@@ -10,6 +10,7 @@ import { hashPassword, loginLimiter } from "./utils/auth.js";
 import { CINTURONES, COSTOS_ASCENSO, MEMBRESIAS, PERMISOS, CINTURON_COLOR as cinturonColor, PAGO_ESTADO_CONFIG as pagoEstadoConfig } from "./utils/constants.js";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useRegisterSW } from "virtual:pwa-register/react";
 
 const LOGO_SRC = "https://i.imgur.com/fJdJygP.png";
 
@@ -1315,9 +1316,10 @@ const DashboardPage = ({ students, pagos, historialPagos, asistencia, ventas, ev
   );
 };
 
-const StudentFormModal = ({ student, reload, onClose }) => {
+const StudentFormModal = ({ student, students = [], reload, onClose }) => {
   const [nombres, setNombres] = useState(student?.nombres || "");
   const [apellidos, setApellidos] = useState(student?.apellidos || "");
+  const [identificacion, setIdentificacion] = useState(student?.identificacion || "");
   const [fechaNac, setFechaNac] = useState(student?.fecha_nacimiento || "");
   const [representante, setRepresentante] = useState(student?.representante || "");
   const [telefono, setTelefono] = useState(student?.telefono || "");
@@ -1346,6 +1348,10 @@ const StudentFormModal = ({ student, reload, onClose }) => {
 
   const save = async () => {
     if (!nombres || !apellidos) return;
+    if (identificacion) {
+      const dup = students.find(s => s.identificacion && s.identificacion === identificacion.trim() && s.id !== student?.id);
+      if (dup) { alert(`⚠️ Ya existe un alumno con esa identificación:\n${dup.nombres} ${dup.apellidos}`); return; }
+    }
     if (registrarPago && !fechaIns) { alert("Debes ingresar la fecha de inscripción para registrar el pago."); return; }
     
     // Si es nuevo alumno y tiene usuario, generar contraseña y mostrar credenciales
@@ -1357,7 +1363,7 @@ const StudentFormModal = ({ student, reload, onClose }) => {
     }
     
     setSaving(true);
-    const data = { nombres, apellidos, edad: edadInfo.total, fecha_nacimiento: fechaNac, representante, telefono, correo, direccion, sede, cinturon, membresia, estado, categoria, observaciones, fecha_inscripcion: fechaIns, codigo: codigo || null };
+    const data = { nombres, apellidos, identificacion: identificacion.trim() || null, edad: edadInfo.total, fecha_nacimiento: fechaNac, representante, telefono, correo, direccion, sede, cinturon, membresia, estado, categoria, observaciones, fecha_inscripcion: fechaIns, codigo: codigo || null };
     if (student) {
       // Si cambió el usuario, actualizar en tabla users
       if (student.correo && correo !== student.correo) {
@@ -1511,6 +1517,9 @@ const StudentFormModal = ({ student, reload, onClose }) => {
       <div className="grid grid-cols-2 gap-4">
         <Field label="Nombres"><Input value={nombres} onChange={e => setNombres(e.target.value)} placeholder="Nombres" /></Field>
         <Field label="Apellidos"><Input value={apellidos} onChange={e => setApellidos(e.target.value)} placeholder="Apellidos" /></Field>
+        <Field label="Identificación (cédula / pasaporte)" className="col-span-2">
+          <Input value={identificacion} onChange={e => setIdentificacion(e.target.value)} placeholder="Opcional — ej: 1712345678" maxLength={20} />
+        </Field>
         <Field label="Fecha de Nacimiento"><Input type="date" value={fechaNac} onChange={e => setFechaNac(e.target.value)} /></Field>
         <Field label="Edad y Categoría (auto)">
           <div className="flex items-center gap-2 h-[42px] px-4 bg-white/5 border border-white/10 rounded-xl">
@@ -1715,7 +1724,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
           </div>
         ))}
       </div>
-      {showForm && <StudentFormModal student={editStudent} reload={reload} onClose={()=>{ setShowForm(false); setEditStudent(null); }} />}
+      {showForm && <StudentFormModal student={editStudent} students={students} reload={reload} onClose={()=>{ setShowForm(false); setEditStudent(null); }} />}
       {viewStudent && (() => {
         // Datos del alumno
         const vId = viewStudent.id;
@@ -2621,6 +2630,9 @@ const CobranzaPage = ({ students = [], pagos = [] }) => {
 const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
+  const [busqueda, setBusqueda] = useState("");
+  const [filtrSede, setFiltrSede] = useState("Todas");
+  const [orden, setOrden] = useState("vencimiento");
   const [renovarPago, setRenovarPago] = useState(null);
   const [completarPago, setCompletarPago] = useState(null);
   const [pausarPago, setPausarPago] = useState(null);
@@ -2685,7 +2697,17 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
     const estados = getEstadosReal(p);
     return { ...p, estado: estados[0], estados };
   });
-  const filtered = filter==="Todos" ? pagosReal : pagosReal.filter(p => p.estados && p.estados.includes(filter));
+
+  const filtered = pagosReal
+    .filter(p => filter === "Todos" || (p.estados && p.estados.includes(filter)))
+    .filter(p => filtrSede === "Todas" || p.sede === filtrSede)
+    .filter(p => !busqueda || (p.alumno_nombre || "").toLowerCase().includes(busqueda.toLowerCase()))
+    .sort((a, b) => {
+      if (orden === "nombre")      return (a.alumno_nombre || "").localeCompare(b.alumno_nombre || "");
+      if (orden === "vencimiento") return (a.fecha_vencimiento || "9999").localeCompare(b.fecha_vencimiento || "9999");
+      if (orden === "deuda")       return Math.max(0, parseFloat(b.monto||0) - parseFloat(b.monto_pagado||0)) - Math.max(0, parseFloat(a.monto||0) - parseFloat(a.monto_pagado||0));
+      return 0;
+    });
   const getDays = f => {
     const hoyMs = new Date(hoyPagos + "T00:00:00").getTime();
     const vencMs = new Date(f + "T00:00:00").getTime();
@@ -2881,12 +2903,44 @@ const PaymentsPage = ({ students, pagos, historialPagos, reload, isAdmin }) => {
           <StatCard title="Vencidos" value={pagos.filter(p=> p.fecha_vencimiento && p.fecha_vencimiento<=fmt(new Date())).length} icon="payments" accent="amber" />
         </div>
       )}
-      <div className="flex gap-2 flex-wrap">
-        {["Todos","al día","parcial","vencido","pendiente","pausado"].map(f=>(
-          <button key={f} onClick={()=>setFilter(f)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${filter===f?"text-white":"bg-white/5 text-slate-400 hover:bg-white/10"}`} style={filter===f?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{}}>
-            {f==="Todos"?"Todos":f==="al día"?"Al día":f==="pausado"?"Pausado":f.charAt(0).toUpperCase()+f.slice(1)}
-          </button>
-        ))}
+      {/* Barra de búsqueda y filtros */}
+      <div className="rounded-2xl border p-4 space-y-3" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+        {/* Búsqueda por nombre */}
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+          <input
+            value={busqueda} onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar alumno por nombre…"
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm"
+            style={{ background:"var(--ss-input)", border:"1px solid var(--ss-border)", color:"var(--ss-text)" }}
+          />
+          {busqueda && <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-lg leading-none">×</button>}
+        </div>
+
+        {/* Filtros estado + sede + orden */}
+        <div className="flex gap-2 flex-wrap items-center">
+          <Select options={["Todas", ...SEDES]} value={filtrSede} onChange={e => setFiltrSede(e.target.value)} style={{ width:"auto" }} />
+          <select value={orden} onChange={e => setOrden(e.target.value)}
+            className="px-3 py-2 rounded-xl text-sm"
+            style={{ background:"var(--ss-input)", border:"1px solid var(--ss-border)", color:"var(--ss-text)" }}>
+            <option value="vencimiento">Ordenar: próx. a vencer</option>
+            <option value="nombre">Ordenar: nombre A-Z</option>
+            <option value="deuda">Ordenar: mayor deuda</option>
+          </select>
+        </div>
+
+        {/* Chips de estado */}
+        <div className="flex gap-2 flex-wrap">
+          {["Todos","al día","parcial","vencido","pendiente","pausado"].map(f=>(
+            <button key={f} onClick={()=>setFilter(f)} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${filter===f?"text-white":"text-slate-400 hover:text-white"}`}
+              style={filter===f?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{background:"var(--ss-input)"}}>
+              {f==="Todos"?"Todos":f==="al día"?"Al día":f==="pausado"?"Pausado":f.charAt(0).toUpperCase()+f.slice(1)}
+            </button>
+          ))}
+          <span className="ml-auto text-xs" style={{ color:"var(--ss-text2)" }}>{filtered.length} resultados</span>
+        </div>
       </div>
       {/* Alumnos activos sin pago registrado */}
       {filter === "Todos" || filter === "pendiente" ? (
@@ -3098,6 +3152,9 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
     const [montoPagado, setMontoPagado] = useState("");
     const [fechaVenta, setFechaVenta] = useState(fmt(today));
 
+    const [descTipo, setDescTipo] = useState("pct"); // "pct" | "fijo"
+    const [descValor, setDescValor] = useState("");
+
     const addToCart = (prod) => {
       setCarrito(prev => {
         const ex = prev.find(i=>i.id===prod.id);
@@ -3107,7 +3164,10 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
     };
 
     const removeFromCart = (id) => setCarrito(prev=>prev.map(i=>i.id===id?{...i,qty:Math.max(0,i.qty-1)}:i).filter(i=>i.qty>0));
-    const total = carrito.reduce((a,i)=>a+i.precio*i.qty,0);
+    const subtotal = carrito.reduce((a,i)=>a+i.precio*i.qty,0);
+    const descNum = parseFloat(descValor) || 0;
+    const descMonto = descTipo === "pct" ? subtotal * Math.min(descNum, 100) / 100 : Math.min(descNum, subtotal);
+    const total = Math.max(0, subtotal - descMonto);
     const pagado = parseFloat(montoPagado) || 0;
     const estadoVenta = pagado <= 0 ? "credito" : pagado >= total ? "pagado" : "parcial";
     const saldo = Math.max(0, total - pagado);
@@ -3118,6 +3178,9 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
       const alumnoSel = students.find(s=>s.id===alumnoId);
       const ventaRes = await db.insert("ventas", {
         items: JSON.stringify(carrito),
+        subtotal,
+        descuento: descMonto > 0 ? descMonto : null,
+        descuento_detalle: descMonto > 0 ? (descTipo === "pct" ? `${descNum}%` : `$${descMonto.toFixed(2)} fijo`) : null,
         total,
         monto_pagado: pagado,
         saldo_pendiente: saldo,
@@ -3232,9 +3295,50 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
                   </div>
                 ))}
               </div>
-              <div className="border-t border-white/10 mt-3 pt-3">
-                <div className="flex justify-between mb-3">
-                  <span className="font-bold text-white">TOTAL</span>
+              <div className="border-t border-white/10 mt-3 pt-3 space-y-3">
+                {/* Descuento */}
+                <div className="rounded-xl p-3 space-y-2" style={{ background:"rgba(99,102,241,0.08)", border:"1px solid rgba(99,102,241,0.2)" }}>
+                  <p className="text-xs font-bold text-indigo-400 uppercase">Descuento (opcional)</p>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={()=>setDescTipo("pct")}
+                      className="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
+                      style={descTipo==="pct"?{background:"rgba(99,102,241,0.3)",color:"#a5b4fc"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
+                      % Porcentaje
+                    </button>
+                    <button type="button" onClick={()=>setDescTipo("fijo")}
+                      className="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
+                      style={descTipo==="fijo"?{background:"rgba(99,102,241,0.3)",color:"#a5b4fc"}:{background:"var(--ss-input)",color:"var(--ss-text2)"}}>
+                      $ Monto fijo
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" min="0" max={descTipo==="pct"?"100":undefined}
+                      value={descValor} onChange={e=>setDescValor(e.target.value)}
+                      placeholder={descTipo==="pct"?"0 – 100":"0.00"}
+                      className="flex-1 px-3 py-2 rounded-lg text-sm"
+                      style={{ background:"var(--ss-input)", border:"1px solid var(--ss-border)", color:"var(--ss-text)" }}
+                    />
+                    <span className="text-sm font-bold text-indigo-400 w-6">{descTipo==="pct"?"%":"$"}</span>
+                    {descValor && <button type="button" onClick={()=>setDescValor("")} className="text-slate-500 hover:text-red-400 text-lg leading-none">×</button>}
+                  </div>
+                  {descMonto > 0 && (
+                    <p className="text-xs text-indigo-300">
+                      Descuento: <span className="font-black">−${descMonto.toFixed(2)}</span>
+                      {descTipo==="pct" && ` (${descNum}% de $${subtotal.toFixed(2)})`}
+                    </p>
+                  )}
+                </div>
+
+                {/* Resumen */}
+                {descMonto > 0 && (
+                  <div className="flex justify-between text-sm" style={{ color:"var(--ss-text2)" }}>
+                    <span>Subtotal</span>
+                    <span>${subtotal.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="font-bold" style={{ color:"var(--ss-text)" }}>TOTAL</span>
                   <span className="text-2xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>${total.toFixed(2)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -3313,10 +3417,12 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
               <div>
                 <p className="font-bold text-white text-sm">{v.cliente || "Sin nombre"}</p>
                 <p className="text-xs text-slate-500 mt-0.5">{v.fecha} · {v.detalle}</p>
+                {v.descuento > 0 && <p className="text-xs text-indigo-400 font-semibold">Descuento {v.descuento_detalle}: −${parseFloat(v.descuento).toFixed(2)}</p>}
               </div>
               <div className="flex items-center gap-2">
                 <div className="text-right">
                   <p className="text-lg font-black text-amber-400">${parseFloat(v.total||0).toFixed(2)}</p>
+                  {v.descuento > 0 && <p className="text-xs line-through" style={{ color:"var(--ss-text2)" }}>${parseFloat(v.subtotal||v.total||0).toFixed(2)}</p>}
                   {(v.estado==="parcial"||v.estado==="credito") && (
                     <p className="text-xs text-red-400">Debe: ${parseFloat(v.saldo_pendiente||v.total||0).toFixed(2)}</p>
                   )}
@@ -3846,7 +3952,7 @@ class KioscoErrorBoundary extends Component {
   }
 }
 
-const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
+const KioscoPage = ({ students, pagos, asistencia, ventas, darkMode }) => {
   const [input, setInput] = useState("");
   const [resultado, setResultado] = useState(null);
   const [registrando, setRegistrando] = useState(false);
@@ -3919,72 +4025,112 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
     setInput(i => i.slice(0, -1));
   };
 
-  const beltColor = resultado?.student ? (cinturonColor[resultado.student.cinturon] || "#fff") : null;
+  const beltColor = resultado?.student ? (cinturonColor[resultado.student.cinturon] || "#ffffff") : null;
+
+  // ── Pantalla completa de resultado ───────────────────────────────────────
+  if (resultado) {
+    const baseBg = darkMode ? "#0B1220" : "#F8FAFC";
+    const baseText = darkMode ? "#F1F5F9" : "#1E293B";
+    const subText  = darkMode ? "#94A3B8" : "#64748B";
+
+    if (resultado.tipo === "error") {
+      return (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center text-center"
+          style={{ background: baseBg }}>
+          <div className="text-[8rem] leading-none mb-6">✗</div>
+          <p className="text-red-400 text-4xl font-black mb-3">Código incorrecto</p>
+          <p className="text-xl" style={{ color: subText }}>Intenta nuevamente</p>
+        </div>
+      );
+    }
+
+    const debeSaldo = (resultado.saldo || 0) > 0;
+    const bg = resultado.vencido
+      ? darkMode ? "linear-gradient(160deg,#1a0a0a 0%,#2d0f0f 60%,#0B1220 100%)" : "linear-gradient(160deg,#fff0f0 0%,#ffe4e4 60%,#F8FAFC 100%)"
+      : debeSaldo
+      ? darkMode ? "linear-gradient(160deg,#1a1200 0%,#2d1f00 60%,#0B1220 100%)" : "linear-gradient(160deg,#fffbeb 0%,#fef3c7 60%,#F8FAFC 100%)"
+      : darkMode ? "linear-gradient(160deg,#001a0f 0%,#002d1a 60%,#0B1220 100%)" : "linear-gradient(160deg,#f0fdf4 0%,#dcfce7 60%,#F8FAFC 100%)";
+
+    const accentColor = resultado.vencido ? "#ef4444" : debeSaldo ? "#f59e0b" : "#10b981";
+    const statusIcon  = resultado.vencido ? "⛔" : debeSaldo ? "⚠️" : "✓";
+
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center text-center px-8"
+        style={{ background: bg }}>
+
+        {/* Avatar enorme */}
+        <div className="w-40 h-40 rounded-full flex items-center justify-center mb-8 text-6xl font-black"
+          style={{ background:`${beltColor}25`, border:`5px solid ${beltColor}`, color: beltColor, boxShadow:`0 0 60px ${beltColor}40` }}>
+          {resultado.student.nombres?.[0] || "?"}{resultado.student.apellidos?.[0] || ""}
+        </div>
+
+        {/* Nombre */}
+        <p className="font-black mb-2 leading-tight" style={{ fontSize:"clamp(2rem,6vw,3.5rem)", color: accentColor }}>
+          ¡Bienvenido/a,
+        </p>
+        <p className="font-black mb-4 leading-tight" style={{ fontSize:"clamp(2.2rem,7vw,4rem)", color: baseText }}>
+          {resultado.student.nombres} {resultado.student.apellidos}!
+        </p>
+
+        {/* Cinturón */}
+        <p className="text-2xl font-bold mb-6" style={{ color: beltColor }}>
+          ● {resultado.student.cinturon || "—"}
+        </p>
+
+        {/* Asistencia */}
+        <p className="text-2xl font-semibold mb-8" style={{ color: accentColor }}>
+          {statusIcon} {resultado.yaHoy ? "Ya registrado hoy" : "Asistencia registrada"}
+        </p>
+
+        {/* Alerta de membresía vencida */}
+        {resultado.vencido && (
+          <div className="w-full max-w-md rounded-3xl p-6 mb-6"
+            style={{ background:"rgba(239,68,68,0.15)", border:"2px solid rgba(239,68,68,0.4)" }}>
+            <p className="text-red-400 font-black text-2xl mb-2">⛔ Membresía vencida</p>
+            {resultado.ultimoPago && (
+              <p className="text-lg" style={{ color: subText }}>Venció el <span className="font-bold" style={{ color: baseText }}>{resultado.ultimoPago.fecha_vencimiento}</span></p>
+            )}
+            {debeSaldo && (
+              <p className="text-amber-400 font-black text-3xl mt-3">${resultado.saldo.toFixed(2)} pendiente</p>
+            )}
+            <p className="text-base mt-3" style={{ color: subText }}>Habla con el instructor para renovar</p>
+          </div>
+        )}
+
+        {/* Alerta de saldo pendiente */}
+        {!resultado.vencido && debeSaldo && (
+          <div className="w-full max-w-md rounded-3xl p-6 mb-6"
+            style={{ background:"rgba(245,158,11,0.15)", border:"2px solid rgba(245,158,11,0.4)" }}>
+            <p className="text-amber-400 font-black text-2xl mb-2">⚠️ Tienes un saldo pendiente</p>
+            <p className="font-black" style={{ fontSize:"clamp(2.5rem,8vw,4rem)", color: baseText }}>${resultado.saldo.toFixed(2)}</p>
+            <p className="text-base mt-3" style={{ color: subText }}>Habla con el instructor para ponerte al día</p>
+          </div>
+        )}
+
+        {/* Vigencia cuando todo está bien */}
+        {!resultado.vencido && !debeSaldo && resultado.ultimoPago && (
+          <div className="rounded-3xl px-8 py-4 mb-6"
+            style={{ background:"rgba(16,185,129,0.1)", border:"2px solid rgba(16,185,129,0.3)" }}>
+            <p className="text-lg" style={{ color: subText }}>Membresía vigente hasta</p>
+            <p className="font-black text-3xl mt-1" style={{ color: baseText }}>{resultado.ultimoPago.fecha_vencimiento}</p>
+          </div>
+        )}
+
+        <p className="text-base mt-4" style={{ color: subText }}>Volviendo al inicio en unos segundos…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-10" style={{ background: "var(--ss-bg)" }}>
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
         {/* Header */}
         <div className="text-center">
-          <p className="text-white text-3xl font-black tracking-tight">HSTKD</p>
-          <p className="text-slate-400 text-sm mt-1">Registro de Asistencia</p>
+          <p className="text-3xl font-black tracking-tight" style={{ color:"var(--ss-text)" }}>HSTKD</p>
+          <p className="text-sm mt-1" style={{ color:"var(--ss-text2)" }}>Registro de Asistencia</p>
         </div>
 
         {/* Resultado */}
-        {resultado && (
-          resultado.tipo === "error" ? (
-            <div className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 p-6 text-center animate-pulse">
-              <p className="text-5xl mb-3">✗</p>
-              <p className="text-red-400 text-xl font-bold">Código incorrecto</p>
-              <p className="text-slate-400 text-sm mt-1">Intenta nuevamente</p>
-            </div>
-          ) : (
-            (() => {
-              const debeSaldo = (resultado.saldo || 0) > 0;
-              const borderCls = resultado.vencido
-                ? "border-red-500/40 bg-red-500/10"
-                : debeSaldo
-                ? "border-amber-500/40 bg-amber-500/10"
-                : "border-emerald-500/40 bg-emerald-500/10";
-              const nombreColor = resultado.vencido ? "text-red-400" : debeSaldo ? "text-amber-400" : "text-emerald-400";
-              return (
-                <div className={`w-full rounded-2xl border p-6 text-center ${borderCls}`}>
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-black"
-                    style={{ background: beltColor ? `${beltColor}30` : "#ffffff20", border: `3px solid ${beltColor || "#ffffff"}` }}>
-                    {resultado.student.nombres?.[0] || "?"}{resultado.student.apellidos?.[0] || ""}
-                  </div>
-                  <p className={`text-lg font-bold ${nombreColor}`}>¡Bienvenido/a, {resultado.student.nombres || "Alumno"}!</p>
-                  <p className="text-sm mt-1" style={{ color: beltColor || "#fff" }}>● {resultado.student.cinturon || "—"}</p>
-                  <p className="text-emerald-400 text-xs mt-2">{resultado.yaHoy ? "✓ Ya registrado hoy" : "✓ Asistencia registrada"}</p>
-
-                  {resultado.vencido && (
-                    <div className="mt-3 p-3 rounded-xl bg-red-500/20 border border-red-500/30">
-                      <p className="text-red-400 font-semibold text-sm">⛔ Membresía vencida</p>
-                      {resultado.ultimoPago && <p className="text-slate-400 text-xs mt-1">Venció el {resultado.ultimoPago.fecha_vencimiento}</p>}
-                      {debeSaldo && <p className="text-amber-400 text-xs mt-1 font-bold">Saldo pendiente: ${resultado.saldo.toFixed(2)}</p>}
-                      <p className="text-slate-500 text-xs mt-1">Habla con el instructor para renovar</p>
-                    </div>
-                  )}
-
-                  {!resultado.vencido && debeSaldo && (
-                    <div className="mt-3 p-3 rounded-xl bg-amber-500/20 border border-amber-500/30">
-                      <p className="text-amber-400 font-semibold text-sm">⚠️ Tienes un saldo pendiente</p>
-                      <p className="text-white font-bold text-lg">${resultado.saldo.toFixed(2)}</p>
-                      <p className="text-slate-400 text-xs mt-1">Habla con el instructor para ponerte al día</p>
-                    </div>
-                  )}
-
-                  {!resultado.vencido && !debeSaldo && (
-                    <div className="mt-3">
-                      <p className="text-slate-400 text-xs">Membresía vigente hasta</p>
-                      <p className="text-white font-bold text-lg">{resultado.ultimoPago?.fecha_vencimiento || "—"}</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })()
-          )
-        )}
 
         {/* Indicador de dígitos */}
         {!resultado && (
@@ -3992,7 +4138,7 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
             <p className="text-slate-400 text-sm">Ingresa tu código de 4 dígitos</p>
             <div className="flex gap-4">
               {[0,1,2,3].map(i => (
-                <div key={i} className={`w-5 h-5 rounded-full transition-all ${i < input.length ? "bg-blue-500" : "bg-white/15"}`} />
+                <div key={i} className="w-5 h-5 rounded-full transition-all" style={{ background: i < input.length ? "#3b82f6" : "var(--ss-border)" }} />
               ))}
             </div>
           </>
@@ -4004,20 +4150,19 @@ const KioscoPage = ({ students, pagos, asistencia, ventas }) => {
             {["1","2","3","4","5","6","7","8","9","←","0","✓"].map(k => (
               <button key={k} onClick={() => k === "←" ? borrar() : k === "✓" ? null : presionar(k)}
                 disabled={registrando}
-                className={`py-5 rounded-2xl text-xl font-bold transition-all active:scale-95 disabled:opacity-40
-                  ${k === "←" ? "bg-white/5 text-slate-400 hover:bg-white/10"
-                  : k === "✓" ? "bg-white/5 text-slate-600 cursor-default"
-                  : "text-white hover:bg-white/15"}`}
-                style={{ background: k === "←" || k === "✓" ? undefined : "rgba(255,255,255,0.08)" }}>
+                className="py-5 rounded-2xl text-xl font-bold transition-all active:scale-95 disabled:opacity-40"
+                style={{
+                  background: k === "✓" ? "var(--ss-input)" : k === "←" ? "var(--ss-input)" : "var(--ss-card2)",
+                  color: k === "✓" ? "var(--ss-text2)" : k === "←" ? "var(--ss-text2)" : "var(--ss-text)",
+                  border: "1px solid var(--ss-border)",
+                  cursor: k === "✓" ? "default" : undefined,
+                }}>
                 {registrando && k === "✓" ? "..." : k}
               </button>
             ))}
           </div>
         )}
 
-        {resultado && !resultado.tipo && (
-          <p className="text-slate-600 text-xs">Volviendo al inicio en unos segundos...</p>
-        )}
       </div>
     </div>
   );
@@ -6226,6 +6371,7 @@ const MembresiaForm = ({ item, reload, onClose }) => {
 };
 
 export default function App() {
+  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
   const [user, setUser] = useState(null);
   
   // Load jsPDF on mount
@@ -6443,7 +6589,7 @@ export default function App() {
       case "cobranza":      return <CobranzaPage students={students} pagos={pagos} />;
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
-      case "kiosco":        return <KioscoErrorBoundary><KioscoPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} /></KioscoErrorBoundary>;
+      case "kiosco":        return <KioscoErrorBoundary><KioscoPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} darkMode={darkMode} /></KioscoErrorBoundary>;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} configExamenes={configExamenes} configGal={configGal} />;
       case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} configSedes={configSedes} inventario={inventario} reload={loadAll} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} />;
@@ -6461,6 +6607,21 @@ export default function App() {
   return (
     <div className="min-h-screen flex" style={{ background:"var(--ss-bg)", fontFamily:"'DM Sans',sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      {needRefresh && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-sm rounded-2xl shadow-2xl flex items-center gap-3 px-4 py-3"
+          style={{ background:"linear-gradient(135deg,#1e3a8a,#1d4ed8)", border:"1px solid rgba(99,102,241,0.4)" }}>
+          <div className="flex-1">
+            <p className="text-white text-sm font-bold">Nueva versión disponible</p>
+            <p className="text-blue-200 text-xs">Actualiza para ver los últimos cambios</p>
+          </div>
+          <button
+            onClick={() => updateServiceWorker(true)}
+            className="flex-shrink-0 px-4 py-2 rounded-xl bg-white text-blue-700 text-xs font-black hover:bg-blue-50 transition-colors"
+          >
+            Actualizar
+          </button>
+        </div>
+      )}
       <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 flex flex-col border-r transition-transform duration-300 ${sidebarOpen?"translate-x-0":"-translate-x-full lg:translate-x-0"}`} style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
         <div className="p-5 border-b" style={{ borderColor:"var(--ss-border)" }}>
           <div className="flex items-center gap-3">
