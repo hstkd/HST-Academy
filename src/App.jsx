@@ -4538,19 +4538,16 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
   );
 };
 
-// ─── BSC — Balanced Scorecard (levantamiento de datos automático) ─────────────
-// Las 4 perspectivas del BSC con indicadores calculados desde los datos de la app.
-const BSCPanel = ({ students = [], pagos = [], historialPagos = [], ventas = [], asistencia = [], examenes = [], gastos = [] }) => {
-  const [prospectos, setProspectos] = useState([]);
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const d = await db.get("prospectos");
-      if (alive) setProspectos(Array.isArray(d) ? d : []);
-    })();
-    return () => { alive = false; };
-  }, []);
+// ─── BSC — cálculo compartido de las 4 perspectivas (indicadores automáticos) ──
+const bscSem = (v, meta, mejor) => {
+  if (meta == null) return "#64748b";
+  if (mejor === "bajo") return v <= meta ? "#10b981" : v <= meta * 2 ? "#f59e0b" : "#ef4444";
+  const r = meta > 0 ? v / meta : 1;
+  return r >= 1 ? "#10b981" : r >= 0.7 ? "#f59e0b" : "#ef4444";
+};
+const bscFmt = (v, f) => f === "money" ? `$${v.toFixed(0)}` : f === "pct" ? `${v.toFixed(0)}%` : f === "dec" ? v.toFixed(1) : `${Math.round(v)}`;
 
+const getBSCPerspectivas = ({ students = [], pagos = [], historialPagos = [], ventas = [], asistencia = [], examenes = [], gastos = [], prospectos = [] }) => {
   const hoy = fmt(new Date());
   const mes = hoy.slice(0, 7);
   const anio = hoy.slice(0, 4);
@@ -4561,7 +4558,7 @@ const BSCPanel = ({ students = [], pagos = [], historialPagos = [], ventas = [],
     .filter(p => p.alumno_id === alumnoId && p.fecha_vencimiento)
     .sort((a, b) => (b.fecha_vencimiento || "").localeCompare(a.fecha_vencimiento || ""))[0];
 
-  // ── Perspectiva Financiera ──
+  // ── Financiera ──
   const ingresosMes = (historialPagos || []).filter(h => h.fecha_pago?.slice(0,7) === mes).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0)
     + (ventas || []).filter(v => v.fecha?.slice(0,7) === mes).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0)
     + (examenes || []).filter(e => e.fecha?.slice(0,7) === mes).reduce((a,e)=>a+parseFloat(e.monto_pagado||e.monto||0),0);
@@ -4572,7 +4569,7 @@ const BSCPanel = ({ students = [], pagos = [], historialPagos = [], ventas = [],
     + (ventas || []).reduce((a,v)=>a+parseFloat(v.saldo_pendiente||0),0);
   const ingresoPorAlumno = nActivos > 0 ? ingresosMes / nActivos : 0;
 
-  // ── Perspectiva Clientes ──
+  // ── Clientes ──
   const nuevosMes = students.filter(s => s.fecha_inscripcion?.slice(0,7) === mes).length;
   const asistieronCP = prospectos.filter(p => ["asistio","convertido"].includes(p.estado)).length;
   const convertidosCP = prospectos.filter(p => p.estado === "convertido").length;
@@ -4580,7 +4577,7 @@ const BSCPanel = ({ students = [], pagos = [], historialPagos = [], ventas = [],
   const alDia = activos.filter(s => { const p = ultimoPagoDe(s.id); return p && (p.fecha_vencimiento||"") >= hoy; }).length;
   const carteraAlDia = nActivos > 0 ? (alDia / nActivos * 100) : 0;
 
-  // ── Perspectiva Procesos Internos ──
+  // ── Procesos Internos ──
   const asistMes = asistencia.filter(a => a.fecha?.slice(0,7) === mes && a.presente).length;
   const asistPorAlumno = nActivos > 0 ? asistMes / nActivos : 0;
   const vigentes = activos.filter(s => {
@@ -4593,7 +4590,7 @@ const BSCPanel = ({ students = [], pagos = [], historialPagos = [], ventas = [],
   const pctVigentes = nActivos > 0 ? (vigentes / nActivos * 100) : 0;
   const ascensosMes = (examenes || []).filter(e => e.fecha?.slice(0,7) === mes).length;
 
-  // ── Perspectiva Aprendizaje y Crecimiento ──
+  // ── Aprendizaje y Crecimiento ──
   const ascensosAnio = (examenes || []).filter(e => e.fecha?.slice(0,4) === anio && !(e.tipo||"").includes("GAL")).length;
   const avanzados = activos.filter(s => ["Azul","Azul/Rojo","Rojo","Rojo/Negro","Negro"].includes(s.cinturon)).length;
   const pctAvanzados = nActivos > 0 ? (avanzados / nActivos * 100) : 0;
@@ -4601,14 +4598,6 @@ const BSCPanel = ({ students = [], pagos = [], historialPagos = [], ventas = [],
   const nuevos3m = students.filter(s => ult3.includes(s.fecha_inscripcion?.slice(0,7))).length;
   const antigArr = activos.map(s => { if (!s.fecha_inscripcion) return 0; const d = new Date(s.fecha_inscripcion+"T12:00:00"); return (new Date()-d)/(1000*60*60*24*30.4); }).filter(x => x > 0);
   const antigProm = antigArr.length > 0 ? antigArr.reduce((a,b)=>a+b,0)/antigArr.length : 0;
-
-  const fmtVal = (v, f) => f === "money" ? `$${v.toFixed(0)}` : f === "pct" ? `${v.toFixed(0)}%` : f === "dec" ? v.toFixed(1) : `${Math.round(v)}`;
-  const sem = (v, meta, mejor) => {
-    if (meta == null) return "#64748b";
-    if (mejor === "bajo") return v <= meta ? "#10b981" : v <= meta * 2 ? "#f59e0b" : "#ef4444";
-    const r = meta > 0 ? v / meta : 1;
-    return r >= 1 ? "#10b981" : r >= 0.7 ? "#f59e0b" : "#ef4444";
-  };
 
   const perspectivas = [
     {
@@ -4653,6 +4642,30 @@ const BSCPanel = ({ students = [], pagos = [], historialPagos = [], ventas = [],
       ],
     },
   ];
+
+  return { mes, perspectivas };
+};
+
+// Hook auxiliar: carga los prospectos (clases de prueba) una vez.
+const useProspectos = () => {
+  const [prospectos, setProspectos] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const d = await db.get("prospectos");
+      if (alive) setProspectos(Array.isArray(d) ? d : []);
+    })();
+    return () => { alive = false; };
+  }, []);
+  return prospectos;
+};
+
+// ─── BSC — Balanced Scorecard (levantamiento de datos automático) ─────────────
+const BSCPanel = (props) => {
+  const prospectos = useProspectos();
+  const { mes, perspectivas } = getBSCPerspectivas({ ...props, prospectos });
+  const fmtVal = bscFmt;
+  const sem = bscSem;
 
   // Salud global: indicadores con meta que están en verde
   const conMeta = perspectivas.flatMap(p => p.indicadores).filter(i => i.meta != null);
@@ -4721,6 +4734,104 @@ const BSCPanel = ({ students = [], pagos = [], historialPagos = [], ventas = [],
 
       <p className="text-[11px] text-slate-500 text-center">
         Las metas son referenciales y los indicadores se recalculan automáticamente con los datos de SportSync.
+      </p>
+    </div>
+  );
+};
+
+// ─── Mapa Estratégico — objetivos por perspectiva y su relación causa-efecto ──
+const MapaEstrategico = (props) => {
+  const prospectos = useProspectos();
+  const { perspectivas } = getBSCPerspectivas({ ...props, prospectos });
+
+  // Índice de indicadores por nombre, para colorear cada objetivo según su salud
+  const indMap = {};
+  perspectivas.forEach(p => p.indicadores.forEach(i => { indMap[i.nombre] = i; }));
+  const peorColor = (nombres) => {
+    const colores = nombres.map(n => indMap[n]).filter(i => i && i.meta != null).map(i => bscSem(i.valor, i.meta, i.mejor));
+    if (colores.includes("#ef4444")) return "#ef4444";
+    if (colores.includes("#f59e0b")) return "#f59e0b";
+    if (colores.includes("#10b981")) return "#10b981";
+    return "#64748b";
+  };
+
+  // Bandas de arriba (resultado) hacia abajo (cimientos). La lectura causa-efecto
+  // es de abajo hacia arriba: la base impulsa los procesos, que atraen clientes,
+  // que generan resultados financieros.
+  const bandas = [
+    { persp:"Financiera", color:"#10b981", icon:"finance", objetivos:[
+        { t:"Crecer los ingresos",        ind:["Ingresos del mes","Ingreso por alumno"] },
+        { t:"Asegurar la rentabilidad",   ind:["Margen de utilidad","Deuda por cobrar"] },
+    ]},
+    { persp:"Clientes", color:"#3b82f6", icon:"students", objetivos:[
+        { t:"Atraer y convertir prospectos", ind:["Alumnos nuevos (mes)","Conversión clases prueba"] },
+        { t:"Retener y fidelizar alumnos",   ind:["Cartera al día","Alumnos activos"] },
+    ]},
+    { persp:"Procesos Internos", color:"#f59e0b", icon:"attendance", objetivos:[
+        { t:"Operación y servicio excelentes", ind:["Asistencia por alumno","Asistencias del mes"] },
+        { t:"Cobranza efectiva",               ind:["Membresías vigentes"] },
+    ]},
+    { persp:"Aprendizaje y Crecimiento", color:"#a855f7", icon:"belt", objetivos:[
+        { t:"Desarrollo técnico de los alumnos", ind:["Ascensos de cinturón (año)","Alumnos nivel avanzado"] },
+        { t:"Comunidad en crecimiento",          ind:["Nuevos últimos 3 meses","Antigüedad prom. (meses)"] },
+    ]},
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-2xl border p-5" style={{ background:"linear-gradient(135deg,rgba(37,99,235,0.12),rgba(168,85,247,0.08))", borderColor:"var(--ss-border)" }}>
+        <p className="text-lg font-black text-white">Mapa Estratégico</p>
+        <p className="text-xs text-slate-400">Objetivos por perspectiva y su relación causa-efecto (de abajo hacia arriba)</p>
+        <div className="flex items-center gap-4 mt-3 flex-wrap">
+          {[["#10b981","En meta"],["#f59e0b","Por mejorar"],["#ef4444","Crítico"],["#64748b","Informativo"]].map(([c,l])=>(
+            <span key={l} className="flex items-center gap-1.5 text-[11px] text-slate-400">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background:c }} /> {l}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {bandas.map((b, idx) => (
+        <div key={b.persp}>
+          <div className="rounded-2xl border overflow-hidden" style={{ background:"var(--ss-card)", borderColor:`${b.color}55` }}>
+            <div className="px-4 py-2.5 flex items-center gap-2.5" style={{ background:`${b.color}15` }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background:`${b.color}22`, color:b.color }}>
+                <Icon name={b.icon} className="w-4 h-4" />
+              </div>
+              <p className="font-black text-white text-sm">Perspectiva {b.persp}</p>
+            </div>
+            <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {b.objetivos.map(o => {
+                const color = peorColor(o.ind);
+                return (
+                  <div key={o.t} className="rounded-xl border p-3" style={{ borderColor:`${color}55`, background:`${color}10` }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background:color }} />
+                      <p className="text-sm font-bold text-white">{o.t}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {o.ind.map(n => indMap[n] && (
+                        <span key={n} className="text-[10px] px-2 py-0.5 rounded-full" style={{ background:"rgba(255,255,255,0.06)", color:"#cbd5e1" }}>
+                          {n.replace(/\s*\(.*\)/,"")}: <b style={{ color: bscSem(indMap[n].valor, indMap[n].meta, indMap[n].mejor) }}>{bscFmt(indMap[n].valor, indMap[n].formato)}</b>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {idx < bandas.length - 1 && (
+            <div className="flex flex-col items-center py-1 text-slate-500">
+              <span className="text-lg leading-none">▲</span>
+              <span className="text-[10px] -mt-0.5">impulsa</span>
+            </div>
+          )}
+        </div>
+      ))}
+
+      <p className="text-[11px] text-slate-500 text-center pt-1">
+        El color de cada objetivo refleja la salud de sus indicadores. Se recalcula con los datos de SportSync.
       </p>
     </div>
   );
@@ -5055,14 +5166,15 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos,
         )}
       </div>
 
-      <div className="flex gap-2">
-        {[["resumen","💵 Resumen"],["bsc","🎯 BSC"]].map(([id,label])=>(
+      <div className="flex gap-2 flex-wrap">
+        {[["resumen","💵 Resumen"],["bsc","🎯 BSC"],["mapa","🗺️ Mapa"]].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${tab===id?"text-white":"text-slate-400 hover:text-white"}`}
             style={tab===id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{background:"var(--ss-input)"}}>{label}</button>
         ))}
       </div>
 
       {tab==="bsc" && <BSCPanel students={students} pagos={pagos} historialPagos={historialPagos} ventas={ventas} asistencia={asistencia} examenes={examenes} gastos={gastos} />}
+      {tab==="mapa" && <MapaEstrategico students={students} pagos={pagos} historialPagos={historialPagos} ventas={ventas} asistencia={asistencia} examenes={examenes} gastos={gastos} />}
 
       {tab==="resumen" && (<>
       {/* Cuadros por fuente */}
