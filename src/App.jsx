@@ -4538,7 +4538,196 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
   );
 };
 
-const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos }) => {
+// ─── BSC — Balanced Scorecard (levantamiento de datos automático) ─────────────
+// Las 4 perspectivas del BSC con indicadores calculados desde los datos de la app.
+const BSCPanel = ({ students = [], pagos = [], historialPagos = [], ventas = [], asistencia = [], examenes = [], gastos = [] }) => {
+  const [prospectos, setProspectos] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const d = await db.get("prospectos");
+      if (alive) setProspectos(Array.isArray(d) ? d : []);
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const hoy = fmt(new Date());
+  const mes = hoy.slice(0, 7);
+  const anio = hoy.slice(0, 4);
+  const activos = students.filter(s => s.estado === "activo");
+  const nActivos = activos.length;
+
+  const ultimoPagoDe = (alumnoId) => pagos
+    .filter(p => p.alumno_id === alumnoId && p.fecha_vencimiento)
+    .sort((a, b) => (b.fecha_vencimiento || "").localeCompare(a.fecha_vencimiento || ""))[0];
+
+  // ── Perspectiva Financiera ──
+  const ingresosMes = (historialPagos || []).filter(h => h.fecha_pago?.slice(0,7) === mes).reduce((a,h)=>a+parseFloat(h.monto_pagado||0),0)
+    + (ventas || []).filter(v => v.fecha?.slice(0,7) === mes).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0)
+    + (examenes || []).filter(e => e.fecha?.slice(0,7) === mes).reduce((a,e)=>a+parseFloat(e.monto_pagado||e.monto||0),0);
+  const gastosMes = (gastos || []).filter(g => g.fecha?.slice(0,7) === mes).reduce((a,g)=>a+parseFloat(g.monto||0),0);
+  const utilidadMes = ingresosMes - gastosMes;
+  const margen = ingresosMes > 0 ? (utilidadMes / ingresosMes * 100) : 0;
+  const deuda = pagos.reduce((a,p)=>a+Math.max(0,parseFloat(p.monto||0)-parseFloat(p.monto_pagado||0)),0)
+    + (ventas || []).reduce((a,v)=>a+parseFloat(v.saldo_pendiente||0),0);
+  const ingresoPorAlumno = nActivos > 0 ? ingresosMes / nActivos : 0;
+
+  // ── Perspectiva Clientes ──
+  const nuevosMes = students.filter(s => s.fecha_inscripcion?.slice(0,7) === mes).length;
+  const asistieronCP = prospectos.filter(p => ["asistio","convertido"].includes(p.estado)).length;
+  const convertidosCP = prospectos.filter(p => p.estado === "convertido").length;
+  const conversionCP = asistieronCP > 0 ? (convertidosCP / asistieronCP * 100) : 0;
+  const alDia = activos.filter(s => { const p = ultimoPagoDe(s.id); return p && (p.fecha_vencimiento||"") >= hoy; }).length;
+  const carteraAlDia = nActivos > 0 ? (alDia / nActivos * 100) : 0;
+
+  // ── Perspectiva Procesos Internos ──
+  const asistMes = asistencia.filter(a => a.fecha?.slice(0,7) === mes && a.presente).length;
+  const asistPorAlumno = nActivos > 0 ? asistMes / nActivos : 0;
+  const vigentes = activos.filter(s => {
+    const p = ultimoPagoDe(s.id);
+    if (!p) return false;
+    const okFecha = (p.fecha_vencimiento || "") >= hoy;
+    const ses = getSesiones(p, asistencia);
+    return okFecha && (ses.ilimitado || ses.restantes > 0);
+  }).length;
+  const pctVigentes = nActivos > 0 ? (vigentes / nActivos * 100) : 0;
+  const ascensosMes = (examenes || []).filter(e => e.fecha?.slice(0,7) === mes).length;
+
+  // ── Perspectiva Aprendizaje y Crecimiento ──
+  const ascensosAnio = (examenes || []).filter(e => e.fecha?.slice(0,4) === anio && !(e.tipo||"").includes("GAL")).length;
+  const avanzados = activos.filter(s => ["Azul","Azul/Rojo","Rojo","Rojo/Negro","Negro"].includes(s.cinturon)).length;
+  const pctAvanzados = nActivos > 0 ? (avanzados / nActivos * 100) : 0;
+  const ult3 = Array.from({ length: 3 }, (_, i) => { const d = new Date(); d.setMonth(d.getMonth()-i); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; });
+  const nuevos3m = students.filter(s => ult3.includes(s.fecha_inscripcion?.slice(0,7))).length;
+  const antigArr = activos.map(s => { if (!s.fecha_inscripcion) return 0; const d = new Date(s.fecha_inscripcion+"T12:00:00"); return (new Date()-d)/(1000*60*60*24*30.4); }).filter(x => x > 0);
+  const antigProm = antigArr.length > 0 ? antigArr.reduce((a,b)=>a+b,0)/antigArr.length : 0;
+
+  const fmtVal = (v, f) => f === "money" ? `$${v.toFixed(0)}` : f === "pct" ? `${v.toFixed(0)}%` : f === "dec" ? v.toFixed(1) : `${Math.round(v)}`;
+  const sem = (v, meta, mejor) => {
+    if (meta == null) return "#64748b";
+    if (mejor === "bajo") return v <= meta ? "#10b981" : v <= meta * 2 ? "#f59e0b" : "#ef4444";
+    const r = meta > 0 ? v / meta : 1;
+    return r >= 1 ? "#10b981" : r >= 0.7 ? "#f59e0b" : "#ef4444";
+  };
+
+  const perspectivas = [
+    {
+      nombre: "Financiera", color: "#10b981", icon: "finance",
+      objetivo: "Maximizar la rentabilidad y la salud financiera de la academia",
+      indicadores: [
+        { nombre: "Ingresos del mes",   valor: ingresosMes,      meta: null, formato: "money" },
+        { nombre: "Utilidad del mes",   valor: utilidadMes,      meta: null, formato: "money" },
+        { nombre: "Margen de utilidad", valor: margen,           meta: 30,   formato: "pct",   mejor: "alto" },
+        { nombre: "Deuda por cobrar",   valor: deuda,            meta: 0,    formato: "money", mejor: "bajo" },
+        { nombre: "Ingreso por alumno", valor: ingresoPorAlumno, meta: null, formato: "money" },
+      ],
+    },
+    {
+      nombre: "Clientes", color: "#3b82f6", icon: "students",
+      objetivo: "Atraer, convertir y retener a los alumnos",
+      indicadores: [
+        { nombre: "Alumnos activos",          valor: nActivos,     meta: null, formato: "num" },
+        { nombre: "Alumnos nuevos (mes)",     valor: nuevosMes,    meta: 5,    formato: "num", mejor: "alto" },
+        { nombre: "Conversión clases prueba", valor: conversionCP, meta: 50,   formato: "pct", mejor: "alto" },
+        { nombre: "Cartera al día",           valor: carteraAlDia, meta: 90,   formato: "pct", mejor: "alto" },
+      ],
+    },
+    {
+      nombre: "Procesos Internos", color: "#f59e0b", icon: "attendance",
+      objetivo: "Operar con excelencia: asistencia, cobranza y formación al día",
+      indicadores: [
+        { nombre: "Asistencias del mes",      valor: asistMes,      meta: null, formato: "num" },
+        { nombre: "Asistencia por alumno",    valor: asistPorAlumno, meta: 8,   formato: "dec", mejor: "alto" },
+        { nombre: "Membresías vigentes",      valor: pctVigentes,   meta: 90,   formato: "pct", mejor: "alto" },
+        { nombre: "Exámenes/ascensos (mes)",  valor: ascensosMes,   meta: null, formato: "num" },
+      ],
+    },
+    {
+      nombre: "Aprendizaje y Crecimiento", color: "#a855f7", icon: "belt",
+      objetivo: "Elevar el nivel técnico y hacer crecer la comunidad",
+      indicadores: [
+        { nombre: "Ascensos de cinturón (año)", valor: ascensosAnio, meta: null, formato: "num" },
+        { nombre: "Alumnos nivel avanzado",     valor: pctAvanzados, meta: 30,   formato: "pct", mejor: "alto" },
+        { nombre: "Nuevos últimos 3 meses",     valor: nuevos3m,     meta: 15,   formato: "num", mejor: "alto" },
+        { nombre: "Antigüedad prom. (meses)",   valor: antigProm,    meta: 12,   formato: "dec", mejor: "alto" },
+      ],
+    },
+  ];
+
+  // Salud global: indicadores con meta que están en verde
+  const conMeta = perspectivas.flatMap(p => p.indicadores).filter(i => i.meta != null);
+  const enVerde = conMeta.filter(i => sem(i.valor, i.meta, i.mejor) === "#10b981").length;
+  const salud = conMeta.length > 0 ? Math.round(enVerde / conMeta.length * 100) : 0;
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border p-5" style={{ background:"linear-gradient(135deg,rgba(37,99,235,0.12),rgba(168,85,247,0.08))", borderColor:"var(--ss-border)" }}>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-lg font-black text-white">Balanced Scorecard</p>
+            <p className="text-xs text-slate-400">Cuadro de mando integral · indicadores automáticos · {mes}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-3xl font-black" style={{ color: salud>=70?"#10b981":salud>=40?"#f59e0b":"#ef4444" }}>{salud}%</p>
+            <p className="text-xs text-slate-400">metas en verde ({enVerde}/{conMeta.length})</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {perspectivas.map(p => (
+          <div key={p.nombre} className="rounded-2xl border overflow-hidden" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+            <div className="p-4 border-b" style={{ borderColor:"var(--ss-border)", background:`${p.color}12` }}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:`${p.color}22`, color:p.color }}>
+                  <Icon name={p.icon} className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-black text-white text-sm">Perspectiva {p.nombre}</p>
+                  <p className="text-[11px] text-slate-400">{p.objetivo}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-2">
+              {p.indicadores.map(ind => {
+                const color = sem(ind.valor, ind.meta, ind.mejor);
+                const pct = ind.meta == null ? null : ind.mejor === "bajo"
+                  ? Math.max(0, Math.min(100, ind.meta === 0 ? (ind.valor === 0 ? 100 : 0) : (1 - ind.valor / (ind.meta * 2)) * 100))
+                  : Math.max(0, Math.min(100, ind.meta > 0 ? ind.valor / ind.meta * 100 : 100));
+                return (
+                  <div key={ind.nombre} className="px-2.5 py-2.5 rounded-xl hover:bg-white/3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                        <span className="text-xs text-slate-300 truncate">{ind.nombre}</span>
+                      </div>
+                      <div className="flex items-baseline gap-1.5 flex-shrink-0">
+                        <span className="text-sm font-black text-white">{fmtVal(ind.valor, ind.formato)}</span>
+                        {ind.meta != null && <span className="text-[10px] text-slate-500">/ meta {fmtVal(ind.meta, ind.formato)}</span>}
+                      </div>
+                    </div>
+                    {pct != null && (
+                      <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background:"rgba(255,255,255,0.06)" }}>
+                        <div className="h-full rounded-full" style={{ width:`${pct}%`, background: color }} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[11px] text-slate-500 text-center">
+        Las metas son referenciales y los indicadores se recalculan automáticamente con los datos de SportSync.
+      </p>
+    </div>
+  );
+};
+
+const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos, students = [], asistencia = [] }) => {
+  const [tab, setTab] = useState("resumen");
   const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
   // Ingresos por fuente por mes
@@ -4859,11 +5048,23 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-white" style={{ fontFamily:"'Inter',sans-serif", letterSpacing:"-0.02em" }}>FINANZAS</h1>
-        <button onClick={generarPDF} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)" }}>
-          📄 Reporte PDF
-        </button>
+        {tab==="resumen" && (
+          <button onClick={generarPDF} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background:"linear-gradient(135deg,#1e3a7b,#2a4fa0)" }}>
+            📄 Reporte PDF
+          </button>
+        )}
       </div>
 
+      <div className="flex gap-2">
+        {[["resumen","💵 Resumen"],["bsc","🎯 BSC"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${tab===id?"text-white":"text-slate-400 hover:text-white"}`}
+            style={tab===id?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)"}:{background:"var(--ss-input)"}}>{label}</button>
+        ))}
+      </div>
+
+      {tab==="bsc" && <BSCPanel students={students} pagos={pagos} historialPagos={historialPagos} ventas={ventas} asistencia={asistencia} examenes={examenes} gastos={gastos} />}
+
+      {tab==="resumen" && (<>
       {/* Cuadros por fuente */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
@@ -5042,6 +5243,7 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos 
           {(historialPagos||[]).length===0 && <p className="text-slate-500 text-sm text-center py-4">Sin historial aún</p>}
         </div>
       </div>
+      </>)}
     </div>
   );
 };
@@ -6714,7 +6916,7 @@ export default function App() {
       case "kiosco":        return <KioscoErrorBoundary><KioscoPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} darkMode={darkMode} /></KioscoErrorBoundary>;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} configExamenes={configExamenes} configGal={configGal} />;
       case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} configSedes={configSedes} inventario={inventario} reload={loadAll} />;
-      case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} />;
+      case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} students={students} asistencia={asistencia} />;
       case "inventario":    return <InventarioPage inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "gastos":        return <GastosPage gastos={gastos} reload={loadAll} isAdmin={isAdmin} />;
       case "events":        return <EventsPage eventos={eventos} students={students} reload={loadAll} />;
