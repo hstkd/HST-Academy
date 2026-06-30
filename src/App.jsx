@@ -5388,6 +5388,9 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos,
   );
 };
 
+// Categorías de competencia (torneos). Un alumno puede ir en 1 o más.
+const CATEGORIAS_TORNEO = [["combate","🥊 Combate"], ["poomsae","🧘 Poomsae"], ["festival","🎉 Festival"]];
+
 // ─── EVENTO DETAIL — fuera de EventsPage para evitar re-renders ───────────────
 const EventoDetail = ({ evento, students, reload, onClose }) => {
   const [participantes, setParticipantes] = useState(() => {
@@ -5425,6 +5428,17 @@ const EventoDetail = ({ evento, students, reload, onClose }) => {
     reload();
   };
 
+  const toggleCategoria = async (pid, cat) => {
+    const nuevos = participantes.map(p => {
+      if (p.id !== pid) return p;
+      const cats = Array.isArray(p.categorias) ? p.categorias : [];
+      return { ...p, categorias: cats.includes(cat) ? cats.filter(c => c !== cat) : [...cats, cat] };
+    });
+    await db.update("eventos", evento.id, { participantes: JSON.stringify(nuevos) });
+    setParticipantes(nuevos);
+    reload();
+  };
+
   const totalEvento = participantes.reduce((a, p) => a + parseFloat(p.valor || 0), 0);
   const totalPagado = participantes.filter(p => p.pagado).reduce((a, p) => a + parseFloat(p.valor || 0), 0);
 
@@ -5436,6 +5450,19 @@ const EventoDetail = ({ evento, students, reload, onClose }) => {
           <div className="bg-amber-500/10 rounded-xl p-3 text-center border border-amber-500/20"><p className="text-xs text-slate-500">Total</p><p className="text-2xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>${totalEvento.toFixed(0)}</p></div>
           <div className="bg-emerald-500/10 rounded-xl p-3 text-center border border-emerald-500/20"><p className="text-xs text-slate-500">Pagado</p><p className="text-2xl font-black text-emerald-400" style={{ fontFamily:"'Inter',sans-serif" }}>${totalPagado.toFixed(0)}</p></div>
         </div>
+        {evento.tipo==="torneo" && (
+          <div className="grid grid-cols-3 gap-3">
+            {CATEGORIAS_TORNEO.map(([key,label])=>{
+              const n = participantes.filter(p => (p.categorias||[]).includes(key)).length;
+              return (
+                <div key={key} className="rounded-xl p-2.5 text-center border" style={{ background:"var(--ss-input)", borderColor:"var(--ss-border)" }}>
+                  <p className="text-xs text-slate-500">{label}</p>
+                  <p className="text-xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>{n}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
           <p className="text-xs text-slate-400 font-semibold uppercase mb-3">Añadir Alumno</p>
           <div className="grid grid-cols-2 gap-3">
@@ -5453,24 +5480,41 @@ const EventoDetail = ({ evento, students, reload, onClose }) => {
         </div>
         <div className="space-y-2">
           {participantes.map(p => (
-            <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border ${p.pagado ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/3 border-white/8"}`}>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{p.nombre.split(" ").map(n => n[0]).join("").slice(0, 2)}</div>
-                <div><p className="text-sm font-semibold text-white">{p.nombre}</p><p className="text-xs text-amber-400 font-bold">${parseFloat(p.valor || 0).toFixed(2)}</p></div>
+            <div key={p.id} className={`p-3 rounded-xl border ${p.pagado ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/3 border-white/8"}`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{p.nombre.split(" ").map(n => n[0]).join("").slice(0, 2)}</div>
+                  <div className="min-w-0"><p className="text-sm font-semibold text-white truncate">{p.nombre}</p><p className="text-xs text-amber-400 font-bold">${parseFloat(p.valor || 0).toFixed(2)}</p></div>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  {evento.tipo==="torneo" && (
+                    <select style={{ background:"var(--ss-card2)" }} className="border border-white/10 rounded-lg px-2 py-1 text-xs text-white" value={p.medalla||""} onChange={async e=>{ const nuevos=participantes.map(x=>x.id===p.id?{...x,medalla:e.target.value}:x); await db.update("eventos",evento.id,{participantes:JSON.stringify(nuevos)}); setParticipantes(nuevos); reload(); }}>
+                      <option value="">Sin medalla</option>
+                      <option value="🥇 Oro">🥇 Oro</option>
+                      <option value="🥈 Plata">🥈 Plata</option>
+                      <option value="🥉 Bronce">🥉 Bronce</option>
+                    </select>
+                  )}
+                  {p.medalla && <span className="text-sm font-bold">{p.medalla}</span>}
+                  <button onClick={() => togglePagado(p.id)} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${p.pagado ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-500/20 text-slate-400 hover:bg-amber-500/20 hover:text-amber-400"}`}>{p.pagado ? "✓ Pagado" : "Pendiente"}</button>
+                  <button onClick={() => removeParticipante(p.id)} className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /></button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {evento.tipo==="torneo" && (
-                  <select style={{ background:"var(--ss-card2)" }} className="border border-white/10 rounded-lg px-2 py-1 text-xs text-white" value={p.medalla||""} onChange={async e=>{ const nuevos=participantes.map(x=>x.id===p.id?{...x,medalla:e.target.value}:x); await db.update("eventos",evento.id,{participantes:JSON.stringify(nuevos)}); setParticipantes(nuevos); reload(); }}>
-                    <option value="">Sin medalla</option>
-                    <option value="🥇 Oro">🥇 Oro</option>
-                    <option value="🥈 Plata">🥈 Plata</option>
-                    <option value="🥉 Bronce">🥉 Bronce</option>
-                  </select>
-                )}
-                {p.medalla && <span className="text-sm font-bold">{p.medalla}</span>}
-                <button onClick={() => togglePagado(p.id)} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${p.pagado ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-500/20 text-slate-400 hover:bg-amber-500/20 hover:text-amber-400"}`}>{p.pagado ? "✓ Pagado" : "Pendiente"}</button>
-                <button onClick={() => removeParticipante(p.id)} className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"><Icon name="trash" className="w-3 h-3" /></button>
-              </div>
+              {evento.tipo==="torneo" && (
+                <div className="flex items-center gap-1.5 flex-wrap mt-2.5 sm:pl-10">
+                  <span className="text-[10px] text-slate-500 uppercase font-semibold mr-0.5">Categorías:</span>
+                  {CATEGORIAS_TORNEO.map(([key,label])=>{
+                    const on = (p.categorias||[]).includes(key);
+                    return (
+                      <button key={key} onClick={()=>toggleCategoria(p.id,key)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
+                        style={on?{background:"linear-gradient(135deg,#2563EB,#1d4ed8)",color:"#fff"}:{background:"var(--ss-input)",color:"#94a3b8"}}>
+                        {on?"✓ ":""}{label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ))}
           {participantes.length === 0 && <p className="text-center text-slate-500 text-sm py-4">Sin participantes aún</p>}
