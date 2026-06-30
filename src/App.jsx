@@ -4010,7 +4010,7 @@ class KioscoErrorBoundary extends Component {
   }
 }
 
-const KioscoPage = ({ students, pagos, asistencia, ventas, darkMode }) => {
+const KioscoPage = ({ students, pagos, asistencia, ventas, eventos, darkMode }) => {
   const [input, setInput] = useState("");
   const [resultado, setResultado] = useState(null);
   const [registrando, setRegistrando] = useState(false);
@@ -4043,7 +4043,14 @@ const KioscoPage = ({ students, pagos, asistencia, ventas, darkMode }) => {
       const saldoVentas = (ventas || [])
         .filter(v => v.alumno_id === student.id && parseFloat(v.saldo_pendiente || 0) > 0)
         .reduce((acc, v) => acc + parseFloat(v.saldo_pendiente || 0), 0);
-      const saldo = saldoMembresia + saldoVentas;
+      // Deuda de eventos: participaciones del alumno marcadas como NO pagadas
+      const saldoEventos = (eventos || []).reduce((acc, ev) => {
+        try {
+          const parts = JSON.parse(ev.participantes || "[]");
+          return acc + parts.filter(p => p.id === student.id && !p.pagado).reduce((s, p) => s + parseFloat(p.valor || 0), 0);
+        } catch { return acc; }
+      }, 0);
+      const saldo = saldoMembresia + saldoVentas + saldoEventos;
       if (!yaHoy) {
         await db.insert("asistencia", {
           alumno_id: student.id,
@@ -4054,7 +4061,7 @@ const KioscoPage = ({ students, pagos, asistencia, ventas, darkMode }) => {
         });
         setCheckedHoy(prev => new Set([...prev, student.id]));
       }
-      setResultado({ student, ultimoPago, vencido, vencidoFecha, sinSesiones, ilimitado: ses.ilimitado, restantesHoy, saldo, yaHoy });
+      setResultado({ student, ultimoPago, vencido, vencidoFecha, sinSesiones, ilimitado: ses.ilimitado, restantesHoy, saldo, saldoMembresia, saldoVentas, saldoEventos, yaHoy });
     } catch (e) {
       setResultado({ tipo: "error" });
     }
@@ -4159,7 +4166,12 @@ const KioscoPage = ({ students, pagos, asistencia, ventas, darkMode }) => {
                   <p className="text-lg" style={{ color: subText }}>Venció el <span className="font-bold" style={{ color: baseText }}>{resultado.ultimoPago.fecha_vencimiento}</span></p>
                 )}
             {debeSaldo && (
-              <p className="text-amber-400 font-black text-3xl mt-3">${resultado.saldo.toFixed(2)} pendiente</p>
+              <>
+                <p className="text-amber-400 font-black text-3xl mt-3">${resultado.saldo.toFixed(2)} pendiente</p>
+                {(resultado.saldoEventos || 0) > 0 && (
+                  <p className="text-base font-bold mt-1" style={{ color: subText }}>🏆 Incluye ${resultado.saldoEventos.toFixed(2)} de evento</p>
+                )}
+              </>
             )}
             <p className="text-base mt-3" style={{ color: subText }}>Habla con el instructor para renovar</p>
           </div>
@@ -4171,6 +4183,11 @@ const KioscoPage = ({ students, pagos, asistencia, ventas, darkMode }) => {
             style={{ background:"rgba(245,158,11,0.15)", border:"2px solid rgba(245,158,11,0.4)" }}>
             <p className="text-amber-400 font-black text-2xl mb-2">⚠️ Tienes un saldo pendiente</p>
             <p className="font-black" style={{ fontSize:"clamp(2.5rem,8vw,4rem)", color: baseText }}>${resultado.saldo.toFixed(2)}</p>
+            <div className="flex flex-wrap gap-2 justify-center mt-3">
+              {(resultado.saldoMembresia || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(245,158,11,0.2)", color: baseText }}>Membresía ${resultado.saldoMembresia.toFixed(2)}</span>}
+              {(resultado.saldoVentas || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(245,158,11,0.2)", color: baseText }}>Ventas ${resultado.saldoVentas.toFixed(2)}</span>}
+              {(resultado.saldoEventos || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>🏆 Evento ${resultado.saldoEventos.toFixed(2)}</span>}
+            </div>
             <p className="text-base mt-3" style={{ color: subText }}>Habla con el instructor para ponerte al día</p>
           </div>
         )}
@@ -7025,7 +7042,7 @@ export default function App() {
       case "cobranza":      return <CobranzaPage students={students} pagos={pagos} />;
       case "ventas":        return <VentasPage ventas={ventas} historialVentas={historialVentas} students={students} inventario={inventario} reload={loadAll} isAdmin={isAdmin} />;
       case "attendance":    return <AttendancePage students={students} asistencia={asistencia} reload={loadAll} />;
-      case "kiosco":        return <KioscoErrorBoundary><KioscoPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} darkMode={darkMode} /></KioscoErrorBoundary>;
+      case "kiosco":        return <KioscoErrorBoundary><KioscoPage students={students} pagos={pagos} asistencia={asistencia} ventas={ventas} eventos={eventos} darkMode={darkMode} /></KioscoErrorBoundary>;
       case "examenes":      return <ExamenesPage students={students} reload={loadAll} examenes={examenes} reloadExamenes={reloadExamenes} configExamenes={configExamenes} configGal={configGal} />;
       case "configuracion":  return <ConfiguracionPage configExamenes={configExamenes} configGal={configGal} configMembresias={configMembresias} configSedes={configSedes} inventario={inventario} reload={loadAll} />;
       case "finance":       return <FinancePage pagos={pagos} historialPagos={historialPagos} ventas={ventas} eventos={eventos} examenes={examenes} gastos={gastos} students={students} asistencia={asistencia} />;
