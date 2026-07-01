@@ -168,6 +168,18 @@ const PRODUCTOS = [
 
 const REFRESH_INTERVAL = 300000;
 
+// ── Modo privacidad: ocultar montos ($) como las apps de banco ──
+// OCULTAR_MONTOS se sincroniza con el estado de App en cada render.
+let OCULTAR_MONTOS = false;
+// Formatea un número como dinero, enmascarado si el modo privacidad está activo.
+const money = (v, dec = 2) => {
+  if (OCULTAR_MONTOS) return "$•••";
+  const n = parseFloat(v);
+  return `$${(isNaN(n) ? 0 : n).toFixed(dec)}`;
+};
+// Enmascara los dígitos de un string ya formateado (ej. "$1,234" → "$•••").
+const maskMoney = (str) => (OCULTAR_MONTOS && typeof str === "string") ? str.replace(/\d[\d.,]*/g, "•••") : str;
+
 const Icon = ({ name, className = "w-5 h-5" }) => {
   const icons = {
     dashboard:    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
@@ -242,12 +254,14 @@ const Select = ({ options, ...props }) => (
 const StatCard = ({ title, value, sub, icon, accent="amber" }) => {
   const accents = { amber:"from-amber-500/20 to-amber-600/5 border-amber-500/20", emerald:"from-emerald-500/20 to-emerald-600/5 border-emerald-500/20", red:"from-red-500/20 to-red-600/5 border-red-500/20", blue:"from-blue-500/20 to-blue-600/5 border-blue-500/20", purple:"from-purple-500/20 to-purple-600/5 border-purple-500/20" };
   const iconColors = { amber:"text-amber-400", emerald:"text-emerald-400", red:"text-red-400", blue:"text-blue-400", purple:"text-purple-400" };
+  // Ocultar montos ($) en modo privacidad
+  const shownValue = (typeof value === "string" && value.includes("$")) ? maskMoney(value) : value;
   return (
     <div className={`rounded-2xl border bg-gradient-to-br p-6 ${accents[accent]||accents.amber}`}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">{title}</p>
-          <p className="text-4xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>{value}</p>
+          <p className="text-4xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>{shownValue}</p>
           {sub && <p className="text-sm text-slate-400 mt-1">{sub}</p>}
         </div>
         <div className={`p-3 rounded-xl bg-white/5 ${iconColors[accent]||iconColors.amber}`}><Icon name={icon} className="w-6 h-6" /></div>
@@ -1850,7 +1864,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
                       <p className="text-xs text-slate-500 mt-0.5">Vence: {vPago.fecha_vencimiento}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-black text-white">${parseFloat(vPago.monto_pagado||0).toFixed(2)}<span className="text-xs text-slate-500">/${parseFloat(vPago.monto||0).toFixed(2)}</span></p>
+                      <p className="text-lg font-black text-white">${maskMoney(parseFloat(vPago.monto_pagado||0).toFixed(2))}<span className="text-xs text-slate-500">/${maskMoney(parseFloat(vPago.monto||0).toFixed(2))}</span></p>
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${vencido?"bg-red-500/20 text-red-400":"bg-emerald-500/20 text-emerald-400"}`}>
                         {vencido?"Vencido":"Al día"}
                       </span>
@@ -1863,7 +1877,7 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
                       {vHistPagos.map(h=>(
                         <div key={h.id} className="flex justify-between text-xs p-2 rounded-lg" style={{ background:"var(--ss-input)" }}>
                           <span className="text-slate-400">{h.fecha_pago} · {h.tipo}</span>
-                          <span className="text-emerald-400 font-bold">${parseFloat(h.monto_pagado||0).toFixed(2)}</span>
+                          <span className="text-emerald-400 font-bold">${maskMoney(parseFloat(h.monto_pagado||0).toFixed(2))}</span>
                         </div>
                       ))}
                     </div>
@@ -1903,8 +1917,8 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
                       <p className="text-slate-500 mt-0.5">{ex.fecha}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-white">${parseFloat(ex.monto_pagado||ex.monto||0).toFixed(2)}</p>
-                      {parseFloat(ex.saldo_pendiente||0)>0 && <p className="text-red-400">Debe: ${parseFloat(ex.saldo_pendiente).toFixed(2)}</p>}
+                      <p className="font-bold text-white">${maskMoney(parseFloat(ex.monto_pagado||ex.monto||0).toFixed(2))}</p>
+                      {parseFloat(ex.saldo_pendiente||0)>0 && <p className="text-red-400">Debe: ${maskMoney(parseFloat(ex.saldo_pendiente).toFixed(2))}</p>}
                     </div>
                   </div>
                 ))}
@@ -1926,8 +1940,8 @@ const StudentsPage = ({ students, reload, canEdit, asistencia, examenes, eventos
                         <p className="text-slate-500 mt-0.5">{v.fecha}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-white">${parseFloat(v.total||0).toFixed(2)}</p>
-                        {parseFloat(v.saldo_pendiente||0)>0 && <p className="text-red-400">Debe: ${parseFloat(v.saldo_pendiente).toFixed(2)}</p>}
+                        <p className="font-bold text-white">${maskMoney(parseFloat(v.total||0).toFixed(2))}</p>
+                        {parseFloat(v.saldo_pendiente||0)>0 && <p className="text-red-400">Debe: ${maskMoney(parseFloat(v.saldo_pendiente).toFixed(2))}</p>}
                       </div>
                     </div>
                   ))}
@@ -2648,7 +2662,7 @@ const CobranzaPage = ({ students = [], pagos = [] }) => {
 
       <div className="space-y-3">
         {tab==="cobranza" && (vencidos.length ? vencidos.map(p=>(
-          <Card key={p.id} nombre={p.alumno_nombre} telefono={tel(p.alumno_id)} sub={`Venció el ${p.fecha_vencimiento} · saldo $${Math.max(0,parseFloat(p.monto||0)-parseFloat(p.monto_pagado||0)).toFixed(2)}`} msg={fill(tplCobranza,p)} />
+          <Card key={p.id} nombre={p.alumno_nombre} telefono={tel(p.alumno_id)} sub={`Venció el ${p.fecha_vencimiento} · saldo $${maskMoney(Math.max(0,parseFloat(p.monto||0)-parseFloat(p.monto_pagado||0)).toFixed(2))}`} msg={fill(tplCobranza,p)} />
         )) : <p className="text-slate-500 text-center py-8">Nadie vencido 🎉</p>)}
 
         {tab==="porvencer" && (porVencer.length ? porVencer.map(p=>(
@@ -3013,7 +3027,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, asistencia = [], reload
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <div className="text-right">
-                    <p className="text-lg font-black text-white">${parseFloat(p.monto_pagado).toFixed(2)}<span className="text-sm text-slate-500">/${parseFloat(p.monto).toFixed(2)}</span></p>
+                    <p className="text-lg font-black text-white">${maskMoney(parseFloat(p.monto_pagado).toFixed(2))}<span className="text-sm text-slate-500">/${maskMoney(parseFloat(p.monto).toFixed(2))}</span></p>
                     <div className="flex gap-1.5 justify-end mt-1 flex-wrap">
                       {p.estados && p.estados.map(est => <StatusBadge key={est} estado={est} />)}
                     </div>
@@ -3080,7 +3094,7 @@ const PaymentsPage = ({ students, pagos, historialPagos, asistencia = [], reload
                       {historialAlumno.map(h => (
                         <div key={h.id} className="flex justify-between text-xs">
                           <span className="text-slate-400">{h.fecha_pago}</span>
-                          <span className="text-emerald-400 font-bold">${parseFloat(h.monto_pagado||0).toFixed(2)}</span>
+                          <span className="text-emerald-400 font-bold">${maskMoney(parseFloat(h.monto_pagado||0).toFixed(2))}</span>
                         </div>
                       ))}
                     </div>
@@ -3490,7 +3504,7 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xl font-black text-red-400">${totalDeuda.toFixed(2)}</span>
+              <span className="text-xl font-black text-red-400">${maskMoney(totalDeuda.toFixed(2))}</span>
               <svg className={`w-4 h-4 text-slate-500 transition-transform ${showDeudores?"rotate-180":""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
@@ -3504,7 +3518,7 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{(d.nombre||"?").split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
                     <div className="min-w-0"><p className="text-sm font-semibold text-white truncate">{d.nombre}</p><p className="text-xs text-slate-500">{d.count} venta(s) con saldo</p></div>
                   </div>
-                  <span className="text-sm font-black text-red-400 flex-shrink-0">${d.total.toFixed(2)}</span>
+                  <span className="text-sm font-black text-red-400 flex-shrink-0">${maskMoney(d.total.toFixed(2))}</span>
                 </div>
               ))}
             </div>
@@ -3530,14 +3544,14 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
               <div>
                 <p className="font-bold text-white text-sm">{v.cliente || "Sin nombre"}</p>
                 <p className="text-xs text-slate-500 mt-0.5">{v.fecha} · {v.detalle}</p>
-                {v.descuento > 0 && <p className="text-xs text-indigo-400 font-semibold">Descuento {v.descuento_detalle}: −${parseFloat(v.descuento).toFixed(2)}</p>}
+                {v.descuento > 0 && <p className="text-xs text-indigo-400 font-semibold">Descuento {v.descuento_detalle}: −${maskMoney(parseFloat(v.descuento).toFixed(2))}</p>}
               </div>
               <div className="flex items-center gap-2">
                 <div className="text-right">
-                  <p className="text-lg font-black text-amber-400">${parseFloat(v.total||0).toFixed(2)}</p>
-                  {v.descuento > 0 && <p className="text-xs line-through" style={{ color:"var(--ss-text2)" }}>${parseFloat(v.subtotal||v.total||0).toFixed(2)}</p>}
+                  <p className="text-lg font-black text-amber-400">${maskMoney(parseFloat(v.total||0).toFixed(2))}</p>
+                  {v.descuento > 0 && <p className="text-xs line-through" style={{ color:"var(--ss-text2)" }}>${maskMoney(parseFloat(v.subtotal||v.total||0).toFixed(2))}</p>}
                   {(v.estado==="parcial"||v.estado==="credito") && (
-                    <p className="text-xs text-red-400">Debe: ${parseFloat(v.saldo_pendiente||v.total||0).toFixed(2)}</p>
+                    <p className="text-xs text-red-400">Debe: ${maskMoney(parseFloat(v.saldo_pendiente||v.total||0).toFixed(2))}</p>
                   )}
                 </div>
                 <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
@@ -3560,7 +3574,7 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
                     {abonos.map(ab=>(
                       <div key={ab.id} className="flex justify-between text-xs">
                         <span className="text-slate-400">{ab.fecha_abono}</span>
-                        <span className="text-emerald-400 font-bold">+${parseFloat(ab.monto_abono||0).toFixed(2)}</span>
+                        <span className="text-emerald-400 font-bold">+${maskMoney(parseFloat(ab.monto_abono||0).toFixed(2))}</span>
                       </div>
                     ))}
                   </div>
@@ -4229,11 +4243,11 @@ const KioscoPage = ({ students, pagos, asistencia, ventas, eventos, examenes, da
                 )}
             {debeSaldo && (
               <>
-                <p className="text-amber-400 font-black text-3xl mt-3">${resultado.saldo.toFixed(2)} pendiente</p>
+                <p className="text-amber-400 font-black text-3xl mt-3">${maskMoney(resultado.saldo.toFixed(2))} pendiente</p>
                 <div className="flex flex-wrap gap-2 justify-center mt-2">
-                  {(resultado.saldoEventos || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>🏆 Evento ${resultado.saldoEventos.toFixed(2)}</span>}
-                  {(resultado.saldoExamenes || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>🥋 Examen ${resultado.saldoExamenes.toFixed(2)}</span>}
-                  {(resultado.saldoGal || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>📋 GAL ${resultado.saldoGal.toFixed(2)}</span>}
+                  {(resultado.saldoEventos || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>🏆 Evento ${maskMoney(resultado.saldoEventos.toFixed(2))}</span>}
+                  {(resultado.saldoExamenes || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>🥋 Examen ${maskMoney(resultado.saldoExamenes.toFixed(2))}</span>}
+                  {(resultado.saldoGal || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>📋 GAL ${maskMoney(resultado.saldoGal.toFixed(2))}</span>}
                 </div>
               </>
             )}
@@ -4246,13 +4260,13 @@ const KioscoPage = ({ students, pagos, asistencia, ventas, eventos, examenes, da
           <div className="w-full max-w-md rounded-3xl p-6 mb-6"
             style={{ background:"rgba(245,158,11,0.15)", border:"2px solid rgba(245,158,11,0.4)" }}>
             <p className="text-amber-400 font-black text-2xl mb-2">⚠️ Tienes un saldo pendiente</p>
-            <p className="font-black" style={{ fontSize:"clamp(2.5rem,8vw,4rem)", color: baseText }}>${resultado.saldo.toFixed(2)}</p>
+            <p className="font-black" style={{ fontSize:"clamp(2.5rem,8vw,4rem)", color: baseText }}>${maskMoney(resultado.saldo.toFixed(2))}</p>
             <div className="flex flex-wrap gap-2 justify-center mt-3">
-              {(resultado.saldoMembresia || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(245,158,11,0.2)", color: baseText }}>Membresía ${resultado.saldoMembresia.toFixed(2)}</span>}
-              {(resultado.saldoVentas || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(245,158,11,0.2)", color: baseText }}>Ventas ${resultado.saldoVentas.toFixed(2)}</span>}
-              {(resultado.saldoEventos || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>🏆 Evento ${resultado.saldoEventos.toFixed(2)}</span>}
-              {(resultado.saldoExamenes || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>🥋 Examen ${resultado.saldoExamenes.toFixed(2)}</span>}
-              {(resultado.saldoGal || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>📋 GAL ${resultado.saldoGal.toFixed(2)}</span>}
+              {(resultado.saldoMembresia || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(245,158,11,0.2)", color: baseText }}>Membresía ${maskMoney(resultado.saldoMembresia.toFixed(2))}</span>}
+              {(resultado.saldoVentas || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(245,158,11,0.2)", color: baseText }}>Ventas ${maskMoney(resultado.saldoVentas.toFixed(2))}</span>}
+              {(resultado.saldoEventos || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>🏆 Evento ${maskMoney(resultado.saldoEventos.toFixed(2))}</span>}
+              {(resultado.saldoExamenes || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>🥋 Examen ${maskMoney(resultado.saldoExamenes.toFixed(2))}</span>}
+              {(resultado.saldoGal || 0) > 0 && <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background:"rgba(239,68,68,0.2)", color: baseText }}>📋 GAL ${maskMoney(resultado.saldoGal.toFixed(2))}</span>}
             </div>
             <p className="text-base mt-3" style={{ color: subText }}>Habla con el instructor para ponerte al día</p>
           </div>
@@ -4588,8 +4602,8 @@ const ExamenesPage = ({ students, reload, examenes, reloadExamenes, configExamen
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <p className="text-base font-black text-amber-400">${parseFloat(ex.monto_pagado||ex.monto||0).toFixed(2)}<span className="text-xs text-slate-500">/${parseFloat(ex.monto||0).toFixed(2)}</span></p>
-                      {saldo>0 && <p className="text-xs text-red-400">Debe: ${saldo.toFixed(2)}</p>}
+                      <p className="text-base font-black text-amber-400">${maskMoney(parseFloat(ex.monto_pagado||ex.monto||0).toFixed(2))}<span className="text-xs text-slate-500">/${maskMoney(parseFloat(ex.monto||0).toFixed(2))}</span></p>
+                      {saldo>0 && <p className="text-xs text-red-400">Debe: ${maskMoney(saldo.toFixed(2))}</p>}
                     </div>
                     <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${ep==="pagado"?"bg-emerald-500/20 text-emerald-400":ep==="parcial"?"bg-amber-500/20 text-amber-400":"bg-slate-500/20 text-slate-400"}`}>
                       {ep==="pagado"?"✓":ep==="parcial"?"Parcial":"Pendiente"}
@@ -4628,7 +4642,7 @@ const bscSem = (v, meta, mejor) => {
   const r = meta > 0 ? v / meta : 1;
   return r >= 1 ? "#10b981" : r >= 0.7 ? "#f59e0b" : "#ef4444";
 };
-const bscFmt = (v, f) => f === "money" ? `$${v.toFixed(0)}` : f === "pct" ? `${v.toFixed(0)}%` : f === "dec" ? v.toFixed(1) : `${Math.round(v)}`;
+const bscFmt = (v, f) => f === "money" ? money(v, 0) : f === "pct" ? `${v.toFixed(0)}%` : f === "dec" ? v.toFixed(1) : `${Math.round(v)}`;
 
 const getBSCPerspectivas = ({ students = [], pagos = [], historialPagos = [], ventas = [], asistencia = [], examenes = [], gastos = [], prospectos = [] }) => {
   const hoy = fmt(new Date());
@@ -5264,19 +5278,19 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos,
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
           <p className="text-xs text-amber-400 font-semibold uppercase">Mensualidades</p>
-          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${totalMensual.toFixed(0)}</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${maskMoney(totalMensual.toFixed(0))}</p>
         </div>
         <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4">
           <p className="text-xs text-purple-400 font-semibold uppercase">Ventas</p>
-          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${totalVentas.toFixed(0)}</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${maskMoney(totalVentas.toFixed(0))}</p>
         </div>
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4">
           <p className="text-xs text-blue-400 font-semibold uppercase">Eventos</p>
-          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${totalEventos.toFixed(0)}</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${maskMoney(totalEventos.toFixed(0))}</p>
         </div>
         <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4">
           <p className="text-xs text-orange-400 font-semibold uppercase">Exámenes / GAL</p>
-          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${totalExamenes.toFixed(0)}</p>
+          <p className="text-2xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${maskMoney(totalExamenes.toFixed(0))}</p>
         </div>
       </div>
 
@@ -5284,15 +5298,15 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos,
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-2xl p-4 border" style={{ background:"rgba(16,185,129,0.1)", borderColor:"rgba(16,185,129,0.2)" }}>
           <p className="text-xs text-emerald-400 font-semibold uppercase">Ingresos Mes</p>
-          <p className="text-2xl font-black text-white mt-1">${ingresosMes.toFixed(2)}</p>
+          <p className="text-2xl font-black text-white mt-1">${maskMoney(ingresosMes.toFixed(2))}</p>
         </div>
         <div className="rounded-2xl p-4 border" style={{ background:"rgba(239,68,68,0.1)", borderColor:"rgba(239,68,68,0.2)" }}>
           <p className="text-xs text-red-400 font-semibold uppercase">Gastos Mes</p>
-          <p className="text-2xl font-black text-white mt-1">${gastosMes.toFixed(2)}</p>
+          <p className="text-2xl font-black text-white mt-1">${maskMoney(gastosMes.toFixed(2))}</p>
         </div>
         <div className="rounded-2xl p-4 border" style={{ background:utilidadMes>=0?"rgba(16,185,129,0.15)":"rgba(239,68,68,0.15)", borderColor:utilidadMes>=0?"rgba(16,185,129,0.3)":"rgba(239,68,68,0.3)" }}>
           <p className={`text-xs font-semibold uppercase ${utilidadMes>=0?"text-emerald-400":"text-red-400"}`}>Utilidad Mes</p>
-          <p className={`text-2xl font-black mt-1 ${utilidadMes>=0?"text-emerald-400":"text-red-400"}`}>{utilidadMes>=0?"+":""}{utilidadMes.toFixed(2)}</p>
+          <p className={`text-2xl font-black mt-1 ${utilidadMes>=0?"text-emerald-400":"text-red-400"}`}>{utilidadMes>=0?"+":""}{maskMoney(utilidadMes.toFixed(2))}</p>
         </div>
       </div>
 
@@ -5301,25 +5315,25 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos,
         <div className="flex justify-between items-start mb-4">
           <div>
             <p className="text-xs text-slate-400 font-semibold uppercase">Total Ingresos Año</p>
-            <p className="text-4xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${totalAnual.toFixed(2)}</p>
+            <p className="text-4xl font-black text-white mt-1" style={{ fontFamily:"'Inter',sans-serif" }}>${maskMoney(totalAnual.toFixed(2))}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-slate-400 font-semibold uppercase">Utilidad Año</p>
-            <p className={`text-2xl font-black mt-1 ${utilidad>=0?"text-emerald-400":"text-red-400"}`}>{utilidad>=0?"+":""}{utilidad.toFixed(2)}</p>
+            <p className={`text-2xl font-black mt-1 ${utilidad>=0?"text-emerald-400":"text-red-400"}`}>{utilidad>=0?"+":""}{maskMoney(utilidad.toFixed(2))}</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs border-t pt-3" style={{ borderColor:"var(--ss-border)" }}>
           <div>
             <p className="text-slate-500 mb-1">Ingresos</p>
-            <p>Mensualidades: <span className="text-amber-400 font-bold">${totalMensual.toFixed(0)}</span></p>
-            <p>Ventas: <span className="text-purple-400 font-bold">${totalVentas.toFixed(0)}</span></p>
-            <p>Eventos: <span className="text-blue-400 font-bold">${totalEventos.toFixed(0)}</span></p>
-            <p>Exámenes: <span className="text-orange-400 font-bold">${totalExamenes.toFixed(0)}</span></p>
+            <p>Mensualidades: <span className="text-amber-400 font-bold">${maskMoney(totalMensual.toFixed(0))}</span></p>
+            <p>Ventas: <span className="text-purple-400 font-bold">${maskMoney(totalVentas.toFixed(0))}</span></p>
+            <p>Eventos: <span className="text-blue-400 font-bold">${maskMoney(totalEventos.toFixed(0))}</span></p>
+            <p>Exámenes: <span className="text-orange-400 font-bold">${maskMoney(totalExamenes.toFixed(0))}</span></p>
           </div>
           <div>
             <p className="text-slate-500 mb-1">Gastos</p>
-            <p>Fijos: <span className="text-red-400 font-bold">-${gastosFijos.toFixed(0)}</span></p>
-            <p>Variables: <span className="text-red-300 font-bold">-${gastosVariables.toFixed(0)}</span></p>
+            <p>Fijos: <span className="text-red-400 font-bold">-${maskMoney(gastosFijos.toFixed(0))}</span></p>
+            <p>Variables: <span className="text-red-300 font-bold">-${maskMoney(gastosVariables.toFixed(0))}</span></p>
           </div>
         </div>
       </div>
@@ -5354,16 +5368,16 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos,
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="rounded-xl p-3 text-center" style={{ background:"rgba(16,185,129,0.1)", border:"1px solid rgba(16,185,129,0.2)" }}>
                 <p className="text-[10px] text-emerald-400 font-bold uppercase mb-1">Ingresos</p>
-                <p className="text-xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>~${proyIng.toFixed(0)}</p>
+                <p className="text-xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>~${maskMoney(proyIng.toFixed(0))}</p>
               </div>
               <div className="rounded-xl p-3 text-center" style={{ background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.2)" }}>
                 <p className="text-[10px] text-red-400 font-bold uppercase mb-1">Gastos</p>
-                <p className="text-xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>~${proyGast.toFixed(0)}</p>
+                <p className="text-xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>~${maskMoney(proyGast.toFixed(0))}</p>
               </div>
               <div className="rounded-xl p-3 text-center" style={{ background:proyUtil>=0?"rgba(16,185,129,0.15)":"rgba(239,68,68,0.15)", border:`1px solid ${proyUtil>=0?"rgba(16,185,129,0.3)":"rgba(239,68,68,0.3)"}` }}>
                 <p className={`text-[10px] font-bold uppercase mb-1 ${proyUtil>=0?"text-emerald-400":"text-red-400"}`}>Utilidad</p>
                 <p className={`text-xl font-black ${proyUtil>=0?"text-emerald-400":"text-red-400"}`} style={{ fontFamily:"'Inter',sans-serif" }}>
-                  {proyUtil>=0?"+":""}{proyUtil.toFixed(0)}
+                  {proyUtil>=0?"+":""}{maskMoney(proyUtil.toFixed(0))}
                 </p>
               </div>
             </div>
@@ -5385,7 +5399,7 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos,
                       <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
                         <div className="h-full rounded-full transition-all" style={{ width:`${pct}%`, background:color }} />
                       </div>
-                      <p className="text-xs font-bold text-white w-14 text-right">~${val.toFixed(0)}</p>
+                      <p className="text-xs font-bold text-white w-14 text-right">~${maskMoney(val.toFixed(0))}</p>
                     </div>
                   );
                 })}
@@ -5417,7 +5431,7 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos,
         {bySedeTotal.map(({sede,total})=>(
           <div key={sede} className="flex items-center justify-between p-3 bg-white/5 rounded-xl mb-2">
             <span className="text-sm text-slate-300 font-semibold">📍 {sede}</span>
-            <span className="text-xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>${total.toFixed(2)}</span>
+            <span className="text-xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>${maskMoney(total.toFixed(2))}</span>
           </div>
         ))}
       </div>
@@ -5432,7 +5446,7 @@ const FinancePage = ({ pagos, historialPagos, ventas, eventos, examenes, gastos,
                 <p className="text-sm font-semibold text-white">{h.alumno_nombre}</p>
                 <p className="text-xs text-slate-500">{h.tipo} · {h.fecha_pago}</p>
               </div>
-              <span className="text-base font-black text-emerald-400">${parseFloat(h.monto_pagado||0).toFixed(2)}</span>
+              <span className="text-base font-black text-emerald-400">${maskMoney(parseFloat(h.monto_pagado||0).toFixed(2))}</span>
             </div>
           ))}
           {(historialPagos||[]).length===0 && <p className="text-slate-500 text-sm text-center py-4">Sin historial aún</p>}
@@ -5502,8 +5516,8 @@ const EventoDetail = ({ evento, students, reload, onClose }) => {
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white/5 rounded-xl p-3 text-center"><p className="text-xs text-slate-500">Participantes</p><p className="text-2xl font-black text-white" style={{ fontFamily:"'Inter',sans-serif" }}>{participantes.length}</p></div>
-          <div className="bg-amber-500/10 rounded-xl p-3 text-center border border-amber-500/20"><p className="text-xs text-slate-500">Total</p><p className="text-2xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>${totalEvento.toFixed(0)}</p></div>
-          <div className="bg-emerald-500/10 rounded-xl p-3 text-center border border-emerald-500/20"><p className="text-xs text-slate-500">Pagado</p><p className="text-2xl font-black text-emerald-400" style={{ fontFamily:"'Inter',sans-serif" }}>${totalPagado.toFixed(0)}</p></div>
+          <div className="bg-amber-500/10 rounded-xl p-3 text-center border border-amber-500/20"><p className="text-xs text-slate-500">Total</p><p className="text-2xl font-black text-amber-400" style={{ fontFamily:"'Inter',sans-serif" }}>${maskMoney(totalEvento.toFixed(0))}</p></div>
+          <div className="bg-emerald-500/10 rounded-xl p-3 text-center border border-emerald-500/20"><p className="text-xs text-slate-500">Pagado</p><p className="text-2xl font-black text-emerald-400" style={{ fontFamily:"'Inter',sans-serif" }}>${maskMoney(totalPagado.toFixed(0))}</p></div>
         </div>
         {evento.tipo==="torneo" && (
           <div className="grid grid-cols-3 gap-3">
@@ -5539,7 +5553,7 @@ const EventoDetail = ({ evento, students, reload, onClose }) => {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{p.nombre.split(" ").map(n => n[0]).join("").slice(0, 2)}</div>
-                  <div className="min-w-0"><p className="text-sm font-semibold text-white truncate">{p.nombre}</p><p className="text-xs text-amber-400 font-bold">${parseFloat(p.valor || 0).toFixed(2)}</p></div>
+                  <div className="min-w-0"><p className="text-sm font-semibold text-white truncate">{p.nombre}</p><p className="text-xs text-amber-400 font-bold">${maskMoney(parseFloat(p.valor || 0).toFixed(2))}</p></div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap justify-end">
                   {evento.tipo==="torneo" && (
@@ -5930,7 +5944,7 @@ const MisPagosPage = ({ currentUser, students, pagos }) => {
           <div key={p.id} className="bg-white/3 border border-white/8 rounded-2xl p-4">
             <div className="flex items-center justify-between mb-2">
               <div><p className="font-bold text-white">{p.tipo}</p><p className="text-xs text-slate-500">{p.fecha_pago}</p></div>
-              <div className="text-right"><p className="text-lg font-black text-white">${parseFloat(p.monto_pagado).toFixed(2)}<span className="text-sm text-slate-500">/${parseFloat(p.monto).toFixed(2)}</span></p><StatusBadge estado={p.estado} /></div>
+              <div className="text-right"><p className="text-lg font-black text-white">${maskMoney(parseFloat(p.monto_pagado).toFixed(2))}<span className="text-sm text-slate-500">/${maskMoney(parseFloat(p.monto).toFixed(2))}</span></p><StatusBadge estado={p.estado} /></div>
             </div>
             <p className={`text-xs font-semibold ${dias<0?"text-red-400":dias<7?"text-amber-400":"text-emerald-400"}`}>{dias<0?`Vencido hace ${Math.abs(dias)} días`:`Vence en ${dias} días`}</p>
           </div>
@@ -6123,7 +6137,7 @@ const InventarioPage = ({ inventario, reload, isAdmin }) => {
           <p className="text-xs text-slate-400 mt-1">Unidades totales</p>
         </div>
         <div className="rounded-2xl p-4 text-center border" style={{ background:"rgba(37,99,235,0.1)", borderColor:"rgba(37,99,235,0.2)" }}>
-          <p className="text-2xl font-black text-blue-400">${inventario.reduce((a,i)=>a+(i.stock*i.precio_venta),0).toFixed(0)}</p>
+          <p className="text-2xl font-black text-blue-400">${maskMoney(inventario.reduce((a,i)=>a+(i.stock*i.precio_venta),0).toFixed(0))}</p>
           <p className="text-xs text-slate-400 mt-1">Valor stock</p>
         </div>
       </div>
@@ -6157,7 +6171,7 @@ const InventarioPage = ({ inventario, reload, isAdmin }) => {
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="text-right">
                     <p className="text-lg font-black text-white">{item.stock} <span className="text-xs text-slate-500 font-normal">unid.</span></p>
-                    <p className="text-xs text-blue-400 font-semibold">${parseFloat(item.precio_venta||0).toFixed(2)}</p>
+                    <p className="text-xs text-blue-400 font-semibold">${maskMoney(parseFloat(item.precio_venta||0).toFixed(2))}</p>
                   </div>
                   {isAdmin && (
                     <div className="flex gap-1">
@@ -6319,15 +6333,15 @@ const GastosPage = ({ gastos, reload, isAdmin }) => {
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-2xl p-4 border" style={{ background:"rgba(59,130,246,0.1)", borderColor:"rgba(59,130,246,0.2)" }}>
           <p className="text-xs text-blue-400 font-semibold uppercase">Gastos Fijos</p>
-          <p className="text-2xl font-black text-white mt-1">${totalFijos.toFixed(2)}</p>
+          <p className="text-2xl font-black text-white mt-1">${maskMoney(totalFijos.toFixed(2))}</p>
         </div>
         <div className="rounded-2xl p-4 border" style={{ background:"rgba(245,158,11,0.1)", borderColor:"rgba(245,158,11,0.2)" }}>
           <p className="text-xs text-amber-400 font-semibold uppercase">Variables</p>
-          <p className="text-2xl font-black text-white mt-1">${totalVariables.toFixed(2)}</p>
+          <p className="text-2xl font-black text-white mt-1">${maskMoney(totalVariables.toFixed(2))}</p>
         </div>
         <div className="rounded-2xl p-4 border" style={{ background:"rgba(239,68,68,0.1)", borderColor:"rgba(239,68,68,0.2)" }}>
           <p className="text-xs text-red-400 font-semibold uppercase">Total Mes</p>
-          <p className="text-2xl font-black text-white mt-1">${totalMes.toFixed(2)}</p>
+          <p className="text-2xl font-black text-white mt-1">${maskMoney(totalMes.toFixed(2))}</p>
         </div>
       </div>
 
@@ -6336,7 +6350,7 @@ const GastosPage = ({ gastos, reload, isAdmin }) => {
         {porSede.map(({sede,total})=>(
           <div key={sede} className="rounded-2xl p-3 border" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
             <p className="text-xs text-slate-400">📍 {sede}</p>
-            <p className="text-lg font-black text-white mt-1">${total.toFixed(2)}</p>
+            <p className="text-lg font-black text-white mt-1">${maskMoney(total.toFixed(2))}</p>
           </div>
         ))}
       </div>
@@ -6368,7 +6382,7 @@ const GastosPage = ({ gastos, reload, isAdmin }) => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <p className="text-lg font-black text-red-400">-${parseFloat(g.monto||0).toFixed(2)}</p>
+                      <p className="text-lg font-black text-red-400">-${maskMoney(parseFloat(g.monto||0).toFixed(2))}</p>
                       {isAdmin && (
                         <div className="flex gap-1">
                           <button onClick={()=>{ setEditGasto(g); setShowForm(true); }}
@@ -6958,6 +6972,17 @@ export default function App() {
       return !d;
     });
   };
+  const [ocultarMontos, setOcultarMontos] = useState(() => {
+    try { return localStorage.getItem("ss-hide-money") === "1"; } catch { return false; }
+  });
+  // Sincroniza la bandera de módulo en cada render para que money()/maskMoney enmascaren
+  OCULTAR_MONTOS = ocultarMontos;
+  const toggleMontos = () => {
+    setOcultarMontos(v => {
+      try { localStorage.setItem("ss-hide-money", v ? "0" : "1"); } catch {}
+      return !v;
+    });
+  };
   useEffect(() => {
     // Inyectar CSS del design system una sola vez
     if (!document.getElementById("ss-theme-css")) {
@@ -7209,6 +7234,9 @@ export default function App() {
           <button onClick={toggleTheme} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-slate-400 text-xs font-semibold hover:bg-white/5 hover:text-white transition-colors">
             {darkMode ? "☀️ Modo claro" : "🌙 Modo oscuro"}
           </button>
+          <button onClick={toggleMontos} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-semibold transition-colors" style={ocultarMontos?{borderColor:"rgba(37,99,235,0.5)",background:"rgba(37,99,235,0.15)",color:"#93c5fd"}:{borderColor:"rgba(255,255,255,0.1)",color:"#94a3b8"}}>
+            {ocultarMontos ? "🙈 Montos ocultos" : "👁️ Ocultar montos"}
+          </button>
           <button onClick={()=>setShowChangePass(true)} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-slate-400 text-xs font-semibold hover:bg-white/5 hover:text-white transition-colors">
             <Icon name="lock" className="w-4 h-4" /> Cambiar contraseña
           </button>
@@ -7228,6 +7256,7 @@ export default function App() {
             <p className="font-black text-white text-xs tracking-widest" style={{ fontFamily:"'Inter',sans-serif" }}>SPORTSYNC</p>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={toggleMontos} className="p-1 text-base" style={{ color: ocultarMontos ? "#60a5fa" : "#94a3b8" }} title={ocultarMontos?"Mostrar montos":"Ocultar montos"}>{ocultarMontos?"🙈":"👁️"}</button>
             <button onClick={toggleTheme} className="text-slate-400 hover:text-white p-1 text-base">{darkMode?"☀️":"🌙"}</button>
             <button onClick={()=>setShowSearch(s=>!s)} className="text-slate-400 hover:text-white p-1">
               <Icon name="search" className="w-5 h-5" />
