@@ -3197,8 +3197,28 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("Todos");
   const [abonoVenta, setAbonoVenta] = useState(null);
+  const [showDeudores, setShowDeudores] = useState(false);
   const totalHoy = ventas.filter(v=>v.fecha===fmt(today)).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0);
   const totalMes = ventas.filter(v=>v.fecha?.slice(0,7)===fmt(today).slice(0,7)).reduce((a,v)=>a+parseFloat(v.monto_pagado||v.total||0),0);
+
+  // Saldo pendiente de una venta (robusto ante registros antiguos sin saldo_pendiente)
+  const pendienteDe = (v) => {
+    if (v.saldo_pendiente != null && v.saldo_pendiente !== "") return parseFloat(v.saldo_pendiente) || 0;
+    if (v.estado === "parcial" || v.estado === "credito") return Math.max(0, parseFloat(v.total||0) - parseFloat(v.monto_pagado||0));
+    return 0;
+  };
+
+  // Resumen de deuda agrupada por alumno/cliente (suma automática)
+  const deudores = Object.values(
+    ventas.filter(v => pendienteDe(v) > 0).reduce((acc, v) => {
+      const key = v.alumno_id || `ext:${(v.cliente||"Sin nombre").toLowerCase()}`;
+      if (!acc[key]) acc[key] = { nombre: v.cliente || "Sin nombre", total: 0, count: 0 };
+      acc[key].total += pendienteDe(v);
+      acc[key].count += 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.total - a.total);
+  const totalDeuda = deudores.reduce((a, d) => a + d.total, 0);
 
   const VentaForm = ({ onClose, students, inventario }) => {
     const [carrito, setCarrito] = useState([]);
@@ -3457,6 +3477,41 @@ const VentasPage = ({ ventas, historialVentas, students, inventario, reload, isA
           <StatCard title="Ventas Mes" value={`$${totalMes.toFixed(2)}`} icon="ventas" accent="amber" />
         </div>
       )}
+
+      {/* Resumen de deuda por alumno */}
+      {deudores.length > 0 && (
+        <div className="rounded-2xl border overflow-hidden" style={{ background:"var(--ss-card)", borderColor:"var(--ss-border)" }}>
+          <button onClick={()=>setShowDeudores(v=>!v)} className="w-full flex items-center justify-between p-4">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">📋</span>
+              <div className="text-left">
+                <p className="font-bold text-white text-sm">Deuda por alumno</p>
+                <p className="text-xs text-slate-500">{deudores.length} con saldo pendiente</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-black text-red-400">${totalDeuda.toFixed(2)}</span>
+              <svg className={`w-4 h-4 text-slate-500 transition-transform ${showDeudores?"rotate-180":""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </button>
+          {showDeudores && (
+            <div className="border-t px-2 pb-2" style={{ borderColor:"var(--ss-border)" }}>
+              {deudores.map((d,i)=>(
+                <div key={i} className="flex items-center justify-between px-2.5 py-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0" style={{ background:"linear-gradient(135deg,#2563EB,#1d4ed8)" }}>{(d.nombre||"?").split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
+                    <div className="min-w-0"><p className="text-sm font-semibold text-white truncate">{d.nombre}</p><p className="text-xs text-slate-500">{d.count} venta(s) con saldo</p></div>
+                  </div>
+                  <span className="text-sm font-black text-red-400 flex-shrink-0">${d.total.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Filtros */}
       <div className="flex gap-2 flex-wrap">
         {["Todos","pagado","parcial","credito"].map(f=>(
